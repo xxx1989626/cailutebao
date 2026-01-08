@@ -1,6 +1,6 @@
 <div class="row g-3">
     <div class="col-md-4">
-        <label class="form-label fw-bold">资产类型 <span class="text-danger">*</span></label>
+        <label for="asset_type_select" class="form-label fw-bold">资产类型 <span class="text-danger">*</span></label>
         <select name="type" id="asset_type_select" class="form-select" required>
             <option value="装备">装备</option>
             <option value="服饰">服饰</option>
@@ -22,12 +22,12 @@
 
     <div class="col-md-4">
         <label class="form-label fw-bold">入库数量 <span class="text-danger">*</span></label>
-        <input type="number" name="quantity" id="asset_qty" class="form-control" value="1" min="1" required>
+        <input type="number" name="quantity" id="asset_qty" class="form-control" value="1" min="1" placeholder="请输入数量" required>
     </div>
 
     <div class="col-md-4">
-        <label class="form-label fw-bold">资产归属</label>
-        <select name="ownership" class="form-select">
+        <label for="asset_ownership_select" class="form-label fw-bold">资产归属</label>
+        <select name="ownership" id="asset_ownership_select" class="form-select">
             <option value="特保队">特保队</option>
             <option value="公司">公司</option>
             <option value="个人">个人</option>
@@ -41,13 +41,13 @@
     </div>
 
     <div class="col-md-6">
-        <label class="form-label fw-bold">购置/入库日期</label>
-        <input type="date" name="purchase_date" class="form-control" value="{{ default_date }}">
+        <label for="asset_purchase_date" class="form-label fw-bold">购置/入库日期</label>
+        <input type="date" name="purchase_date" id="asset_purchase_date" class="form-control" value="{{ default_date }}" title="购置或入库日期">
     </div>
 
     <div class="col-md-6">
         <label class="form-label fw-bold">床位容量</label>
-        <select name="bed_capacity" class="form-select">
+        <select name="bed_capacity" class="form-select" title="床位容量">
             <option value="0">非床位类资产</option>
             <option value="1">单人床 (1坑位)</option>
             <option value="2">双层床 (2坑位)</option>
@@ -56,10 +56,10 @@
 
     <div class="col-md-12">
         <label class="form-label fw-bold">资产照片</label>
-        <input type="file" name="photo" class="form-control" accept="image/*">
+        <input type="file" name="photo" class="form-control" accept="image/*" title="资产照片">
     </div>
 
-    <div id="custom_sn_section" class="mb-4 p-3 border rounded bg-white shadow-sm" style="display:none;">
+    <div id="custom_sn_section" class="mb-4 p-3 border rounded bg-white shadow-sm d-none">
         <label class="form-label fw-bold text-primary">
             <i class="bi bi-tags"></i> 定义个体编号
         </label>
@@ -79,7 +79,7 @@ $(document).ready(function() {
         const $snContainer = $('#sn_container');
 
         if (assetType === '固定资产' && qty > 0) {
-            $snSection.show();
+            $snSection.removeClass('d-none');
             $snContainer.empty();
             for (let i = 1; i <= qty; i++) {
                 const suffix = String(i).padStart(3, '0');
@@ -93,7 +93,7 @@ $(document).ready(function() {
                 `);
             }
         } else {
-            $snSection.hide();
+            $snSection.addClass('d-none');
             $snContainer.empty();
         }
     }
