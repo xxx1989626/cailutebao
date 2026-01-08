@@ -1,0 +1,17 @@
+# 忽略数据库
+*.db
+*.db-journal
+data/database.db
+
+# 忽略 Python 缓存
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 忽略 IDE 和系统文件
+.vscode/
+.DS_Store
+
+# 忽略你之前的压缩包
+*.rar
+*.zip

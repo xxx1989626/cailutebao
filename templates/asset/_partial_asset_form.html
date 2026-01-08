@@ -1,0 +1,129 @@
+<div class="row g-3">
+    <div class="col-md-4">
+        <label class="form-label fw-bold">资产类型 <span class="text-danger">*</span></label>
+        <select name="type" id="asset_type_select" class="form-select" required>
+            <option value="装备">装备</option>
+            <option value="服饰">服饰</option>
+            <option value="固定资产">固定资产</option>
+            <option value="工具">工具</option>
+            <option value="消耗品">消耗品</option>
+        </select>
+    </div>
+
+    <div class="col-md-4">
+        <label class="form-label fw-bold">资产名称 <span class="text-danger">*</span></label>
+        <input type="text" name="name" class="form-control" placeholder="如：电动自行车" required>
+    </div>
+
+    <div class="col-md-4">
+        <label class="form-label fw-bold">编号前缀</label>
+        <input type="text" name="number" id="asset_prefix" class="form-control" placeholder="如: SN-2026-">
+    </div>
+
+    <div class="col-md-4">
+        <label class="form-label fw-bold">入库数量 <span class="text-danger">*</span></label>
+        <input type="number" name="quantity" id="asset_qty" class="form-control" value="1" min="1" required>
+    </div>
+
+    <div class="col-md-4">
+        <label class="form-label fw-bold">资产归属</label>
+        <select name="ownership" class="form-select">
+            <option value="特保队">特保队</option>
+            <option value="公司">公司</option>
+            <option value="个人">个人</option>
+            <option value="派出所">派出所</option>
+        </select>
+    </div>
+
+    <div class="col-md-4">
+        <label class="form-label fw-bold">存放位置</label>
+        <input type="text" name="location" class="form-control" placeholder="如：一号仓库">
+    </div>
+
+    <div class="col-md-6">
+        <label class="form-label fw-bold">购置/入库日期</label>
+        <input type="date" name="purchase_date" class="form-control" value="{{ default_date }}">
+    </div>
+
+    <div class="col-md-6">
+        <label class="form-label fw-bold">床位容量</label>
+        <select name="bed_capacity" class="form-select">
+            <option value="0">非床位类资产</option>
+            <option value="1">单人床 (1坑位)</option>
+            <option value="2">双层床 (2坑位)</option>
+        </select>
+    </div>
+
+    <div class="col-md-12">
+        <label class="form-label fw-bold">资产照片</label>
+        <input type="file" name="photo" class="form-control" accept="image/*">
+    </div>
+
+    <div id="custom_sn_section" class="mb-4 p-3 border rounded bg-white shadow-sm" style="display:none;">
+        <label class="form-label fw-bold text-primary">
+            <i class="bi bi-tags"></i> 定义个体编号
+        </label>
+        <div id="sn_container" class="row g-2"></div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+$(document).ready(function() {
+    // 定义生成子资产列表的函数
+    function updateSNInputs() {
+        const assetType = $('#asset_type_select').val();
+        const qty = parseInt($('#asset_qty').val()) || 0;
+        const prefix = $('#asset_prefix').val() || '';
+        const $snSection = $('#custom_sn_section');
+        const $snContainer = $('#sn_container');
+
+        if (assetType === '固定资产' && qty > 0) {
+            $snSection.show();
+            $snContainer.empty();
+            for (let i = 1; i <= qty; i++) {
+                const suffix = String(i).padStart(3, '0');
+                $snContainer.append(`
+                    <div class="col-md-3">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-light">${prefix}</span>
+                            <input type="text" name="instance_numbers[]" class="form-control" value="${suffix}" required>
+                        </div>
+                    </div>
+                `);
+            }
+        } else {
+            $snSection.hide();
+            $snContainer.empty();
+        }
+    }
+
+    // --- 事件绑定 ---
+
+    // 1. 监听资产表单的变化（类型、数量、前缀）
+    // 注意：使用 $(document).on 确保动态内容也能被监听到
+    $(document).on('change input', '#asset_type_select, #asset_qty, #asset_prefix', function() {
+        updateSNInputs();
+    });
+
+    // 2. 页面加载完成后立即尝试运行一次
+    updateSNInputs();
+
+    // 3. 处理财务表单联动
+    $('#sync_fund_switch').on('change', function() {
+        if(this.checked) {
+            $('#finance_container').hide().load("{{ url_for('fund.get_fund_form_snippet') }}", function(response, status, xhr) {
+                if (status == "error") {
+                    alert("财务组件加载失败");
+                } else {
+                    $(this).slideDown();
+                }
+            });
+        } else {
+            $('#finance_container').slideUp(function() {
+                $(this).html('<div class="text-center text-muted py-2">正在加载财务表单...</div>');
+            });
+        }
+    });
+});
+</script>

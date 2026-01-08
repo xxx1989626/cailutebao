@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}编辑员工信息 - {{ cycle.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-warning text-dark">
+            <h4 class="mb-0">编辑员工信息 - {{ cycle.name }}</h4>
+        </div>
+        <div class="card-body p-4">
+            <form method="POST" action="{{ url_for('hr.edit_cycle', cycle_id=cycle.id) }}" enctype="multipart/form-data">
+                {% set employee = cycle %} {# 回显数据 #}
+                {% include "hr/_employee_form.html" with context %} {# 关键修复：添加 with context #}
+                
+                <div class="text-center mt-5">
+                    <button type="submit" class="btn btn-primary btn-lg px-5">保存修改</button>
+                    <a href="{{ url_for('hr.hr_detail', id_card=cycle.id_card) }}" class="btn btn-secondary btn-lg px-5">取消</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}导入资产{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-info text-white">
+            <h4 class="mb-0"><i class="bi bi-upload"></i> 导入资产</h4>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info">
+                <strong>导入要求：</strong>
+                <ul class="mb-0">
+                    <li>必须包含列：资产类型、资产名称、资产编号</li>
+                    <li>可选列：数量、购置日期、存放位置、分配模式（personal/group）、部门</li>
+                    <li>资产编号不能重复</li>
+                    <li>数量默认为1</li>
+                </ul>
+            </div>
+
+            <form method="POST" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label class="form-label">选择Excel文件</label>
+                    <input type="file" name="file" class="form-control" accept=".xlsx" required>
+                </div>
+                <div class="text-center">
+                    <button type="submit" class="btn btn-success btn-lg px-5">开始导入</button>
+                    <a href="{{ url_for('asset.asset_list') }}" class="btn btn-secondary btn-lg px-5">取消</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

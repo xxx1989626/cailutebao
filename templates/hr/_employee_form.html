@@ -1,0 +1,361 @@
+<!-- templates/hr/_employee_form.html -->
+<!-- 公共员工表单 - 新增/编辑共用，变量名为 employee（新增时 employee=none） -->
+<div class="row">
+    <div class="col-md-8">
+        <h5 class="border-bottom pb-2 mb-3">基本信息</h5>
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label class="form-label">姓名 <span class="text-danger">*</span></label>
+                <input type="text" name="name" class="form-control" value="{{ employee.name or '' }}" required>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label class="form-label">身份证号码 <span class="text-danger">*</span></label>
+                <input type="text" name="id_card" id="id_card" class="form-control" maxlength="18"
+                    value="{{ employee.id_card or '' }}" required>
+                <div id="id_card_msg" class="form-text mt-1"></div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label class="form-label">性别 <small class="text-muted">(自动计算)</small></label>
+                <input type="text" id="gender_display" class="form-control bg-light" value="{{ employee.gender or '' }}"
+                    readonly>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">出生日期 <small class="text-muted">(自动计算)</small></label>
+                <input type="text" id="birthday_display" class="form-control bg-light"
+                    value="{{ format_date(employee.birthday) or '' }}" readonly>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">手机号码 <span class="text-danger">*</span></label>
+                <input type="text" name="phone" id="phone" class="form-control" maxlength="11"
+                    value="{{ employee.phone or '' }}" required>
+                <div id="phone_msg" class="form-text mt-1"></div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label class="form-label">民族</label>
+                <select name="ethnic" class="form-select">
+                    <option value="">请选择</option>
+                    {% for e in ethnic_options %}
+                    <option value="{{ e }}" {% if e==employee.ethnic %}selected{% endif %}>{{ e }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">政治面貌</label>
+                <select name="politics" class="form-select">
+                    <option value="">请选择</option>
+                    {% for p in politics_options %}
+                    <option value="{{ p }}" {% if p==employee.politics %}selected{% endif %}>{{ p }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">学历</label>
+                <select name="education" class="form-select">
+                    <option value="">请选择</option>
+                    {% for edu in education_options %}
+                    <option value="{{ edu }}" {% if edu==employee.education %}selected{% endif %}>{{ edu }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 text-center">
+        <h5 class="border-bottom pb-2 mb-3">员工照片</h5>
+        <img id="photo_preview"
+            src="/{{ employee.photo_path or 'uploads/default-avatar.png' }}"
+            class="rounded-circle shadow mb-3" width="160" height="160" alt="照片预览">
+        <input type="file" name="photo" id="photo" class="form-control" accept="image/*">
+        <small class="text-muted d-block mt-2">建议上传正面免冠照</small>
+    </div>
+</div>
+
+<hr class="my-5">
+
+<h5 class="border-bottom pb-2 mb-3">地址信息</h5>
+<div class="row mb-4">
+    <div class="col-md-6">
+        <strong class="d-block mb-2">户籍地址</strong>
+        <div class="row g-2 mb-2">
+            <div class="col-3">
+                <input type="text" name="household_province" class="form-control" placeholder="省"
+                    value="{{ employee.household_province or '' }}">
+            </div>
+            <div class="col-3">
+                <input type="text" name="household_city" class="form-control" placeholder="市"
+                    value="{{ employee.household_city or '' }}">
+            </div>
+            <div class="col-3">
+                <input type="text" name="household_district" class="form-control" placeholder="区/县"
+                    value="{{ employee.household_district or '' }}">
+            </div>
+            <div class="col-3">
+                <input type="text" name="household_town" class="form-control" placeholder="镇/街道"
+                    value="{{ employee.household_town or '' }}">
+            </div>
+        </div>
+        <input type="text" name="household_detail" class="form-control" placeholder="详细地址（如村、门牌号）"
+            value="{{ employee.household_detail or '' }}">
+    </div>
+
+    <div class="col-md-6">
+        <strong class="d-block mb-2">居住地址 <small class="text-muted"></small></strong>
+        <div class="row g-2 mb-2">
+            <div class="col-3">
+                <input type="text" name="residence_province" class="form-control" placeholder="省"
+                    value="{{ employee.residence_province or '' }}">
+            </div>
+            <div class="col-3">
+                <input type="text" name="residence_city" class="form-control" placeholder="市"
+                    value="{{ employee.residence_city or '' }}">
+            </div>
+            <div class="col-3">
+                <input type="text" name="residence_district" class="form-control" placeholder="区/县"
+                    value="{{ employee.residence_district or '' }}">
+            </div>
+            <div class="col-3">
+                <input type="text" name="residence_town" class="form-control" placeholder="镇/街道"
+                    value="{{ employee.residence_town or '' }}">
+            </div>
+        </div>
+        <input type="text" name="residence_detail" class="form-control" placeholder="详细地址（如村、门牌号）"
+            value="{{ employee.residence_detail or '' }}">
+    </div>
+</div>
+
+<hr class="my-5">
+
+<h5 class="border-bottom pb-2 mb-3">其他资质</h5>
+<div class="row">
+    <div class="col-md-4">
+        <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="military_service" name="military_service" 
+                {% if employee.military_service %}checked{% endif %}>
+            <label class="form-check-label fw-bold" for="military_service">曾服兵役</label>
+        </div>
+        <div id="military_fields" style="display: none; margin-left:20px;">
+            <small class="text-muted d-block mb-2">入伍日期</small>
+            <input type="date" name="enlistment_date" class="form-control mb-2"
+                value="{{ employee.enlistment_date.strftime('%Y-%m-%d') if employee.enlistment_date and employee.enlistment_date is not string else (employee.enlistment_date[:10] if employee.enlistment_date else '') }}" 
+                min="0001-01-01" max="9999-12-31">
+            
+            <small class="text-muted d-block mb-2">部队番号</small>
+            <input type="text" name="unit_number" class="form-control mb-2" value="{{ employee.unit_number or '' }}">
+            
+            <small class="text-muted d-block mb-2">兵种</small>
+            <input type="text" name="branch" class="form-control mb-2" value="{{ employee.branch or '' }}">
+            
+            <small class="text-muted d-block mb-2">退伍日期</small>
+            <input type="date" name="discharge_date" class="form-control mb-2"
+                value="{{ employee.discharge_date.strftime('%Y-%m-%d') if employee.discharge_date and employee.discharge_date is not string else (employee.discharge_date[:10] if employee.discharge_date else '') }}"
+                min="0001-01-01" max="9999-12-31">
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="has_license" name="has_license" 
+                {% if employee.has_license %}checked{% endif %}>
+            <label class="form-check-label fw-bold" for="has_license">持有驾驶证</label>
+        </div>
+        <div id="license_fields" style="display: none; margin-left:20px;">
+            <small class="text-muted d-block mb-2">初次领证日期</small>
+            <input type="date" name="license_date" class="form-control mb-2"
+                value="{{ employee.license_date.strftime('%Y-%m-%d') if employee.license_date and employee.license_date is not string else (employee.license_date[:10] if employee.license_date else '') }}" 
+                min="0001-01-01" max="9999-12-31">
+            
+            <small class="text-muted d-block mb-2">准驾车型</small>
+            <input type="text" name="license_type" class="form-control mb-2" value="{{ employee.license_type or '' }}" placeholder="如C1">
+            
+            <small class="text-muted d-block mb-2">有效期至</small>
+            <input type="date" name="license_expiry" class="form-control mb-2"
+                value="{{ employee.license_expiry.strftime('%Y-%m-%d') if employee.license_expiry and employee.license_expiry is not string else (employee.license_expiry[:10] if employee.license_expiry else '') }}" 
+                min="0001-01-01" max="9999-12-31">
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="has_security_license" name="has_security_license" 
+                {% if employee.security_license_number %}checked{% endif %}>
+            <label class="form-check-label fw-bold" for="has_security_license">持有保安员证</label>
+        </div>
+        <div id="security_fields" style="display: none; margin-left:20px;">
+            <small class="text-muted d-block mb-2">保安证编号</small>
+            <input type="text" name="security_license_number" class="form-control mb-2" value="{{ employee.security_license_number or '' }}">
+            
+            <small class="text-muted d-block mb-2">保安证发证日期</small>
+            <input type="date" name="security_license_date" class="form-control mb-2"
+                value="{{ employee.security_license_date.strftime('%Y-%m-%d') if employee.security_license_date and employee.security_license_date is not string else (employee.security_license_date[:10] if employee.security_license_date else '') }}" 
+                min="0001-01-01" max="9999-12-31">
+        </div>
+    </div>
+</div>
+
+
+<hr class="my-5">
+
+<!-- 薪资计算模式、职位信息 -->
+<div class="row">
+    <div class="col-md-3 mb-3">
+        <label class="form-label">薪资计算模式 <span class="text-danger">*</span></label>
+        <select name="salary_mode" class="form-select" required>
+            {% for mode in salary_modes %}
+            <option value="{{ mode }}" {% if mode==employee.salary_mode %}selected{% endif %}>{{ mode }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-3 mb-3">
+        <label class="form-label">职务 <span class="text-danger">*</span></label>
+        <select name="position" class="form-select" required>
+            {% for pos in positions %}
+            <option value="{{ pos }}" {% if pos==employee.position %}selected{% endif %}>{{ pos }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-3 mb-3">
+        <label class="form-label">岗位 <span class="text-danger">*</span></label>
+        <select name="post" class="form-select" required>
+            {% for p in posts %}
+            <option value="{{ p }}" {% if p==employee.post %}selected{% endif %}>{{ p }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-3 mb-3">
+        <label class="form-label">入职日期</label>
+        <input type="date" name="hire_date" class="form-control"
+            value="{{ employee.hire_date.strftime('%Y-%m-%d') if employee.hire_date and employee.hire_date is not string else (employee.hire_date[:10] if employee.hire_date else '') }}" min="0001-01-01" max="9999-12-31">
+    </div>
+</div>
+
+<!-- 紧急联系人 + 工作服尺码 -->
+<div class="row mt-4">
+    <div class="col-md-4">
+        <h5 class="mb-3">紧急联系人</h5>
+        <input type="text" name="emergency_name" class="form-control mb-2" placeholder="姓名"
+            value="{{ employee.emergency_name or '' }}">
+        <input type="text" name="emergency_relation" class="form-control mb-2" placeholder="关系"
+            value="{{ employee.emergency_relation or '' }}">
+        <input type="text" name="emergency_phone" class="form-control mb-2" placeholder="电话"
+            value="{{ employee.emergency_phone or '' }}">
+    </div>
+    <div class="col-md-8">
+        <h5 class="mb-3">工作服尺码</h5>
+        <div class="row g-3">
+            <div class="col"><input type="text" name="hat_size" class="form-control" placeholder="帽围"
+                    value="{{ employee.hat_size or '' }}"></div>
+            <div class="col"><input type="text" name="short_sleeve" class="form-control" placeholder="短袖"
+                    value="{{ employee.short_sleeve or '' }}"></div>
+            <div class="col"><input type="text" name="long_sleeve" class="form-control" placeholder="长袖"
+                    value="{{ employee.long_sleeve or '' }}"></div>
+            <div class="col"><input type="text" name="winter_uniform" class="form-control" placeholder="冬装"
+                    value="{{ employee.winter_uniform or '' }}"></div>
+            <div class="col"><input type="text" name="shoe_size" class="form-control" placeholder="鞋码"
+                    value="{{ employee.shoe_size or '' }}"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 身份证校验 + 自动填充
+    const idInput = document.getElementById('id_card');
+    if (idInput) {
+        idInput.addEventListener('blur', function () {
+            const id = this.value.trim();
+            const msg = document.getElementById('id_card_msg');
+            if (id.length === 18) {
+                fetch('/validate_id_card', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id_card: id })
+                })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.valid) {
+                            msg.innerHTML = '<span class="text-success">身份证合法</span>';
+                            document.getElementById('gender_display').value = data.gender;
+                            document.getElementById('birthday_display').value = data.birthday;
+                        } else {
+                            msg.innerHTML = '<span class="text-danger">' + (data.error || '校验失败') + '</span>';
+                        }
+                    })
+                    .catch(() => {
+                        msg.innerHTML = '<span class="text-warning">校验服务暂时不可用</span>';
+                    });
+            } else if (id.length > 0) {
+                msg.innerHTML = '<span class="text-danger">请输入18位身份证号码</span>';
+            } else {
+                msg.innerHTML = '';
+            }
+        });
+    }
+
+    // 照片预览
+    const photoInput = document.getElementById('photo');
+    if (photoInput) {
+        photoInput.addEventListener('change', function (e) {
+            if (e.target.files && e.target.files[0]) {
+                document.getElementById('photo_preview').src = URL.createObjectURL(e.target.files[0]);
+            }
+        });
+    }
+
+    // 复选框控制子字段（兵役、驾照、保安证）
+    const toggleFields = (checkboxId, fieldsId) => {
+        const cb = document.getElementById(checkboxId);
+        const fields = document.getElementById(fieldsId);
+        if (cb && fields) {
+            cb.addEventListener('change', function () {
+                fields.style.display = this.checked ? 'block' : 'none';
+            });
+            // 初始状态同步
+            fields.style.display = cb.checked ? 'block' : 'none';
+        }
+    };
+
+    toggleFields('military_service', 'military_fields');
+    toggleFields('has_license', 'license_fields');
+    toggleFields('has_security_license', 'security_fields');
+
+    // 其他证书控制 + 动态添加
+    const otherCertCb = document.getElementById('has_other_cert');
+    const otherCertContainer = document.getElementById('other_cert_container');
+    const addCertBtn = document.getElementById('add_cert_btn');
+    const certList = document.getElementById('cert_list');
+
+    if (otherCertCb && otherCertContainer && addCertBtn && certList) {
+        otherCertCb.addEventListener('change', function () {
+            otherCertContainer.style.display = this.checked ? 'block' : 'none';
+            if (this.checked && certList.children.length === 0) {
+                addCertBtn.click();
+            }
+        });
+
+        let certIndex = 0;
+        addCertBtn.addEventListener('click', function () {
+            const div = document.createElement('div');
+            div.className = 'row g-2 mb-3 align-items-end';
+            div.innerHTML = `
+                <div class="col-md-4">
+                    <input type="text" name="cert_name_${certIndex}" class="form-control" placeholder="证件名称" required>
+                </div>
+                <div class="col-md-4">
+                    <input type="text" name="cert_number_${certIndex}" class="form-control" placeholder="证件号码" required>
+                </div>
+                <div class="col-md-3">
+                    <input type="date" name="cert_date_${certIndex}" class="form-control" min="0001-01-01" max="9999-12-31" required>
+                </div>
+                <div class="col-md-1">
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.parentElement.parentElement.remove()">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            `;
+            certList.appendChild(div);
+            certIndex++;
+        });
+    }
+</script>

@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+
+{% block title %}资产列表{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0"><i class="bi bi-box-seam me-2"></i>资产总览</h4>
+            <div>
+                {% if perm.can('hr.view') %}
+                <a href="{{ url_for('asset.asset_export', status=status_filter, search=search) }}" class="btn btn-light me-2">
+                    <i class="bi bi-download"></i> 导出数据
+                </a>
+                <a href="{{ url_for('asset.asset_import') }}" class="btn btn-light me-2">
+                    <i class="bi bi-upload"></i> 导入数据
+                </a>
+                <a href="{{ url_for('asset.asset_inventory') }}" class="btn btn-light me-2">  <!-- 新增盘点入口 -->
+        <i class="bi bi-clipboard-check"></i> 资产盘点
+    </a>
+                <a href="{{ url_for('asset.asset_add') }}" class="btn btn-light">
+                    <i class="bi bi-person-plus"></i> 新增数据
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card-body">
+            <form method="GET" class="mb-4">
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <input type="text" name="search" class="form-control" placeholder="搜索资产名称 / 编号 / 序列号"
+                            value="{{ search or '' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-outline-primary w-100">搜索资产</button>
+                    </div>
+                </div>
+            </form>
+
+            <ul class="nav nav-tabs mb-4">
+                {% for t in ['固定资产', '装备', '服饰', '工具', '消耗品'] %}
+                <li class="nav-item">
+                    <a class="nav-link {% if type_filter == t %}active{% endif %}"
+                        href="{{ url_for('asset.asset_list', type=t) }}">
+                        {{ t }}
+                        {% if t == '固定资产' and repair_count > 0 %}
+                        <span class="badge rounded-pill bg-danger">{{ repair_count }}</span>
+                        {% endif %}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+
+            <form method="GET" class="mb-4 bg-light p-3 rounded">
+                <input type="hidden" name="type" value="{{ type_filter }}">
+                <input type="hidden" name="search" value="{{ search }}">
+                <div class="row align-items-center">
+                    <div class="col-auto"><strong>显示字段：</strong></div>
+                    <div class="col">
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" name="show" value="name" id="show_name" 
+                                {% if 'name' in show_fields %}checked{% endif %}>
+                            <label class="form-check-label" for="show_name">名称</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" name="show" value="number" id="show_number" 
+                                {% if 'number' in show_fields %}checked{% endif %}>
+                            <label class="form-check-label" for="show_number">编号/SN码</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" name="show" value="status" id="show_status" 
+                                {% if 'status' in show_fields %}checked{% endif %}>
+                            <label class="form-check-label" for="show_status">状态</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" name="show" value="ownership" id="show_ownership" 
+                                {% if 'ownership' in show_fields %}checked{% endif %}>
+                            <label class="form-check-label" for="show_ownership">资产归属</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" name="show" value="location" id="show_loc" 
+                                {% if 'location' in show_fields %}checked{% endif %}>
+                            <label class="form-check-label" for="show_loc">位置</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" name="show" value="current_user" id="show_user" 
+                                {% if 'current_user' in show_fields %}checked{% endif %}>
+                            <label class="form-check-label" for="show_user">领用人</label>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-outline-secondary btn-sm">应用视图</button>
+                    </div>
+                </div>
+            </form>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle border-top">
+                    <thead class="bg-light">
+                        <tr class="text-secondary small text-uppercase">
+                            <th class="ps-3" style="width: 80px;">资产</th>
+                            
+                            {% if 'name' in show_fields %}<th>名称信息</th>{% endif %}
+                            {% if 'number' in show_fields %}<th>编号/SN</th>{% endif %}
+                            
+                            <th>资产类型</th> 
+                            {% if 'ownership' in show_fields %}<th>资产归属</th>{% endif %}
+                            <th class="text-center">总数 / 库存/ 已分配</th>
+                            
+                            {% if 'status' in show_fields %}<th>当前状态</th>{% endif %}
+                            {% if 'location' in show_fields %}<th>存放位置</th>{% endif %}
+                            {% if 'current_user' in show_fields %}<th>使用方/领用人</th>{% endif %}
+                            
+                            <th class="text-end pe-3">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if assets %}
+                        {% for asset in assets %}
+                        <tr>
+                            <td class="ps-3">
+                                {% if asset.photo_path %}
+                                <img src="/{{ asset.photo_path }}" 
+                                     class="rounded shadow-sm border" style="width:50px; height:50px; object-fit:cover;">
+                                {% else %}
+                                <div class="rounded bg-light d-flex align-items-center justify-content-center border" 
+                                     style="width:50px; height:50px;">
+                                    <i class="bi bi-image text-muted"></i>
+                                </div>
+                                {% endif %}
+                            </td>
+
+                            {% if 'name' in show_fields %}
+                            <td><div class="fw-bold text-dark">{{ asset.name }}</div></td>
+                            {% endif %}
+
+                            {% if 'number' in show_fields %}
+                            <td><div class="text-muted small">{{ asset.number or '-' }}</div></td>
+                            {% endif %}
+
+                            <td><span class="badge bg-light text-dark border">{{ asset.type }}</span></td>
+                            
+                            {% if 'ownership' in show_fields %}
+                            <td>{{ asset.ownership or '' }}</td>
+                            {% endif %}
+                            
+                            <td class="text-center">
+    <span class="text-muted small" title="总数量">{{ asset.total_quantity }}</span>
+    <span class="mx-1 text-muted">/</span>
+
+    <span class="fw-bold {% if asset.stock_quantity > 0 %}text-success{% else %}text-danger{% endif %}" title="在库数量">
+        {{ asset.stock_quantity }}
+    </span>
+        <span class="mx-1 text-muted">/</span>
+
+    <span class="text-primary" title="已分配数量">
+        {{ asset.total_quantity - asset.stock_quantity }}
+    </span>
+    
+    
+</td>
+
+                            {% if 'status' in show_fields %}
+                            <td>
+                                {% set status_map = {'库存': 'success', '使用中': 'primary', '维修中': 'warning', '报废': 'danger'} %}
+                                <span class="badge rounded-pill bg-{{ status_map.get(asset.status, 'secondary') }}">
+                                    {{ asset.status }}
+                                </span>
+                            </td>
+                            {% endif %}
+
+                            {% if 'location' in show_fields %}
+                            <td>{{ asset.location or '未设定' }}</td>
+                            {% endif %}
+
+                            {% if 'current_user' in show_fields %}
+                            <td>
+                                <small class="text-muted">
+                                    {% if asset.allocation_mode == 'group' %}
+                                        <i class="bi bi-people me-1"></i>{{ asset.department or '集体' }}
+                                    {% else %}
+                                        {% if asset.current_user %}
+                                            <i class="bi bi-person me-1"></i>{{ asset.current_user.name }}
+                                        {% else %}
+                                            <span class="text-light-emphasis">-</span>
+                                        {% endif %}
+                                    {% endif %}
+                                </small>
+                            </td>
+                            {% endif %}
+
+                            <td class="text-end pe-3">
+                                <div class="btn-group">
+                                    <a href="{{ url_for('asset.asset_detail', asset_id=asset.id) }}" 
+                                       class="btn btn-sm btn-outline-primary shadow-sm">查看详情</a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td colspan="10" class="text-center py-5">
+                                <img src="https://cdn-icons-png.flaticon.com/512/7486/7486744.png" style="width: 64px; opacity: 0.3;">
+                                <p class="text-muted mt-2">没有找到符合条件的资产</p>
+                            </td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

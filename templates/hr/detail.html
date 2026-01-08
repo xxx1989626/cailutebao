@@ -1,0 +1,558 @@
+{% extends "base.html" %}
+
+{% block title %}{{ cycles[0].name }} ({{ id_card }}) - 任职档案{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0"><i class="bi bi-person-lines-fill"></i> {{ cycles[0].name }} - 任职档案（共 {{ cycles|length }}
+                次）</h4>
+            <div class="d-flex gap-2">
+                <!-- 优化点：添加图标+调整尺寸，与状态标签视觉分离 -->
+                <a href="{{ url_for('hr.hr_list') }}" class="badge bg-light text-dark fs-5 px-3 py-1">
+                    <i class="bi bi-arrow-left-short me-1"></i> 返回列表
+                </a>
+                <span class="badge bg-light text-dark fs-5 px-3 py-1">{{ cycles[0].status }}</span>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="tab-content">
+                <!-- 查看模式 -->
+                <div class="tab-pane fade show active" id="view_tab">
+                    {% for cycle in cycles %}
+                    <div class="card mb-4 {% if cycle.status == '在职' %}border-primary shadow-lg{% endif %}">
+                        <div
+                            class="card-header d-flex justify-content-between {% if cycle.status == '在职' %}bg-primary text-white{% endif %}">
+
+                            <strong>
+                                第 {{ cycles|length - loop.index + 1 }} 次任职
+                                （{{ format_date(cycle.hire_date) }} ~ {{ format_date(cycle.departure_date) or '至今' }}）
+
+                                在职 {{ cycle.hire_date | calc_work_duration(cycle.departure_date) }}
+                                <!-- 新过滤器：自动处理None -->
+                            </strong>
+                            <span class="badge bg-light text-dark">{{ cycle.status }}</span>
+                        </div>
+                        <div class="card-body">
+                            <!-- 基本信息表格（保持原有） -->
+                            <div class="row">
+                                <div class="col-md-3 text-center mb-3">
+                                    {% if cycle.photo_path %}
+                                    <img src="/{{ cycle.photo_path }}" class="rounded-circle shadow" width="180"
+                                        height="180" alt="照片">
+                                    {% else %}
+                                    <div class="bg-light rounded-circle shadow d-flex align-items-center justify-content-center text-muted"
+                                        style="width:180px;height:180px;font-size:24px;">
+                                        无照片
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-9">
+                                    <table class="table table-sm table-borderless">
+                                        <!-- 保持您原有所有字段显示 -->
+                                        <tr>
+                                            <th width="140">身份证</th>
+                                            <td>{{ cycle.id_card }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>性别</th>
+                                            <td>{{ cycle.gender or '未填写' }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>出生日期</th>
+                                            <td>{{ format_date(cycle.birthday) or '未填写' }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>手机</th>
+                                            <td>{{ cycle.phone or '未填写' }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>民族</th>
+                                            <td>{{ cycle.ethnic or '未填写' }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>政治面貌</th>
+                                            <td>{{ cycle.politics or '未填写' }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>学历</th>
+                                            <td>{{ cycle.education or '未填写' }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>薪资模式</th>
+                                            <td>{{ cycle.salary_mode }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>职务/岗位</th>
+                                            <td>{{ cycle.position or '-' }} / {{ cycle.post or '-' }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>户籍地址</th>
+                                            <td>{{ [cycle.household_province, cycle.household_city,
+                                                cycle.household_district, cycle.household_town, cycle.household_detail]
+                                                | reject('none') | join(' ') or '未填写' }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>居住地址</th>
+                                            <td>{{ [cycle.residence_province, cycle.residence_city,
+                                                cycle.residence_district, cycle.residence_town, cycle.residence_detail]
+                                                | reject('none') | join(' ') or '未填写' }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>兵役情况</th>
+                                            <td>{% if cycle.military_service %}入伍时间:{{
+                                                format_date(cycle.enlistment_date)
+                                                }}，部队番号:{{ cycle.unit_number }}，兵种:{{ cycle.branch }}，退伍时间:{{
+                                                format_date(cycle.discharge_date) }}{% else %}无{% endif %}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>驾驶证</th>
+                                            <td>{% if cycle.has_license %}初领时间:{{ format_date(cycle.license_date)
+                                                }}，准驾车型:{{
+                                                cycle.license_type }}，有效期至:{{ format_date(cycle.license_expiry) }}{%
+                                                else
+                                                %}无{% endif %}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>保安员证</th>
+                                            <td>
+                                                保安证编号:{{ cycle.security_license_number or '无' }}
+                                                {% if cycle.security_license_date %}
+                                                ,发证时间: {{ format_date(cycle.security_license_date) }}
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <th>紧急联系人</th>
+                                            <td>{{ cycle.emergency_name or '' }}（{{ cycle.emergency_relation or '' }}）{{
+                                                cycle.emergency_phone or '' }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>工作服尺码</th>
+                                            <td>帽{{ cycle.hat_size or '-' }} | 短袖{{ cycle.short_sleeve or '-' }} | 长袖{{
+                                                cycle.long_sleeve or '-' }} | 冬装{{ cycle.winter_uniform or '-' }} | 鞋{{
+                                                cycle.shoe_size or '-' }}</td>
+                                        </tr>
+                                    </table>
+
+                                    <!-- 离职原因 -->
+                                    {% if cycle.status == '离职' and cycle.archives %}
+                                    {% set archives = cycle.archives | fromjson %}
+                                    {% if archives.departure_reason %}
+                                    <div class="alert alert-warning mt-4">
+                                        <strong>离职原因：</strong> {{ archives.departure_reason }}
+                                    </div>
+                                    {% endif %}
+                                    {% endif %}
+                                    <!-- 装备领用情况 -->
+                                    <div class="card mt-5 shadow-sm border-0">
+                                        <div
+                                            class="card-header bg-light d-flex justify-content-between align-items-center py-2">
+                                            <h6 class="mb-0 fw-bold text-dark">
+                                                <i class="bi bi-shield-check text-primary me-1"></i> 装备领用情况
+                                            </h6>
+                                            <div class="d-flex align-items-center">
+                                                {% if cycle.status == '在职' and perm.can('asset.issue') %}
+                                                <button type="button" class="btn btn-warning btn-sm fw-bold shadow-sm"
+                                                    data-bs-toggle="modal" data-bs-target="#quickIssueModal">
+                                                    <i class="bi bi-plus-lg"></i> 发放资产
+                                                </button>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+
+                                        <div class="card-body p-0">
+                                            {% set equipped_assets = get_equipped_assets(cycle.id) %}
+                                            {% if equipped_assets %}
+                                            <div class="equipped-scroll-container"
+                                                style="max-height: 400px; overflow-y: auto;">
+                                                <div class="list-group list-group-flush">
+                                                    {% for item in equipped_assets | reverse %}
+                                                    <div class="list-group-item list-group-item-action py-3">
+                                                        <div class="row align-items-center">
+                                                            <div class="col-auto">
+                                                                <div
+                                                                    class="rounded-circle bg-primary bg-opacity-10 p-2">
+                                                                    <i class="bi bi-box-seam text-primary"></i>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col">
+                                                                <strong class="d-block text-dark">{{ item.asset.name
+                                                                    }}</strong>
+                                                                <div class="d-flex align-items-center gap-2 mt-1">
+                                                                    <span
+                                                                        class="badge bg-light text-secondary border">编号:
+                                                                        {{ item.asset.number }}</span>
+                                                                    <span
+                                                                        class="badge bg-primary-subtle text-primary">数量
+                                                                        × {{ item.quantity }}</span>
+                                                                </div>
+                                                            </div>
+                                                            <div class="col-md-4 text-end">
+                                                                <div class="small text-muted">发放于: {{
+                                                                    format_datetime(item.issue_date) }}</div>
+                                                                <div class="small text-muted">发放人: <span
+                                                                        class="text-dark">{{ item.issued_by or '系统'
+                                                                        }}</span></div>
+                                                                {% if item.note %}
+                                                                <div class="mt-1"><span
+                                                                        class="badge bg-info-subtle text-info fw-normal"><i
+                                                                            class="bi bi-info-circle me-1"></i>{{
+                                                                        item.note }}</span></div>
+                                                                {% endif %}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                            <div class="card-footer bg-white py-2">
+                                                <p class="small text-muted mb-0 text-center">共领用 {{
+                                                    equipped_assets|length }} 项资产 · 向下滚动查看更多</p>
+                                            </div>
+                                            {% else %}
+                                            <div class="py-5 text-center text-muted">
+                                                <i class="bi bi-inbox fs-2 d-block mb-2 opacity-50"></i>
+                                                <p class="mb-0">暂未领用任何装备</p>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+
+                                    <style>
+                                        /* 美化滚动条 */
+                                        .equipped-scroll-container::-webkit-scrollbar {
+                                            width: 6px;
+                                        }
+
+                                        .equipped-scroll-container::-webkit-scrollbar-track {
+                                            background: #f1f1f1;
+                                        }
+
+                                        .equipped-scroll-container::-webkit-scrollbar-thumb {
+                                            background: #ccc;
+                                            border-radius: 10px;
+                                        }
+
+                                        .equipped-scroll-container::-webkit-scrollbar-thumb:hover {
+                                            background: #bbb;
+                                        }
+                                    </style>
+
+                                    <!-- 档案记录区域 -->
+                                    <div
+                                        class="d-flex justify-content-between align-items-center mt-5 border-bottom pb-2 mb-3">
+                                        <h6 class="mb-0">档案记录</h6>
+                                        {# 只有在职且有编辑权限才显示添加按钮 #}
+                                        {% if cycle.status == '在职' and perm.can('hr.edit') %}
+                                        <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal"
+                                            data-bs-target="#addArchiveModal">
+                                            <i class="bi bi-plus-circle"></i> 添加档案
+                                        </button>
+                                        {% endif %}
+                                    </div>
+
+                                    {% if cycle.archives %}
+                                    {% set archives = cycle.archives | fromjson %}
+                                    {% if archives.archive_records %}
+                                    <div class="list-group mb-4 shadow-sm">
+                                        {# --- 关键修改：在这里加上 | reverse --- #}
+                                        {% for record in archives.archive_records | reverse %}
+                                        <div class="list-group-item list-group-item-action">
+                                            <div class="d-flex w-100 justify-content-between align-items-center">
+                                                <h6 class="mb-1">
+                                                    <span
+                                                        class="badge {% if record.type == '奖励' %}bg-success{% elif record.type == '处罚' %}bg-danger{% else %}bg-info{% endif %} me-1">
+                                                        {{ record.type }}
+                                                    </span>
+                                                    <strong>{{ record.title }}</strong>
+                                                    <small class="text-muted ms-2">操作人：{{ record.operator or '未知'
+                                                        }}</small>
+                                                </h6>
+                                                {# 显示记录时间 #}
+                                                <small class="text-secondary fw-bold">{{ format_datetime(record.date)
+                                                    }}</small>
+                                            </div>
+
+                                            {% if record.description %}
+                                            <p class="mb-2 mt-1 small text-muted border-start ps-2"
+                                                style="white-space: pre-wrap;">{{ record.description }}</p>
+                                            {% endif %}
+
+                                            {# 附件显示逻辑保持不变 #}
+                                            {% if record.file_path %}
+                                            <div class="mt-2 bg-light p-2 rounded border-dashed">
+                                                {% set lower_path = record.file_path|lower %}
+                                                {% if lower_path.endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp',
+                                                '.webp')) %}
+                                                <a href="/{{ record.file_path }}" target="_blank">
+                                                    <img src="/{{ record.file_path }}" class="img-thumbnail shadow-sm"
+                                                        style="max-height:150px;">
+                                                </a>
+                                                {% else %}
+                                                <a href="/{{ record.file_path }}" target="_blank"
+                                                    class="btn btn-xs btn-outline-primary py-1 px-2">
+                                                    <i class="bi bi-file-earmark-arrow-down"></i> 查看附件
+                                                </a>
+                                                {% endif %}
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    {% else %}
+                                    <p class="text-muted py-3 text-center bg-light rounded">暂无档案记录</p>
+                                    {% endif %}
+                                    {% else %}
+                                    <p class="text-muted py-3 text-center bg-light rounded">暂无档案记录</p>
+                                    {% endif %}
+                                    <!--添加档案记录模态框-->
+                                    {% if cycle.status == 'in_service' or cycle.status == '在职' %}
+                                    {% if perm.can('hr.edit') %}
+                                    <div class="modal fade" id="addArchiveModal" tabindex="-1"
+                                        aria-labelledby="addArchiveModalLabel" aria-hidden="true">
+                                        <div class="modal-dialog modal-dialog-centered">
+                                            <div class="modal-content border-0 shadow">
+                                                <div class="modal-header bg-success text-white">
+                                                    <h5 class="modal-title" id="addArchiveModalLabel">
+                                                        <i class="bi bi-file-earmark-plus"></i> 新增档案记录
+                                                    </h5>
+                                                    <button type="button" class="btn-close btn-close-white"
+                                                        data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <form method="POST"
+                                                    action="{{ url_for('hr.add_archive', cycle_id=cycle.id) }}"
+                                                    enctype="multipart/form-data">
+                                                    <div class="modal-body p-4">
+                                                        <div class="row g-3">
+                                                            <div class="col-md-6">
+                                                                <label class="form-label fw-bold small">记录类型</label>
+                                                                <select name="record_type"
+                                                                    class="form-select border-primary-subtle" required>
+                                                                    <option value="奖励">奖励</option>
+                                                                    <option value="处罚">处罚</option>
+                                                                    <option value="其他" selected>其他</option>
+                                                                </select>
+                                                            </div>
+                                                            <div class="col-md-6">
+                                                                <label class="form-label fw-bold small">记录日期</label>
+                                                                <input type="date" name="record_date"
+                                                                    class="form-control border-primary-subtle"
+                                                                    value="{{ today_str() }}" required>
+                                                            </div>
+                                                            <div class="col-12">
+                                                                <label class="form-label fw-bold small">标题/简述</label>
+                                                                <input type="text" name="title"
+                                                                    class="form-control border-primary-subtle"
+                                                                    placeholder="请输入档案标题" required>
+                                                            </div>
+                                                            <div class="col-12">
+                                                                <label class="form-label fw-bold small">详细说明</label>
+                                                                <textarea name="description"
+                                                                    class="form-control border-primary-subtle" rows="4"
+                                                                    placeholder="请详细描述相关事宜..."></textarea>
+                                                            </div>
+                                                            <div class="col-12">
+                                                                <label class="form-label fw-bold small">上传附件</label>
+                                                                <div class="input-group">
+                                                                    <span class="input-group-text bg-light"><i
+                                                                            class="bi bi-paperclip"></i></span>
+                                                                    <input type="file" name="archive_file"
+                                                                        class="form-control border-primary-subtle">
+                                                                </div>
+                                                                <div class="form-text mt-1 small text-muted">
+                                                                    支持图片、PDF、Word 等格式</div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer bg-light border-0">
+                                                        <button type="button" class="btn btn-secondary px-4"
+                                                            data-bs-dismiss="modal">取消</button>
+                                                        <button type="submit"
+                                                            class="btn btn-success px-5 shadow-sm">立即提交</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                    {% endif %}
+
+                                    <!-- 离职操作 -->
+                                    {% if cycle.status == '在职' %}
+                                    {% if perm.can('hr.edit') %}
+                                    <div class="mt-4 text-end">
+                                        <button type="button" class="btn btn-warning btn-lg" data-bs-toggle="modal"
+                                            data-bs-target="#departureModal{{ cycle.id }}">
+                                            标记离职
+                                        </button>
+                                    </div>
+
+                                    <div class="modal fade" id="departureModal{{ cycle.id }}">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <div class="modal-header bg-warning text-dark">
+                                                    <h5 class="modal-title">确认离职 - {{ cycle.name }}</h5>
+                                                    <button type="button" class="btn-close"
+                                                        data-bs-dismiss="modal"></button>
+                                                </div>
+                                                <form method="POST"
+                                                    action="{{ url_for('hr.departure', cycle_id=cycle.id) }}">
+                                                    <div class="modal-body">
+                                                        <!-- 未归还资产提醒 -->
+                                                        {% set unreturned = get_unreturned_assets(cycle.id) %}
+                                                        {% if unreturned %}
+                                                        <div class="alert alert-danger mb-4">
+                                                            <strong>检测到未归还资产（共 {{ unreturned|length }} 件）：</strong>
+                                                            <ul class="mb-0">
+                                                                {% for a in unreturned %}
+                                                                <li>{{ a.name }} (编号: {{ a.number }})</li>
+                                                                {% endfor %}
+                                                            </ul>
+                                                        </div>
+                                                        {% else %}
+                                                        <div class="alert alert-success mb-4">
+                                                            <i class="bi bi-check-circle"></i> 当前无未归还资产
+                                                        </div>
+                                                        {% endif %}
+
+                                                        <!-- 强制勾选项目 -->
+                                                        <div class="form-check mb-3">
+                                                            <input class="form-check-input" type="checkbox"
+                                                                name="confirm_return" id="confirm_return{{ cycle.id }}"
+                                                                required>
+                                                            <label class="form-check-label fw-bold"
+                                                                for="confirm_return{{ cycle.id }}">
+                                                                已归还全部装备（系统将自动归还所有个人分配资产）
+                                                            </label>
+                                                        </div>
+
+                                                        <div class="form-check mb-4">
+                                                            <input class="form-check-input" type="checkbox"
+                                                                name="settle_utilities"
+                                                                id="settle_utilities{{ cycle.id }}" required>
+                                                            <label class="form-check-label fw-bold"
+                                                                for="settle_utilities{{ cycle.id }}">
+                                                                已结算水电费
+                                                            </label>
+                                                        </div>
+
+                                                        <label class="form-label">离职日期</label>
+                                                        <input type="date" name="departure_date"
+                                                            class="form-control mb-3" value="{{ today_str() }}"
+                                                            min="0001-01-01" max="9999-12-31" required>
+
+                                                        <label class="form-label">离职原因</label>
+                                                        <textarea name="departure_reason" class="form-control" rows="3"
+                                                            placeholder="请输入离职原因（可选）"></textarea>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary"
+                                                            data-bs-dismiss="modal">取消</button>
+                                                        <button type="submit" class="btn btn-warning">确认离职</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- 编辑模式 -->
+                {% if current_cycle %}
+                <div class="tab-pane fade" id="edit_tab">
+                    <form method="POST" action="{{ url_for('hr.edit_cycle', cycle_id=current_cycle.id) }}"
+                        enctype="multipart/form-data">
+                        {% set employee = current_cycle %}
+                        {% include "hr/_employee_form.html" with context %}
+                        <div class="text-center mt-5">
+                            <button type="submit" class="btn btn-primary btn-lg px-5">保存修改</button>
+                            <a href="{{ url_for('hr.hr_detail', id_card=id_card) }}"
+                                class="btn btn-secondary btn-lg px-5">取消</a>
+                        </div>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="quickIssueModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('asset.asset_issue_from_hr') }}">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title"><i class="bi bi-box-seam"></i> 向 {{ current_cycle.name }} 发放资产</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="user_id" value="{{ current_cycle.id }}">
+                    <input type="hidden" name="id_card" value="{{ id_card }}">
+
+                    <div class="table-responsive" style="max-height: 400px;">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="50">选择</th>
+                                    <th>资产名称 (库存)</th>
+                                    <th width="150">发放数量</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for asset in available_assets %}
+                                <tr>
+                                    <td>
+                                        <input class="form-check-input asset-checkbox" type="checkbox" name="asset_ids"
+                                            value="{{ asset.id }}" id="chk_{{ asset.id }}">
+                                    </td>
+                                    <td>
+                                        <label class="form-check-label d-block" for="chk_{{ asset.id }}">
+                                            <strong>{{ asset.name }}</strong> <small class="text-muted">({{ asset.type
+                                                }})</small><br>
+                                            <span class="text-primary small">剩余库存: {{ asset.stock_quantity }}</span>
+                                        </label>
+                                    </td>
+                                    <td>
+                                        <input type="number" name="qty_{{ asset.id }}"
+                                            class="form-control form-control-sm asset-qty" value="1" min="1"
+                                            max="{{ asset.stock_quantity }}" disabled>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-3">
+                        <label class="form-label">发放备注</label>
+                        <textarea name="note" class="form-control" rows="2" placeholder="统一备注，如：入职领用"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-warning" id="submitIssueBtn" disabled>确认发放</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 控制数量框开关
+    document.querySelectorAll('.asset-checkbox').forEach(chk => {
+        chk.addEventListener('change', function () {
+            const qtyInput = this.closest('tr').querySelector('.asset-qty');
+            qtyInput.disabled = !this.checked;
+            // 控制提交按钮
+            const anyChecked = document.querySelectorAll('.asset-checkbox:checked').length > 0;
+            document.getElementById('submitIssueBtn').disabled = !anyChecked;
+        });
+    });
+</script>
+{% endblock %}

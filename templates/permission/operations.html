@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% block title %}操作日志{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <!-- 1. 新增时间筛选表单 -->
+    <form method="GET" class="mb-3 row g-3">
+        <div class="col-md-4">
+            <input type="date" name="start_date" class="form-control" placeholder="开始日期" value="{{ start_date or '' }}">
+        </div>
+        <div class="col-md-4">
+            <input type="date" name="end_date" class="form-control" placeholder="结束日期" value="{{ end_date or '' }}">
+        </div>
+        <div class="col-md-4">
+            <button type="submit" class="btn btn-outline-primary w-100">按日期筛选</button>
+        </div>
+    </form>
+    <!-- 2. 操作日志表格 -->
+    <div class="table-responsive rounded-3 shadow-sm border border-light-subtle" style="overflow: hidden;">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr style="transition: all 0.2s ease;">
+                    <th style="width: 180px; padding: 0.8rem 1rem; font-weight: 600; color: #495057;">操作时间</th>
+
+                    {% if current_user.role == 'admin' %}
+                    <th style="width: 130px; padding: 0.8rem 1rem; font-weight: 600; color: #495057;">操作人</th>
+                    {% endif %}
+
+                    <th style="width: 140px; padding: 0.8rem 1rem; font-weight: 600; color: #495057;">动作类型</th>
+                    <th style="padding: 0.8rem 1rem; font-weight: 600; color: #495057;">详细描述</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for log in logs %}
+                <tr style="transition: all 0.2s ease; border-bottom: 1px solid #f8f9fa;">
+                    <!-- 时间 -->
+                    <td class="text-muted small text-nowrap font-monospace" style="padding: 0.8rem 1rem;">
+                        {{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                    </td>
+
+                    <!-- 操作人 -->
+                    {% if current_user.role == 'admin' %}
+                    <td style="padding: 0.8rem 1rem;">
+                        {% if log.operator %}
+                        <span class="badge rounded-pill px-3 py-1.5 shadow-sm" style="font-size: 0.85rem; transition: all 0.2s ease;">
+                            {% if log.operator.role == 'admin' %}
+                            <span class="badge rounded-pill px-3 py-1.5 shadow-sm bg-info text-white font-bold">
+                                <i class="fas fa-user-shield me-1">
+                                    </i>{{ log.operator.name }}
+                            </span>
+                            {% else %}
+                            <span class="badge rounded-pill px-3 py-1.5 shadow-sm bg-primary text-white font-bold">
+                                <i class="fas fa-user me-1">
+                                    </i>{{ log.operator.name }}
+                            </span>
+                            {% endif %}
+                        </span>
+                        {% else %}
+                        <span class="badge rounded-pill px-3 py-1.5 shadow-sm bg-gray-600 text-white font-bold" style="font-size: 0.85rem;">
+                            <i class="fas fa-robot me-1">
+                                </i>系统
+                        </span>
+                        {% endif %}
+                    </td>
+                    {% endif %}
+                    
+                    <!-- 动作类型 -->
+                    <td style="padding: 0.8rem 1rem;">
+                        {% if '入职' in log.action_type or '新增' in log.action_type %}
+                        <span
+                            class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1.5"
+                            style="font-size: 0.85rem; transition: all 0.2s ease;">
+                            <i class="fas fa-plus-circle me-1"></i>{{ log.action_type }}
+                        </span>
+                        {% elif '编辑' in log.action_type or '变更' in log.action_type %}
+                        <span
+                            class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-3 py-1.5"
+                            style="font-size: 0.85rem; transition: all 0.2s ease;">
+                            <i class="fas fa-pen me-1"></i>{{ log.action_type }}
+                        </span>
+                        {% elif '删除' in log.action_type or '移除' in log.action_type %}
+                        <span
+                            class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3 py-1.5"
+                            style="font-size: 0.85rem; transition: all 0.2s ease;">
+                            <i class="fas fa-trash-alt me-1"></i>{{ log.action_type }}
+                        </span>
+                        {% else %}
+                        <span
+                            class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3 py-1.5"
+                            style="font-size: 0.85rem; transition: all 0.2s ease;">
+                            {{ log.action_type }}
+                        </span>
+                        {% endif %}
+                    </td>
+
+                    <!-- 描述 -->
+                    <td class="ps-3 border-start" style="padding: 0.8rem 1rem; border-left-color: #e9ecef !important;">
+                        <div class="text-dark small lh-base" style="line-height: 1.6; padding: 0.4rem 0;">
+                            {{ log.description }}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+
+                {% if not logs %}
+                <tr>
+                    <td colspan="{% if current_user.role == 'admin' %}4{% else %}3{% endif %}"
+                        class="text-center text-muted py-5" style="background-color: #fafbfc; font-size: 0.9rem;">
+                        <i class="fas fa-file-alt me-2"></i>暂无操作记录
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 3. 新增分页导航栏 -->
+    {% if pagination.pages > 1 %}
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                <a class="page-link"
+                    href="{{ url_for('permission.permission_operations', page=pagination.prev_num, start_date=start_date, end_date=end_date) }}">上一页</a>
+            </li>
+            {% for page in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=3) %}
+            {% if page %}
+            <li class="page-item {% if page == pagination.page %}active{% endif %}">
+                <a class="page-link"
+                    href="{{ url_for('permission.permission_operations', page=page, start_date=start_date, end_date=end_date) }}">{{
+                    page }}</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% endif %}
+            {% endfor %}
+            <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                <a class="page-link"
+                    href="{{ url_for('permission.permission_operations', page=pagination.next_num, start_date=start_date, end_date=end_date) }}">下一页</a>
+            </li>
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}
+
+    <!-- 仅用于美化的样式，不影响原有逻辑 -->
+    <style>
+        /* 表格行hover效果优化 */
+        .table-hover>tbody>tr:hover {
+            background-color: #f8f9ff !important;
+            transform: translateX(2px);
+        }
+
+        /* 徽章hover效果 */
+        .badge {
+            cursor: default;
+        }
+
+        .badge:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        /* 统一表格内边距和字体 */
+        .table td,
+        .table th {
+            vertical-align: middle;
+        }
+
+        /* 优化空数据行样式 */
+        .table tbody tr:last-child td {
+            border-bottom: none;
+        }
+    </style>

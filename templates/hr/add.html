@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}新增员工{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">新增员工</h4>
+        </div>
+        <div class="card-body">
+            <form method="POST" enctype="multipart/form-data">
+                {% set employee = none %}  <!-- 新增时无数据 -->
+                {% include "hr/_employee_form.html" with context %}
+                <div class="text-center mt-5">
+                    <button type="submit" class="btn btn-success btn-lg">提交新增</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,820 @@
+{% extends "base.html" %}
+
+{% block title %}资产详情 - {{ asset.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-lg-10 mx-auto">
+            <div class="card shadow">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0"><i class="bi bi-box-seam"></i> 资产详情 - {{ asset.name }}</h4>
+                    <a href="{{ url_for('asset.asset_list') }}" class="btn btn-outline-light btn-sm">返回列表</a>
+                </div>
+
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-4">
+                            <div class="text-center mb-3">
+                                {% if asset.photo_path %}
+                                <img src="/{{ asset.photo_path }}" class="img-fluid rounded shadow-sm">
+                                {% else %}
+                                <div class="bg-light border rounded d-flex align-items-center justify-content-center"
+                                    style="height:300px;">
+                                    <span class="text-muted fs-4">无照片</span>
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            {% if asset.instances %}
+                            <div class="mt-4">
+                                <h6
+                                    class="fw-bold border-bottom pb-2 d-flex justify-content-between align-items-center">
+                                    <span><i class="bi bi-list-ul"></i> 子资产明细 ({{ asset.instances|length }})</span>
+                                    <button class="btn btn-sm btn-link p-0 text-decoration-none"
+                                        onclick="clearSubSelect()">清除选中</button>
+                                </h6>
+                                <div class="list-group list-group-flush border rounded overflow-auto"
+                                    style="max-height: 400px;" id="subAssetList">
+                                    {% for item in asset.instances %}
+                                    <button type="button"
+                                        class="list-group-item list-group-item-action d-flex justify-content-between align-items-center sub-asset-item"
+                                        onclick="selectSubAsset('{{ item.id }}', '{{ item.sn_number }}', this)"
+                                        data-status="{{ item.status }}" data-sn="{{ item.sn_number }}">
+                                        <div>
+                                            <span class="fw-bold d-block">{{ item.sn_number }}</span>
+                                            <small class="text-muted">状态: {{ item.status }}</small>
+                                        </div>
+                                        <span
+                                            class="badge {% if item.status == '正常' %}bg-success{% elif item.status == '维修' %}bg-warning{% else %}bg-danger{% endif %} rounded-pill">
+                                            {{ item.current_user or '在库' }}
+                                        </span>
+                                    </button>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="col-md-8">
+                            <div class="alert alert-info py-2 d-none" id="subSelectAlert">
+                                <i class="bi bi-info-circle"></i> 当前已选中子资产：<strong id="selectedSnText"></strong>
+                            </div>
+
+                            <table class="table table-sm table-borderless">
+                                <tr>
+                                    <th width="120">资产类型</th>
+                                    <td><span class="badge bg-secondary">{{ asset.type }}</span></td>
+                                </tr>
+                                <tr>
+                                    <th>资产名称</th>
+                                    <td>{{ asset.name }}</td>
+                                </tr>
+                                <tr>
+                                    <th>资产编号</th>
+                                    <td>{{ asset.number }}</td>
+                                </tr>
+                                <tr>
+                                    <th>购置日期</th>
+                                    <td>{{ asset.purchase_date.strftime('%Y-%m-%d') if asset.purchase_date else '-' }}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>存放位置</th>
+                                    <td>{{ asset.location or '-' }}</td>
+                                </tr>
+                                <tr>
+                                    <th>单价</th>
+                                    <td>￥{{ "%.2f"|format(asset.unit_price) }}</td>
+                                </tr>
+                                <tr>
+                                    <th>资产归属</th>
+                                    <td>{{ asset.ownership }}</td>
+                                </tr>
+                                <tr>
+                                    <th>库存/总数</th>
+                                    <td>{{ asset.stock_quantity }} / {{ asset.total_quantity }}</td>
+                                </tr>
+                                <tr>
+    <tr>
+                                    <th>当前领用人</th>
+                                    <td>
+                                        {% set active_allocs = asset.allocations | selectattr('return_date', 'none') | list %}
+                                        {% if active_allocs %}
+                                        <div class="d-flex flex-wrap gap-2">
+                                            {% for alloc in active_allocs %}
+                                            <span class="badge bg-primary">
+                                                {{ alloc.user.name }} <small>({{ alloc.quantity }} 个)</small>
+                                            </span>
+                                            {% endfor %}
+                                        </div>
+                                        {% else %}
+                                        {{ asset.department or '暂无领用人' }}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <th>状态</th>
+                                    <td>
+                                        <span
+                                            class="badge {% if asset.status == '库存' %}bg-success{% elif asset.status == '使用中' %}bg-primary{% elif asset.status == '维修中' %}bg-warning{% else %}bg-danger{% endif %}">
+                                            {{ asset.status }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <div class="mt-4 p-3 bg-light rounded shadow-sm">
+                                <div class="d-flex flex-wrap gap-2">
+                                    <!-- 发放按钮，仅装备和服饰类型且有库存时显示 -->
+                                    {% if asset.type in ['装备', '服饰'] and asset.stock_quantity > 0 %}
+                                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#issueModal">
+                                        <i class="bi bi-person-plus-fill"></i> 发放
+                                    </button>
+                                    {% endif %}
+                                    <!-- 归还按钮，仅当有已分配数量时显示 -->
+                                    {% if asset.allocated_quantity and asset.allocated_quantity > 0 %}
+                                    <button class="btn btn-outline-primary" data-bs-toggle="modal"
+                                        data-bs-target="#returnModal">
+                                        <i class="bi bi-box-arrow-in-left"></i> 归还
+                                    </button>
+                                    {% endif %}
+                                    <!-- 消耗按钮，仅消耗品类型显示 -->
+                                    {% if asset.type == '消耗品' %}
+                                    <button class="btn btn-danger" data-bs-toggle="modal"
+                                        data-bs-target="#consumeModal">
+                                        <i class="bi bi-basket3-fill"></i> 消耗
+                                    </button>
+                                    {% endif %}
+                                    <!-- 补充库存按钮 -->          
+                                    <button class="btn btn-success" data-bs-toggle="modal"
+                                        data-bs-target="#supplementModal">
+                                        <i class="bi bi-plus-circle"></i> 补充
+                                    </button>
+                                    <!-- 维修/修复按钮：排除消耗品类型 -->
+                                    {% if asset.type != '消耗品' %}
+                                        {% if asset.status == '维修中' %}
+                                        <button class="btn btn-info text-white" onclick="handleRepairClick()"
+                                            id="mainRepairBtn">
+                                            <i class="bi bi-check-circle"></i> <span id="repairBtnText">维修完成</span>
+                                        </button>
+                                        {% else %}
+                                        <button class="btn btn-warning" onclick="handleRepairClick()" id="mainRepairBtn">
+                                            <i class="bi bi-wrench"></i> <span id="repairBtnText">维修</span>
+                                        </button>
+                                        {% endif %}
+                                    {% endif %}
+                                    <!-- 报废按钮：排除消耗品类型 -->
+                                    {% if asset.type != '消耗品' %}
+                                    <button class="btn btn-danger" onclick="handleScrapClick()" id="scrapBtn">
+                                        <i class="bi bi-trash3"></i><span id="scrapBtnText">报废</span>
+                                    </button>
+                                    {% endif %}
+                                </div>
+
+                                {% if current_user.role == 'admin' %}
+                                <div class="mt-4 pt-3 border-top d-flex justify-content-end gap-2">
+                                    <a href="{{ url_for('asset.asset_edit', asset_id=asset.id) }}"
+                                        class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-pencil"></i> 编辑资料
+                                    </a>
+                                    <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal"
+                                        data-bs-target="#deleteModal">
+                                        <i class="bi bi-trash"></i> 彻底删除
+                                    </button>
+                                </div>
+                                {% endif %}
+                            </div>
+                            <!-- 操作历史开始 -->
+                            <div class="mt-5">
+    <h5 class="border-bottom pb-2 d-flex align-items-center justify-content-between">
+        <span><i class="bi bi-clock-history me-2"></i> 资产操作历史</span>
+        {% if history_items %}
+        <small class="text-muted fw-normal" style="font-size: 0.8rem;">共 {{ pagination.total }} 条记录</small>
+        {% endif %}
+    </h5>
+
+    {% if history_items %}
+    <div class="d-flex justify-content-end mb-2">
+        <ul class="pagination pagination-sm mb-0">
+            <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('asset.asset_detail', asset_id=asset.id, page=pagination.prev_num) if pagination.has_prev else '#' }}">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+            </li>
+            <li class="page-item disabled">
+                <span class="page-link text-dark">{{ pagination.page }} / {{ pagination.pages }}</span>
+            </li>
+            <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('asset.asset_detail', asset_id=asset.id, page=pagination.next_num) if pagination.has_next else '#' }}">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <div class="list-group list-group-flush shadow-sm rounded border">
+        {% for h in history_items %}
+        <div class="list-group-item p-3 history-row" data-sn="{{ h.sn_number or 'all' }}">
+            <div class="d-flex w-100 justify-content-between align-items-center mb-1">
+                <h6 class="mb-0 fw-bold">
+                    {% set badge_color = 'bg-secondary' %}
+                    {% if h.action == '发放' %}{% set badge_color = 'bg-primary' %}
+                    {% elif h.action == '归还' or h.action.startswith('归还') %}{% set badge_color = 'bg-info text-dark' %}
+                    {% elif h.action == '补充' %}{% set badge_color = 'bg-success' %}
+                    {% elif h.action == '报废' or h.action == '消耗' %}{% set badge_color = 'bg-danger' %}
+                    {% elif h.action == '维修' %}{% set badge_color = 'bg-warning text-dark' %}{% endif %}
+                    <span class="badge {{ badge_color }} me-2">{{ h.action }}</span>
+                    {{ format_datetime(h.action_date) }}
+                </h6>
+                <small class="text-muted bg-light px-2 py-1 rounded border">
+                    <i class="bi bi-person"></i> {{ h.operator.name if h.operator else '系统' }}
+                </small>
+            </div>
+            <div class="ms-1 ps-3 border-start">
+                <p class="mb-0 text-dark">
+                    {% if h.action in ['发放', '归还'] and h.user %}
+                        <strong>{{ h.user.name }}</strong>
+                        {% if h.action == '发放' %}领用了{% else %}归还了{% endif %}
+                        <span class="text-primary fw-bold">{{ h.quantity }}</span> 个资产
+                    {% elif h.action.startswith('归还（离职自动）') %}
+                        <span class="text-danger"><i class="bi bi-person-x"></i> {{ h.note }}</span>
+                    {% else %}
+                        {{ h.action }}数量: <span class="fw-bold">{{ h.quantity }}</span>
+                    {% endif %}
+                </p>
+                {% if h.note and h.note != h.action and not h.action.startswith('归还（离职自动）') %}
+                <small class="text-muted d-block mt-1">
+                    <i class="bi bi-chat-left-dots"></i> 备注：{{ h.note }}
+                </small>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('asset.asset_detail', asset_id=asset.id, page=pagination.prev_num) if pagination.has_prev else '#' }}">上一页</a>
+            </li>
+
+            {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                {% if page_num %}
+                    <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                        <a class="page-link" href="{{ url_for('asset.asset_detail', asset_id=asset.id, page=page_num) }}">{{ page_num }}</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                {% endif %}
+            {% endfor %}
+
+            <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('asset.asset_detail', asset_id=asset.id, page=pagination.next_num) if pagination.has_next else '#' }}">下一页</a>
+            </li>
+        </ul>
+    </nav>
+
+    {% else %}
+    <div class="text-center py-5 border rounded bg-light shadow-sm">
+        <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
+        <p class="text-muted mt-2">暂无操作历史记录</p>
+    </div>
+    {% endif %}
+</div>
+                                
+                            <!-- 操作历史结束 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- 子资产动态模态框 -->
+<div class="modal fade" id="subAssetDynamicModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form id="subAssetForm" method="POST" class="modal-content">
+            <div class="modal-header" id="subModalHeader">
+                <h5 class="modal-title" id="subModalTitle">子资产操作</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" name="sub_asset_id" id="hiddenSubId">
+                <p id="subModalMessage" class="fw-bold"></p>
+                <div class="mb-3">
+                    <label class="form-label" id="subNoteLabel">原因/备注 <span class="text-danger">*</span></label>
+                    <textarea name="note" class="form-control" rows="3" required placeholder="请详细说明情况..."></textarea>
+                </div>
+                <div class="alert alert-warning small">
+                    <i class="bi bi-exclamation-triangle"></i> 注意：此操作仅针对选中的单个编号生效。
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="submit" class="btn" id="subModalSubmitBtn">确认提交</button>
+            </div>
+        </form>
+    </div>
+</div>
+<!-- 发放模态框 -->
+{% if asset.type in ['装备', '服饰'] and asset.stock_quantity > 0 %}
+<div class="modal fade" id="issueModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">发放资产</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('asset.asset_issue', asset_id=asset.id) }}">
+                <div class="modal-body">
+                    <label class="form-label">选择使用人 <span class="text-danger">*</span></label>
+                    <select name="user_id" class="form-select" required>
+                        <option value="">-- 请选择在职员工 --</option>
+                        {% for emp in in_service_employees %}
+                        <option value="{{ emp.id }}">{{ emp.name }} ({{ emp.position or '无' }}/{{ emp.post or '无' }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <div class="mb-3 mt-3">
+                        <label class="form-label">发放数量</label>
+                        <input type="number" name="quantity" class="form-control" value="1" min="1"
+                            max="{{ asset.stock_quantity }}" required>
+                        <small class="text-muted">剩余库存：{{ asset.stock_quantity }}</small>
+                    </div>
+                    <label class="form-label">备注</label>
+                    <textarea name="note" class="form-control" rows="2" placeholder="可选"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">确认发放</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+<!-- 归还模态框 -->
+{% if asset.allocated_quantity > 0 %}
+<div class="modal fade" id="returnModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title">归还资产</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('asset.asset_return', asset_id=asset.id) }}">
+                <div class="modal-body">
+                    <p>确认归还 <strong>{{ asset.name }}</strong> 吗？</p>
+                    <label class="form-label">选择归还人 <span class="text-danger">*</span></label>
+                    <select name="user_id" class="form-select" required>
+                        <option value="">-- 请选择当前领用人 --</option>
+                        {% set summary = {} %}
+                        {% for a in asset.allocations if a.return_date is none %}
+                        {% set _ = summary.update({a.user_id: (summary.get(a.user_id, 0) + a.quantity)}) %}
+                        {% endfor %}
+                        {% for uid, qty in summary.items() %}
+                        {% set uname = (asset.allocations|selectattr('user_id', 'equalto', uid)|first).user.name %}
+                        <option value="{{ uid }}">{{ uname }} (剩余持有: {{ qty }} 个)</option>
+                        {% endfor %}
+                    </select>
+                    <div class="mb-3 mt-3">
+                        <label class="form-label">归还数量</label>
+                        <input type="number" name="quantity" class="form-control" value="1" min="1"
+                            max="{{ asset.allocated_quantity }}" required>
+                    </div>
+                    <label class="form-label">备注</label>
+                    <textarea name="note" class="form-control" rows="2"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-warning">确认归还</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+<!-- 消耗模态框（消耗品） -->
+{% if asset.type == '消耗品' %}
+<div class="modal fade" id="consumeModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">消耗资产</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('asset.asset_consume', asset_id=asset.id) }}">
+                <div class="modal-body">
+                    <p>确认消耗 <strong>{{ asset.name }}</strong> 吗？</p>
+                    <div class="mb-3">
+                        <label class="form-label">消耗数量</label>
+                        <input type="number" name="quantity" class="form-control" value="1" min="1"
+                            max="{{ asset.stock_quantity }}" required>
+                        <small class="text-muted">当前库存：{{ asset.stock_quantity }}</small>
+                    </div>
+                    <label class="form-label">备注</label>
+                    <textarea name="note" class="form-control" rows="2" placeholder="如用于日常清洁"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-danger">确认消耗</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+<!-- 补充库存模态框 -->
+<div class="modal fade" id="supplementModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-success">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-plus-lg"></i> 补充库存 - {{ asset.name }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('asset.asset_supplement', asset_id=asset.id) }}">
+                <div class="modal-body">
+                    <div class="alert alert-info py-2">
+                        <small>当前库存：<strong>{{ asset.stock_quantity }}</strong>，当前总数：<strong>{{ asset.total_quantity
+                                }}</strong></small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">补充数量 <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <input type="number" name="quantity" id="supp_qty" class="form-control form-control-lg"
+                                value="1" min="1" required>
+                            <span class="input-group-text">个 / 套</span>
+                        </div>
+                        <div class="form-text text-success" id="supp_preview" data-total="{{ asset.total_quantity }}">
+                            补充后总数将变为: {{ asset.total_quantity + 1 }}
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">备注说明</label>
+                        <textarea name="note" class="form-control" rows="2" placeholder="备注内容"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-success px-4">确认入库</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<!-- 报废模态框 -->
+<div class="modal fade" id="scrapModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">报废资产</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('asset.asset_scrap', asset_id=asset.id) }}">
+                <div class="modal-body">
+                    <div class="alert alert-warning py-2 small">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        注意：报废仅限从<strong>库存</strong>中扣除。若需报废队员已领用的物资，请先执行“归还”操作。
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">报废数量</label>
+                        <input type="number" name="quantity" class="form-control" value="1" min="1"
+                            max="{{ asset.stock_quantity }}" required>
+                        <div class="form-text text-danger">
+                            当前仓库可用库存：{{ asset.stock_quantity }}
+                            {% if asset.allocated_quantity > 0 %}
+                            (另有 {{ asset.allocated_quantity }} 个已分配在队员手中，不可直接报废)
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">报废原因</label>
+                        <textarea name="reason" class="form-control" rows="3" placeholder="请详细说明资产损坏或报废的具体原因"
+                            required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-danger" {% if asset.stock_quantity <=0 %}disabled{% endif %}>
+                        确认报废
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<!-- 维修模态框 -->
+<div class="modal fade" id="repairModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title"><i class="bi bi-wrench-adjustable"></i> 资产送修</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('asset.asset_repair', asset_id=asset.id) }}">
+                <div class="modal-body">
+                    <p>确认将资产 <strong>{{ asset.name }}</strong> 标记为维修状态吗？</p>
+                    <div class="mb-3">
+                        <label class="form-label">故障描述 / 维修备注 <span class="text-danger">*</span></label>
+                        <textarea name="note" class="form-control" rows="3" placeholder="请填写具体故障原因" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-warning">确认送修</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<!-- 修复模态框 -->
+<div class="modal fade" id="completeRepairModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="bi bi-check-circle"></i> 维修完成确认</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('asset.asset_complete_repair', asset_id=asset.id) }}">
+                <div class="modal-body">
+                    <p>确认该资产已修复，可以重新投入使用吗？</p>
+                    <div class="mb-3">
+                        <label class="form-label">维修结果说明</label>
+                        <textarea name="note" class="form-control" rows="2" placeholder="可选：填写维修花费、更换零件等信息"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-info text-white">确认修复</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<!-- 彻底删除资产模态框 -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="bi bi-exclamation-octagon"></i> 彻底删除资产</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <p class="text-danger fw-bold">此操作将永久删除该资产及其所有历史记录，无法恢复！</p>
+                <p>确认删除 <strong>{{ asset.name }}</strong> 吗？</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <form action="{{ url_for('asset.asset_delete', asset_id=asset.id) }}" method="POST" class="d-inline">
+                    <button type="submit" class="btn btn-danger">确认永久删除</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- 自定义脚本 -->
+<script>
+    // 定义全局变量，存储当前选中的子资产信息
+    let selectedSubId = null;
+    let selectedSubSn = null;
+
+    /**
+     * 1. 选中子资产处理函数（整合原有逻辑，避免重复定义）
+     */
+    function selectSubAsset(id, sn, element) {
+        selectedSubId = id;
+        selectedSubSn = sn;
+
+        // UI反馈：清除其他项高亮，高亮当前项
+        document.querySelectorAll('.sub-asset-item').forEach(item => {
+            item.classList.remove('active', 'bg-primary', 'text-white');
+        });
+        element.classList.add('active', 'bg-primary', 'text-white');
+
+        // 显示提醒栏并更新SN文字
+        const alertBox = document.getElementById('subSelectAlert');
+        if (alertBox) {
+            alertBox.classList.remove('d-none');
+            document.getElementById('selectedSnText').innerText = sn;
+        }
+
+        // 自动切换右侧按钮的颜色和文字
+        const repairBtn = document.getElementById('repairBtnText');
+        const scrapBtn = document.getElementById('scrapBtnText');
+        const mainRepairBtn = document.getElementById('mainRepairBtn');
+        const isRepairing = element.getAttribute('data-status') === '维修';
+        
+        // 仅非消耗品才更新按钮
+        if ('{{ asset.type }}' !== '消耗品') {
+            if (repairBtn && mainRepairBtn) {
+                if (isRepairing) {
+                    mainRepairBtn.className = "btn btn-info text-white";
+                    repairBtn.innerText = "修复选中件";
+                } else {
+                    mainRepairBtn.className = "btn btn-warning";
+                    repairBtn.innerText = "维修选中件";
+                }
+            }
+            if (scrapBtn) scrapBtn.innerText = "报废选中件";
+            
+            // 禁用报废按钮（如果子资产不在库）
+            const scrapBtnDom = document.getElementById('scrapBtn');
+            const isInStock = element.querySelector('.badge').innerText === '在库';
+            if (scrapBtnDom) scrapBtnDom.disabled = !isInStock;
+        }
+
+        // 联动过滤下方的历史记录表格
+        filterHistoryTable(sn);
+    }
+
+    /**
+     * 2. 清除选中状态
+     */
+    function clearSubSelect() {
+        selectedSubId = null;
+        selectedSubSn = null;
+
+        // 移除所有列表项的高亮状态
+        document.querySelectorAll('.sub-asset-item').forEach(item => {
+            item.classList.remove('active', 'bg-primary', 'text-white');
+        });
+
+        // 隐藏提醒栏，恢复按钮文字
+        const alertBox = document.getElementById('subSelectAlert');
+        if (alertBox) alertBox.classList.add('d-none');
+
+        // 仅非消耗品才恢复按钮
+        if ('{{ asset.type }}' !== '消耗品') {
+            const repairBtn = document.getElementById('repairBtnText');
+            const scrapBtn = document.getElementById('scrapBtnText');
+            const mainRepairBtn = document.getElementById('mainRepairBtn');
+            
+            if (repairBtn && mainRepairBtn) {
+                if ('{{ asset.status }}' === '维修中') {
+                    mainRepairBtn.className = "btn btn-info text-white";
+                    repairBtn.innerText = "维修完成";
+                } else {
+                    mainRepairBtn.className = "btn btn-warning";
+                    repairBtn.innerText = "维修";
+                }
+            }
+            if (scrapBtn) scrapBtn.innerText = "报废";
+            
+            // 恢复报废按钮状态
+            const scrapBtnDom = document.getElementById('scrapBtn');
+            if (scrapBtnDom) scrapBtnDom.disabled = {{asset.stock_quantity <= 0}};
+        }
+
+        // 显示所有历史记录
+        filterHistoryTable('all');
+    }
+
+    /**
+     * 3. 动态控制：点击“维修”按钮时的路由分发
+     */
+    function handleRepairClick() {
+        // 1. 跳过消耗品
+        if ('{{ asset.type }}' === '消耗品') return;
+        
+        // 2. 如果选中了子资产
+        if (selectedSubId) {
+            const subItem = document.querySelector(`.sub-asset-item.active`);
+            const isSubRepairing = subItem.getAttribute('data-status') === '维修';
+
+            if (isSubRepairing) {
+                openSubAssetModal('维修完成', "{{ url_for('asset.asset_complete_repair_sub') }}", 'bg-info text-white', 'btn-info');
+            } else {
+                openSubAssetModal('维修', "{{ url_for('asset.asset_repair_sub') }}", 'bg-warning', 'btn-warning');
+            }
+        }
+        // 3. 没有选中子资产（操作主资产）
+        else {
+            if ('{{ asset.status }}' === '维修中') {
+                new bootstrap.Modal(document.getElementById('completeRepairModal')).show();
+            } else {
+                new bootstrap.Modal(document.getElementById('repairModal')).show();
+            }
+        }
+    }
+
+    /**
+     * 4. 动态控制：点击“报废”按钮时的路由分发
+     */
+    function handleScrapClick() {
+        // 1. 跳过消耗品
+        if ('{{ asset.type }}' === '消耗品') return;
+        
+        // 2. 如果选中了子资产
+        if (selectedSubId) {
+            const subItem = document.querySelector(`.sub-asset-item.active`);
+            const isInStock = subItem.querySelector('.badge').innerText === '在库';
+            
+            // 校验：仅库存子资产可报废
+            if (!isInStock) {
+                alert('该子资产不在库存中，无法报废！请先归还后再操作。');
+                return;
+            }
+            
+            openSubAssetModal('报废', "{{ url_for('asset.asset_scrap_sub') }}", 'bg-danger text-white', 'btn-danger');
+        }
+        // 3. 没有选中子资产（操作主资产）
+        else {
+            const masterScrapModal = new bootstrap.Modal(document.getElementById('scrapModal'));
+            masterScrapModal.show();
+        }
+    }
+
+    /**
+     * 5. 打开子资产专用模态框并配置内容
+     */
+    function openSubAssetModal(action, url, headerClass, btnClass) {
+        document.getElementById('hiddenSubId').value = selectedSubId;
+        document.getElementById('subAssetForm').action = url;
+
+        document.getElementById('subModalHeader').className = `modal-header ${headerClass}`;
+        document.getElementById('subModalTitle').innerText = `子资产${action}`;
+        document.getElementById('subModalMessage').innerHTML = `您正在对编号为 <span class="badge bg-dark">${selectedSubSn}</span> 的资产进行${action}操作。`;
+
+        const submitBtn = document.getElementById('subModalSubmitBtn');
+        submitBtn.className = `btn ${btnClass}`;
+        submitBtn.innerText = `确认提交${action}`;
+
+        // 调起模态框
+        const subModal = new bootstrap.Modal(document.getElementById('subAssetDynamicModal'));
+        subModal.show();
+        
+        // 模态框关闭后刷新页面（同步子资产状态）
+        subModal._element.addEventListener('hidden.bs.modal', function() {
+            window.location.reload();
+        });
+    }
+
+    /**
+     * 6. 辅助：过滤历史记录表格
+     */
+    function filterHistoryTable(sn) {
+        const rows = document.querySelectorAll('.history-row');
+        rows.forEach(row => {
+            const rowSn = row.getAttribute('data-sn') || "all";
+            if (sn === 'all' || rowSn === sn) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    // 补充库存实时预览逻辑（修复语法错误+兼容异常输入）
+    const suppInput = document.getElementById('supp_qty');
+    const suppPreview = document.getElementById('supp_preview');
+
+    if (suppInput && suppPreview) {
+        // 初始化data-total属性
+        const currentTotal = parseInt(suppPreview.dataset.total) || 0;
+        
+        suppInput.addEventListener('input', function () {
+            // 处理输入值：确保为有效整数，空值/非数字时默认为 1（符合min=1的约束）
+            const val = Math.max(1, parseInt(this.value.trim()) || 1);
+            // 计算新总数（确保非负）
+            const newTotal = Math.max(0, currentTotal + val);
+            suppPreview.innerText = `补充后总数将变为: ${newTotal}`;
+        });
+    }
+
+    // 页面加载完成后初始化
+    document.addEventListener('DOMContentLoaded', function() {
+        // 子资产为空时隐藏“清除选中”按钮
+        if (!document.getElementById('subAssetList')) {
+            const clearBtn = document.querySelector('.btn-sm.btn-link[onclick="clearSubSelect()"]');
+            if (clearBtn) clearBtn.style.display = 'none';
+        }
+        
+        // 初始化报废按钮状态
+        if ('{{ asset.type }}' !== '消耗品') {
+            const scrapBtnDom = document.getElementById('scrapBtn');
+            if (scrapBtnDom) scrapBtnDom.disabled = {{ asset.stock_quantity <= 0 }};
+        }
+    });
+</script>
+
+<style>
+    /* 为子资产列表添加鼠标悬停效果 */
+    .sub-asset-item {
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+    .sub-asset-item:hover {
+        background-color: #f8f9fa;
+    }
+
+    .sub-asset-item.active {
+        border-left: 5px solid #0d6efd;
+        /* 选中时左侧加粗色条 */
+    }
+</style>
+{% endblock %}

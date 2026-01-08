@@ -1,0 +1,300 @@
+{% extends "base.html" %}
+
+{% block title %}员工花名册{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">
+                <i class="bi bi-people"></i>
+                {% if perm.can('hr.view') %}花名册{% else %}我的个人信息{% endif %}
+            </h4>
+            <div>
+                {% if perm.can('hr.view') %}
+                <a href="{{ url_for('hr.hr_export', status=status_filter, search=search) }}" class="btn btn-light me-2">
+                    <i class="bi bi-download"></i> 导出数据
+                </a>
+                <a href="{{ url_for('hr.hr_import') }}" class="btn btn-light me-2">
+                    <i class="bi bi-upload"></i> 导入数据
+                </a>
+                <a href="{{ url_for('hr.hr_add') }}" class="btn btn-light">
+                    <i class="bi bi-person-plus"></i> 新增数据
+                </a>
+                <button class="btn btn-info me-2" onclick="showQR()">
+                    <i class="bi bi-qr-code"></i> 扫码入职
+                </button>
+                {% endif %}
+            </div>
+        </div>
+
+
+
+
+        <div class="card-body">
+            <!-- 搜索框 -->
+            <form method="GET" class="mb-4">
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <input type="text" name="search" class="form-control" placeholder="搜索姓名/身份证/手机号"
+                            value="{{ search or '' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-outline-primary w-100">搜索</button>
+                    </div>
+                </div>
+            </form>
+
+            <!-- 标签页 -->
+            <ul class="nav nav-tabs mb-4">
+                <li class="nav-item">
+                    <a class="nav-link {% if status_filter == '在职' %}active{% endif %}"
+                        href="{{ url_for('hr.hr_list', status='在职') }}">在职人员</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if status_filter == '待审核' %}active{% endif %}"
+                        href="{{ url_for('hr.hr_list', status='待审核') }}">
+                        待审核
+                        {% if pending_count > 0 %}
+                        <span class="badge rounded-pill bg-danger">{{ pending_count }}</span>
+                        {% endif %}
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if status_filter == '离职' %}active{% endif %}"
+                        href="{{ url_for('hr.hr_list', status='离职') }}">离职人员</a>
+                </li>
+            </ul>
+
+            <!-- 字段显示控制 -->
+            <form method="GET" class="mb-4 bg-light p-3 rounded">
+                <input type="hidden" name="status" value="{{ status_filter }}">
+                <input type="hidden" name="search" value="{{ search }}">
+                <input type="hidden" name="sort" value="{{ sort }}">
+                <div class="row align-items-center">
+                    <div class="col-auto"><strong>显示字段：</strong></div>
+                    <div class="col">
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" name="show" value="name" id="show_name" {%
+                                if 'name' in show_fields %}checked{% endif %}>
+                            <label class="form-check-label" for="show_name">姓名</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" name="show" value="id_card"
+                                id="show_id_card" {% if 'id_card' in show_fields %}checked{% endif %}>
+                            <label class="form-check-label" for="show_id_card">身份证</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" name="show" value="phone" id="show_phone" {%
+                                if 'phone' in show_fields %}checked{% endif %}>
+                            <label class="form-check-label" for="show_phone">手机号</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" name="show" value="position"
+                                id="show_position" {% if 'position' in show_fields %}checked{% endif %}>
+                            <label class="form-check-label" for="show_position">职务</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" name="show" value="post" id="show_post" {%
+                                if 'post' in show_fields %}checked{% endif %}>
+                            <label class="form-check-label" for="show_post">岗位</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" name="show" value="salary_mode"
+                                id="show_salary" {% if 'salary_mode' in show_fields %}checked{% endif %}>
+                            <label class="form-check-label" for="show_salary">薪资模式</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" name="show" value="hire_date" id="show_hire"
+                                {% if 'hire_date' in show_fields %}checked{% endif %}>
+                            <label class="form-check-label" for="show_hire">入职日期</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" name="show" value="tenure" id="show_tenure"
+                                {% if 'tenure' in show_fields %}checked{% endif %}>
+                            <label class="form-check-label" for="show_tenure">在职时长</label>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-outline-secondary">应用</button>
+                    </div>
+                </div>
+            </form>
+
+            <!-- 员工表格 -->
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>序号</th>
+                            {% if 'name' in show_fields %}
+                            <th>
+                                <a href="{{ url_for('hr.hr_list', status=status_filter, search=search, sort='name_asc' if sort == 'name_desc' else 'name_desc', show=show_fields) }}"
+                                    class="text-dark text-decoration-none">
+                                    姓名 {% if sort.startswith('name_') %}↕{% endif %}
+                                </a>
+                            </th>
+                            {% endif %}
+                            {% if 'id_card' in show_fields %}
+                            <th>
+                                <a href="{{ url_for('hr.hr_list', status=status_filter, search=search, sort='id_card_asc' if sort == 'id_card_desc' else 'id_card_desc', show=show_fields) }}"
+                                    class="text-dark text-decoration-none">
+                                    身份证号码 {% if sort.startswith('id_card_') %}↕{% endif %}
+                                </a>
+                            </th>
+                            {% endif %}
+                            {% if 'phone' in show_fields %}
+                            <th>
+                                <a href="{{ url_for('hr.hr_list', status=status_filter, search=search, sort='phone_asc' if sort == 'phone_desc' else 'phone_desc', show=show_fields) }}"
+                                    class="text-dark text-decoration-none">
+                                    手机号 {% if sort.startswith('phone_') %}↕{% endif %}
+                                </a>
+                            </th>
+                            {% endif %}
+                            {% if 'position' in show_fields %}
+                            <th>
+                                <a href="{{ url_for('hr.hr_list', status=status_filter, search=search, sort='position_asc' if sort == 'position_desc' else 'position_desc', show=show_fields) }}"
+                                    class="text-dark text-decoration-none">
+                                    职务 {% if sort.startswith('position_') %}↕{% endif %}
+                                </a>
+                            </th>
+                            {% endif %}
+
+                            {% if 'post' in show_fields %}
+                            <th>
+                                <a href="{{ url_for('hr.hr_list', status=status_filter, search=search, sort='post_asc' if sort == 'post_desc' else 'post_desc', show=show_fields) }}"
+                                    class="text-dark text-decoration-none">
+                                    岗位 {% if sort.startswith('post_') %}↕{% endif %}
+                                </a>
+                            </th>
+                            {% endif %}
+
+                            {% if 'salary_mode' in show_fields %}
+                            <th>
+                                <a href="{{ url_for('hr.hr_list', status=status_filter, search=search, sort='salary_mode_asc' if sort == 'salary_mode_desc' else 'salary_mode_desc', show=show_fields) }}"
+                                    class="text-dark text-decoration-none">
+                                    薪资模式 {% if sort.startswith('salary_mode_') %}↕{% endif %}
+                                </a>
+                            </th>
+                            {% endif %}
+                            {% if 'hire_date' in show_fields %}
+                            <th>
+                                <a href="{{ url_for('hr.hr_list', status=status_filter, search=search, sort='hire_date_asc' if sort == 'hire_date_desc' else 'hire_date_desc', show=show_fields) }}"
+                                    class="text-dark text-decoration-none">
+                                    入职日期 {% if sort.startswith('hire_date_') %}↕{% endif %}
+                                </a>
+                            </th>
+                            {% endif %}
+                            {% if 'tenure' in show_fields %}<th>在职时长</th>{% endif %}
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if employees %}
+                        {% for emp in employees %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            {% if 'name' in show_fields %}<td>{{ emp.name }}</td>{% endif %}
+                            {% if 'id_card' in show_fields %}<td>{{ emp.id_card }}</td>{% endif %}
+                            {% if 'phone' in show_fields %}<td>{{ emp.phone or '-' }}</td>{% endif %}
+                            {% if 'position' in show_fields %}<td>{{ emp.position or '-' }}</td>{% endif %}
+                            {% if 'post' in show_fields %}<td>{{ emp.post or '-' }}</td>{% endif %}
+                            {% if 'salary_mode' in show_fields %}<td>{{ emp.salary_mode or '-' }}</td>{% endif %}
+                            {% if 'hire_date' in show_fields %}<td>{{ format_date(emp.hire_date) }}</td>{% endif %}
+                            {% if 'tenure' in show_fields %}
+                            <td>
+                                {{ emp.hire_date | calc_work_duration(emp.departure_date) }}
+                            </td>
+                            {% endif %}
+                            <td>
+                                <a href="{{ url_for('hr.hr_detail', id_card=emp.id_card) }}"
+                                    class="btn btn-sm btn-outline-primary">查看</a>
+                                {% if emp.status == '在职' and perm.can('hr.edit') %}
+                                <a href="{{ url_for('hr.edit_cycle', cycle_id=emp.id) }}"
+                                    class="btn btn-sm btn-outline-warning">编辑</a>
+                                {% endif %}
+                                {% if status_filter == '待审核' and perm.can('hr.approve') %} <!-- 改: 用hr.approve权限 -->
+                                <form action="{{ url_for('hr.approve_pending', id=emp.id) }}" method="POST"
+                                    class="d-inline" onsubmit="return confirm('确定批准 {{ emp.name }} 为在职员工吗？');">
+                                    <button type="submit" class="btn btn-sm btn-outline-success">
+                                        <i class="bi bi-check-circle"></i> 批准
+                                    </button>
+                                </form>
+                                {% endif %}
+
+                                {% if current_user.role == 'admin' and status_filter in ['待审核', '在职', '离职'] %}
+                                <form action="{{ url_for('hr.delete_pending', id=emp.id) }}" method="POST"
+                                    class="d-inline" onsubmit="return confirm('确定要删除这条记录吗？此操作不可恢复。');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-trash"></i> 删除
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td colspan="10" class="text-center text-muted py-5">暂无员工记录</td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="qrModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">蔡路特保队花名册登记</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div id="qrSpinner" class="spinner-border text-primary mb-2" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <img id="qrImg" src="" class="img-fluid d-none" alt="二维码">
+                <p class="mt-2 mb-0 small text-muted">请新队员使用手机扫码填写个人信息</p>
+                <div id="qrLink" class="mt-2 small text-break" style="font-size: 0.75rem;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    function showQR() {
+        // 1. 显示弹窗并初始化状态
+        const modal = new bootstrap.Modal(document.getElementById('qrModal'));
+        const img = document.getElementById('qrImg');
+        const spinner = document.getElementById('qrSpinner');
+        const linkDiv = document.getElementById('qrLink');
+
+        img.classList.add('d-none');
+        spinner.classList.remove('d-none');
+        linkDiv.innerText = '';
+        modal.show();
+
+        // 2. 调用后端生成二维码接口
+        fetch("{{ url_for('hr.generate_qr') }}")
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 3. 显示二维码
+                    img.src = "data:image/png;base64," + data.qr_code;
+                    img.classList.remove('d-none');
+                    spinner.classList.add('d-none');
+                    linkDiv.innerText = data.url; // 方便调试看链接是否正确
+                } else {
+                    alert("生成失败: " + data.message);
+                    modal.hide();
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert("请求接口出错，请检查后端路由设置");
+                modal.hide();
+            });
+    }
+</script>
+{% endblock %}

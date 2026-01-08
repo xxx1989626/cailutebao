@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}批量导入资金记录{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-success text-white">
+            <h4 class="mb-0"><i class="bi bi-upload"></i> 批量导入资金记录（Excel）</h4>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info">
+                <strong>导入要求：</strong>
+                <ul class="mb-0">
+                    <li>必须包含列：日期, 资方, 项目, 金额</li>
+                    <li>可选列：备注</li>
+                    <li>日期格式：YYYY.MM 或 YYYY-MM-DD</li>
+                    <li>金额正数收入，负数支出</li>
+                </ul>
+            </div>
+            
+            <form method="POST" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label class="form-label">选择Excel文件</label>
+                    <input type="file" name="file" class="form-control" accept=".xlsx" required>
+                </div>
+                <div class="text-center">
+                    <button type="submit" class="btn btn-success btn-lg px-5">开始导入</button>
+                    <a href="{{ url_for('fund.fund_list') }}" class="btn btn-secondary btn-lg px-5">取消</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

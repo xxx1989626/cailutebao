@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}全局资产盘点{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0"><i class="bi bi-clipboard-check"></i> 全局资产盘点</h4>
+            <div>
+                <a href="{{ url_for('asset.asset_list') }}" class="btn btn-outline-light btn-sm me-2">返回资产列表</a>
+                <a href="{{ url_for('asset.export_inventory') }}" class="btn btn-outline-light btn-sm">导出盘点清单</a>
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- 筛选栏 -->
+            <form method="GET" class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <select name="type" class="form-select">
+                        <option value="">所有资产类型</option>
+                        {% for type in asset_types %}
+                        <option value="{{ type }}" {% if type_filter==type %}selected{% endif %}>{{ type }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select name="status" class="form-select">
+                        <option value="">所有资产状态</option>
+                        {% for status in asset_status %}
+                        <option value="{{ status }}" {% if status_filter==status %}selected{% endif %}>{{ status }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-outline-secondary w-100">筛选</button>
+                </div>
+                <div class="col-md-4 text-end">
+                    <span class="badge bg-success me-2">正常：{{ normal }} 个</span>
+                    <span class="badge bg-danger me-2">异常：{{ abnormal }} 个</span>
+                    <span class="badge bg-secondary">总计：{{ total }} 个</span>
+                </div>
+            </form>
+
+            <!-- 盘点清单 -->
+            <div class="table-responsive" style="max-height: 70vh; overflow-y: auto;">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light sticky-top">
+                        <tr>
+                            <th>资产编号</th>
+                            <th>资产名称</th>
+                            <th>类型</th>
+                            <th>存放位置</th>
+                            <th>负责人</th>
+                            <th>资产状态</th>
+                            <th>资产归属</th>
+                            <th>上次盘点</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for asset in assets %}
+                        <tr>
+                            <td>{{ asset.sn_number }}</td>
+                            <td>{{ asset.asset_info.name }}</td>
+                            <td><span class="badge bg-light text-dark">{{ asset.asset_info.type }}</span></td>
+                            <td>{{ asset.current_room.number if asset.current_room else '待分配' }}</td>
+                            <td>{{ asset.current_holder.name if asset.current_holder else '无' }}</td>
+                            <td>
+                                <span
+                                    class="badge {% if asset.status == '正常' %}bg-success{% elif asset.status == '维修' %}bg-warning{% else %}bg-danger{% endif %}">
+                                    {{ asset.status }}
+                                </span>
+                            </td>
+                            <td>
+                                {{ asset.asset_info.ownership or '' }}
+
+                            </td>
+                            <td>{{ format_date(asset.last_check_date) or '未盘点' }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-primary"
+                                    onclick="checkAsset('{{ asset.id }}', '{{ asset.sn_number }}')">
+                                    <i class="bi bi-check-circle"></i> 标记已盘点
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% if not assets %}
+                        <tr>
+                            <td colspan="9" class="text-center text-muted py-3">无符合条件的资产</td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function checkAsset(assetId, assetSn) {
+        fetch(`/asset/inventory/update/${assetId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ "status": "正常" })
+        }).then(res => res.json()).then(data => {
+            if (data.status === 'success') {
+                alert(data.message);
+                // 刷新当前行的盘点时间
+                const rows = document.querySelectorAll('tbody tr');
+                rows.forEach(row => {
+                    if (row.querySelector('td:first-child').textContent === assetSn) {
+                        const now = new Date().toLocaleDateString();
+                        row.querySelector('td:nth-child(8)').textContent = now;
+                    }
+                });
+            }
+        });
+    }
+</script>
+{% endblock %}

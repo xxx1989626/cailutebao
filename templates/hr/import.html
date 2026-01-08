@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}导入名单{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h4>导入名单</h4>
+        </div>
+        <div class="card-body">
+            <form method="POST" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label class="form-label">选择Excel文件（必须包含：姓名、身份证号码、手机号）</label>
+                    <input type="file" name="file" class="form-control" accept=".xlsx" required>
+                    <small class="text-muted">可选列：职务、岗位、薪资模式</small>
+                </div>
+                <button type="submit" class="btn btn-success">开始导入</button>
+                <a href="{{ url_for('hr.hr_list') }}" class="btn btn-secondary">取消</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

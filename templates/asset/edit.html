@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}编辑资产 - {{ asset.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-warning text-dark">
+            <h4 class="mb-0"><i class="bi bi-pencil"></i> 编辑资产 - {{ asset.name }}</h4>
+        </div>
+        <div class="card-body">
+            <form method="POST" enctype="multipart/form-data">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">资产类型 <span class="text-danger">*</span></label>
+                        <select name="type" class="form-select" required>
+                            {% for t in ['装备', '消耗品', '固定资产', '服饰', '工具'] %}
+                            <option value="{{ t }}" {% if t==asset.type %}selected{% endif %}>{{ t }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">资产名称 <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control" value="{{ asset.name }}" required>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">资产编号（不可修改）</label>
+                        <input type="text" class="form-control bg-light" value="{{ asset.number }}" readonly>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">总数（谨慎修改）</label>
+                        <input type="number" name="total_quantity" class="form-control"
+                            value="{{ asset.total_quantity }}" min="1" required>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">购置日期</label>
+                        <input type="date" name="purchase_date" class="form-control" value="{{ asset.purchase_date }}"
+                            min="0001-01-01" max="9999-12-31">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">存放位置</label>
+                        <input type="text" name="location" class="form-control" value="{{ asset.location }}">
+                    </div>
+
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">资产归属</label>
+                        <select name="ownership" class="form-select">
+                            {% for owner in ['公司', '派出所', '个人', '特保队'] %}
+                            <option value="{{ owner }}" {% if asset.ownership==owner %}selected{% endif %}>{{ owner }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">资产照片</label>
+                        <input type="file" name="photo" class="form-control" accept="image/*">
+                        {% if asset.photo_path %}
+                        <small class="text-muted">当前照片：<img src="/{{ asset.photo_path }}"
+                                width="100"></small>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="text-center">
+                    <button type="submit" class="btn btn-warning btn-lg px-5">保存修改</button>
+                    <a href="{{ url_for('asset.asset_detail', asset_id=asset.id) }}"
+                        class="btn btn-secondary btn-lg px-5">取消</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

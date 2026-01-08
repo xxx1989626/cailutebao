@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}权限分配{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="card shadow-lg border-0">
+        <div class="card-header bg-gradient bg-primary text-white">
+            <h4 class="mb-0"><i class="bi bi-shield-lock-fill me-2"></i>权限分配管理</h4>
+        </div>
+        <div class="card-body p-4">
+            <div class="row g-4">
+                <!-- 左侧：员工列表 -->
+                <div class="col-lg-4 col-xl-3">
+                    <h5 class="text-secondary mb-3"><i class="bi bi-people-fill me-2"></i>在职员工（点击选择）</h5>
+                    <div class="list-group shadow-sm"
+                        style="max-height: 70vh; overflow-y: auto; border-radius: 0.5rem;">
+                        {% for emp in employees %}
+                        {% set real_user_id = id_map.get(emp.id_card) %}
+                        {% if real_user_id %}
+                        <a href="javascript:void(0);"
+                            class="list-group-item list-group-item-action employee-item py-3 border-0"
+                            onclick="selectUser('{{ real_user_id }}', '{{ emp.name|e }}', this)">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-light rounded-circle me-3 d-flex align-items-center justify-content-center"
+                                    style="width: 40px; height: 40px;">
+                                    <i class="bi bi-person-fill text-primary" style="font-size: 1.2rem;"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    <div class="fw-bold">{{ emp.name }}</div>
+                                    <small class="text-muted">{{ emp.position or '队员' }}</small>
+                                </div>
+                            </div>
+                        </a>
+                        {% else %}
+                        <div class="list-group-item py-3 border-0 text-muted bg-light">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-secondary bg-opacity-10 rounded-circle me-3 d-flex align-items-center justify-content-center"
+                                    style="width: 40px; height: 40px;">
+                                    <i class="bi bi-person-x text-muted"></i>
+                                </div>
+                                <div>
+                                    <div>{{ emp.name }}</div>
+                                    <small>未创建账号</small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- 右侧：权限分配 -->
+                <div class="col-lg-8 col-xl-9">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h5 class="mb-0">
+                            <i class="bi bi-person-gear me-2"></i>
+                            当前设置权限：<span id="display_name" class="text-primary fw-bold">请从左侧选择员工</span>
+                        </h5>
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="globalSelectAll"
+                                    onclick="toggleAll(this)">
+                                <label class="form-check-label fw-bold text-primary" for="globalSelectAll">全选 /
+                                    反选</label>
+                            </div>
+                            
+                        </div>
+                    </div>
+
+                    <form id="permissionForm" method="POST" action="{{ url_for('permission.permission_update') }}">
+                        <input type="hidden" name="target_user_id" id="current_user_id">
+                        <button type="submit" id="saveBtn" class="btn btn-success btn-lg shadow-sm" disabled>
+                                <i class="bi bi-check-circle-fill me-2"></i>保存权限
+                            </button>
+
+                        <div class="accordion shadow-sm" id="permissionAccordion">
+                            {% set colors = ['primary', 'success', 'info', 'warning', 'danger', 'dark'] %}
+                            {% for module_name, perms in modules.items() %}
+                            <div class="accordion-item border-0">
+                                <h2 class="accordion-header">
+                                    <button
+                                        class="accordion-button collapsed fw-bold text-white bg-{{ colors[loop.index0 % colors|length] }}"
+                                        type="button" data-bs-toggle="collapse"
+                                        data-bs-target="#collapse_{{ loop.index }}">
+                                        <i class="bi bi-folder2-open me-2"></i> {{ module_name.upper() }} 模块 ({{
+                                        perms|length }}项)
+                                    </button>
+                                </h2>
+                                <div id="collapse_{{ loop.index }}"
+                                    class="accordion-collapse collapse {% if loop.first %}show{% endif %}">
+                                    <div class="accordion-body bg-light">
+                                        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+                                            {% for p in perms %}
+                                            <div class="col">
+                                                <div class="form-check form-switch form-switch-lg">
+                                                    <input class="form-check-input perm-checkbox" type="checkbox"
+                                                        name="selected_permissions" value="{{ p.id }}"
+                                                        id="perm_{{ p.id }}">
+                                                    <label class="form-check-label fw-medium" for="perm_{{ p.id }}">
+                                                        {{ p.name }}
+                                                        <small class="d-block text-muted">{{ p.description }}</small>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const allUserPermissions = {{ user_perms | tojson }};
+
+    function toggleAll(master) {
+        const checkboxes = document.querySelectorAll('.perm-checkbox');
+        checkboxes.forEach(cb => cb.checked = master.checked);
+    }
+
+    function selectUser(userId, userName, element) {
+        // 高亮选中
+        document.querySelectorAll('.employee-item').forEach(item => {
+            item.classList.remove('active', 'bg-primary', 'text-white');
+        });
+        element.classList.add('active', 'bg-primary', 'text-white');
+
+        // 更新标题和隐藏字段
+        document.getElementById('current_user_id').value = userId;
+        document.getElementById('display_name').innerHTML = `<strong>${userName}</strong> 的权限设置`;
+
+        // 激活保存按钮
+        document.getElementById('saveBtn').disabled = false;
+
+        // 重置所有复选框
+        document.querySelectorAll('.perm-checkbox').forEach(cb => cb.checked = false);
+
+        // 勾选该用户已有权限
+        const userPerms = allUserPermissions[userId] || [];
+        userPerms.forEach(permId => {
+            const cb = document.getElementById('perm_' + permId);
+            if (cb) cb.checked = true;
+        });
+
+        // 展开第一个模块
+        const firstCollapse = document.querySelector('.accordion-collapse');
+        if (firstCollapse && !firstCollapse.classList.contains('show')) {
+            new bootstrap.Collapse(firstCollapse).show();
+        }
+    }
+</script>
+
+<style>
+    .employee-item.active {
+        background: linear-gradient(90deg, #0d6efd, #0dcaf0) !important;
+        color: white !important;
+    }
+
+    .employee-item:hover {
+        background-color: #e7f3ff !important;
+        transform: translateY(-1px);
+        transition: all 0.2s;
+    }
+
+    .form-switch .form-check-input {
+        width: 3em;
+        height: 1.5em;
+    }
+
+    .accordion-button:not(.collapsed) {
+        box-shadow: inset 0 -1px 0 rgba(0, 0, 0, .125);
+    }
+</style>
+{% endblock %}

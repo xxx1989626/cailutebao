@@ -1,0 +1,7 @@
+启动命令         python app.py
+生成全代码txt    python merge_code.py 
+数据库迁移       1、检测变化     flask db migrate -m "说明"  
+                2、执行更新     flask db upgrade
+                3、回滚/撤销    flask db downgrade
+导出依赖：pip freeze > requirements.txt
+安装依赖：pip install -r requirements.txt

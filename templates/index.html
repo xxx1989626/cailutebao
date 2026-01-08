@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+
+{% block title %}首页 - 看板{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row g-3 mb-5">
+        <div class="col-md col-6">
+            <div class="card text-white bg-primary h-100 shadow-sm">
+                <div class="card-body text-center py-3">
+                    <i class="bi bi-people fs-2 mb-2"></i>
+                    <h6 class="mb-1">在职人数</h6>
+                    <h3 class="mb-0">{{ active_count }}</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md col-6">
+            <div class="card text-white bg-secondary h-100 shadow-sm">
+                <div class="card-body text-center py-3">
+                    <i class="bi bi-person-x fs-2 mb-2"></i>
+                    <h6 class="mb-1">离职人数</h6>
+                    <h3 class="mb-0">{{ departed_count }}</h3>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md col-6">
+            <div class="card text-white bg-info h-100 shadow-sm">
+                <div class="card-body text-center py-3">
+                    <i class="bi bi-person-heart fs-2 mb-2"></i>
+                    <h6 class="mb-1">历史总人数</h6>
+                    <h3 class="mb-0">{{ total_unique }}</h3>
+                </div>
+            </div>
+        </div>
+        
+        {% if perm.can('fund.view') %}
+        <div class="col-md col-6">
+            <div class="card text-white bg-success h-100 shadow-sm">
+                <div class="card-body text-center py-3">
+                    <i class="bi bi-wallet2 fs-2 mb-2"></i>
+                    <h6 class="mb-1">当前队费</h6>
+                    <h3 class="mb-0">¥{{ "%.0f"|format(current_balance) }}</h3>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="col-md col-6">
+            <div class="card text-white bg-warning h-100 shadow-sm">
+                <div class="card-body text-center py-2">
+                    <i class="bi bi-gift fs-4 mb-1"></i>
+                    <h6 class="mb-1">本月生日</h6>
+                    <h4 class="mb-1">{{ birthday_employees|length }} <small class="fs-6">人</small></h4>
+                    
+                    <div style="max-height: 55px; overflow-y: auto; font-size: 0.75rem;" class="mt-1">
+                        {% if birthday_employees %}
+                            {% for emp in birthday_employees %}
+                            <div class="d-flex justify-content-between px-2">
+                                <span>{{ emp.name }}</span>
+                                <span>{{ emp.birthday.month }}月 {{ emp.birthday.day }}日</span>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="small opacity-75 mb-0">无</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+    <div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card shadow h-100">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="bi bi-geo-alt"></i> 在职人员户籍地分布（全国地图）</h5>
+            </div>
+            <div class="card-body">
+                <div id="chinaMap" style="width:100%; height:500px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="row g-4">
+            <div class="col-12">
+                <div class="card shadow border-0 border-start border-primary border-4">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center py-2">
+                        <h6 class="mb-0 fw-bold text-primary"><i class="bi bi-calendar-check"></i> 今日值班</h6>
+                        <span class="badge bg-primary rounded-pill small" id="today_label"></span>
+                    </div>
+                    <div class="card-body p-0" style="max-height: 245px; overflow-y: auto;">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mb-0 align-middle" style="font-size: 0.85rem;">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-2">姓名</th>
+                                        <th>岗位</th>
+                                        <th>电话</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="today_duty_list">
+                                    <tr><td colspan="2" class="text-center py-3 text-muted">加载中...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12">
+                <div class="card shadow border-0 border-start border-success border-4">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center py-2">
+                        <h6 class="mb-0 fw-bold text-success"><i class="bi bi-calendar-plus"></i> 明日预告</h6>
+                        <span class="badge bg-success rounded-pill small" id="tomorrow_label"></span>
+                    </div>
+                    <div class="card-body p-0" style="max-height: 245px; overflow-y: auto;">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mb-0 align-middle" style="font-size: 0.85rem;">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-2">姓名</th>
+                                        <th>岗位</th>
+                                        <th>电话</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tomorrow_duty_list">
+                                    <tr><td colspan="2" class="text-center py-3 text-muted">加载中...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+        
+
+        <!-- ECharts核心 + 中国地图数据包 -->
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts/map/js/china.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var chartDom = document.getElementById('chinaMap');
+        var myChart = echarts.init(chartDom);
+
+        // 接收后端传递的数据（Jinja2 已 tojson 并 safe）
+        var provinceMapData = {{ province_map_data | safe }};
+
+
+        
+
+        // 动态计算最大值（避免硬编码）
+        var maxValue = provinceMapData.length > 0 
+            ? Math.max(...provinceMapData.map(item => item.value)) 
+            : 10;
+
+        var option = {
+            backgroundColor: '#fff',  // 背景白底，更干净
+            title: {
+                text: '在职人员户籍地分布',
+                left: 'center',
+                top: 20,
+                textStyle: {
+                    color: '#333',
+                    fontSize: 20,
+                    fontWeight: 'bold'
+                }
+            },
+            tooltip: {
+                trigger: 'item',
+                formatter: function (params) {
+                    if (params.data) {
+                        return `${params.name}<br/>人数：${params.data.value} 人`;
+                    }
+                    return `${params.name}<br/>人数：0 人`;
+                },
+                backgroundColor: 'rgba(0,0,0,0.7)',
+                borderColor: '#333',
+                textStyle: { color: '#fff' }
+            },
+            visualMap: {
+                min: 0,
+                max: maxValue,
+                left: 'left',
+                top: 'bottom',
+                text: ['高', '低'],
+                calculable: true,
+                orient: 'horizontal',
+                inRange: {
+                    color: ['#e6f7ff', '#bae7ff', '#91d5ff', '#69c0ff', '#40a9ff', '#1890ff', '#0050b3']
+                },
+                textStyle: { color: '#333' }
+            },
+            series: [{
+                name: '人数',
+                type: 'map',
+                map: 'china',
+                roam: false,  // true支持缩放拖拽
+                label: {
+                    show: true,
+                    fontSize: 11,
+                    color: '#333',
+                    formatter: function (params) {
+                        return params.data ? `${params.name}\n${params.data.value}` : params.name;
+                    }
+                },
+                emphasis: {
+                    label: {
+                        show: true,
+                        color: '#fff',
+                        fontSize: 12,
+                        fontWeight: 'bold'
+                    },
+                    itemStyle: {
+                        areaColor: '#0050b3',
+                        shadowBlur: 10,
+                        shadowColor: 'rgba(0, 0, 0, 0.3)'
+                    }
+                },
+                itemStyle: {
+                    borderColor: '#aaa',
+                    borderWidth: 1
+                },
+                data: provinceMapData
+            }]
+        };
+
+        myChart.setOption(option);
+
+        // 响应式
+        window.addEventListener('resize', function () {
+            myChart.resize();
+        });
+    });
+    // index.html 中的 <script> 标签内
+
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. 设置日期标签
+    const today = new Date();
+    const tomorrow = new Date();
+    tomorrow.setDate(today.getDate() + 1);
+    
+    document.getElementById('today_label').innerText = today.toLocaleDateString();
+    document.getElementById('tomorrow_label').innerText = tomorrow.toLocaleDateString();
+
+    // 2. 异步获取值班数据
+    fetch("{{ url_for('scheduling.get_daily_duty') }}")
+        .then(res => res.json())
+        .then(data => {
+            renderDutyTable('today_duty_list', data.today);
+            renderDutyTable('tomorrow_duty_list', data.tomorrow);
+        })
+        .catch(err => console.error("加载值班信息失败:", err));
+});
+
+function renderDutyTable(elementId, dataList) {
+    const tbody = document.getElementById(elementId);
+    if (!dataList || dataList.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-muted">暂无排班记录</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = dataList.map(item => `
+        <tr>
+            <td class="ps-3 fw-bold text-dark">${item.name}</td>
+            <td>
+                <span class="badge ${item.type === '夜' ? 'bg-warning text-dark' : 'bg-info text-dark'}">
+                    ${item.post}${item.type === '夜' ? '(夜班)' : ''}
+                </span>
+            </td>
+            <td>
+                <a href="tel:${item.phone}" class="text-decoration-none">
+                    <i class="bi bi-telephone-outbound me-1"></i>${item.phone || '未记录'}
+                </a>
+            </td>
+        </tr>
+    `).join('');
+}
+</script>
+        {% endblock %}

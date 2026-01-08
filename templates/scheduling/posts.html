@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">新增岗位</div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label class="form-label">岗位名称</label>
+                            <input type="text" name="name" class="form-control" placeholder="如：白班" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">显示颜色</label>
+                            <input type="color" name="color" class="form-control form-control-color" value="#007bff">
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">保存岗位</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-dark text-white">现有岗位列表</div>
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>颜色预览</th>
+                            <th>岗位名称</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for post in posts %}
+                        <tr>
+                            <td><span class="badge" style="background-color: {{ post.color }};">&nbsp;&nbsp;&nbsp;</span></td>
+                            <td>{{ post.name }}</td>
+                            <td>
+                                <a href="{{ url_for('scheduling.post_delete', id=post.id) }}" 
+                                   class="btn btn-sm btn-outline-danger" 
+                                   onclick="return confirm('确定删除吗？')">删除</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

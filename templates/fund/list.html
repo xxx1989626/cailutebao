@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}资金管理{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0"><i class="bi bi-currency-exchange"></i> 资金收支记录</h4>
+            <div>
+                <a href="{{ url_for('fund.fund_export', date=date_filter, payer=payer_filter, item=item_filter) }}" class="btn btn-light me-2">
+                    <i class="bi bi-download"></i> 导出数据
+                </a>
+                <a href="{{ url_for('fund.fund_import') }}" class="btn btn-light me-2">
+                    <i class="bi bi-upload"></i> 导入数据
+                </a>
+                <a href="{{ url_for('fund.fund_add') }}" class="btn btn-light">
+                    <i class="bi bi-plus-circle"></i> 新增数据
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <form method="GET" class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <input type="date" name="date" class="form-control" value="{{ date_filter or '' }}" placeholder="日期筛选">
+                </div>
+                <div class="col-md-3">
+                    <input type="text" name="payer" class="form-control" value="{{ payer_filter or '' }}" placeholder="资方筛选">
+                </div>
+                <div class="col-md-3">
+                    <input type="text" name="item" class="form-control" value="{{ item_filter or '' }}" placeholder="项目筛选">
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-outline-secondary w-100">筛选</button>
+                </div>
+            </form>
+
+            <div class="alert alert-info mb-4 d-flex justify-content-between align-items-center">
+                <span><strong>当前账户总余额：</strong> {{ "%.2f" % total_balance }} 元</span>
+                <small class="text-muted text-uppercase">实时计算</small>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>
+                                <a href="{{ url_for('fund.fund_list', sort='date_asc' if sort == 'date_desc' else 'date_desc', date=date_filter, payer=payer_filter, item=item_filter) }}" class="text-dark text-decoration-none">
+                                    日期 {% if sort.startswith('date_') %}↕{% endif %}
+                                </a>
+                            </th>
+                            <th>
+                                <a href="{{ url_for('fund.fund_list', sort='payer_asc' if sort == 'payer_desc' else 'payer_desc', date=date_filter, payer=payer_filter, item=item_filter) }}" class="text-dark text-decoration-none">
+                                    资方 {% if sort.startswith('payer_') %}↕{% endif %}
+                                </a>
+                            </th>
+                            <th>
+                                <a href="{{ url_for('fund.fund_list', sort='item_asc' if sort == 'item_desc' else 'item_desc', date=date_filter, payer=payer_filter, item=item_filter) }}" class="text-dark text-decoration-none">
+                                    项目 {% if sort.startswith('item_') %}↕{% endif %}
+                                </a>
+                            </th>
+                            <th>
+                                <a href="{{ url_for('fund.fund_list', sort='amount_asc' if sort == 'amount_desc' else 'amount_desc', date=date_filter, payer=payer_filter, item=item_filter) }}" class="text-dark text-decoration-none">
+                                    交易金额 {% if sort.startswith('amount_') %}↕{% endif %}
+                                </a>
+                            </th>
+                            <th>
+                                <a href="{{ url_for('fund.fund_list', sort='balance_asc' if sort == 'balance_desc' else 'balance_desc', date=date_filter, payer=payer_filter, item=item_filter) }}" class="text-dark text-decoration-none">
+                                    余额 {% if sort.startswith('balance_') %}↕{% endif %}
+                                </a>
+                            </th>
+                            <th>类型</th>
+                            <th>操作人</th>
+                            <th>备注</th>
+                            <th>凭证</th> 
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if records %}
+                            {% for r in records %}
+                            <tr>
+                                <td>{{ format_datetime(r.date) }}</td>
+                                <td>{{ r.payer or '-' }}</td>
+                                <td>{{ r.item or '-' }}</td>
+                                <td class="{% if r.amount < 0 %}text-danger{% else %}text-success{% endif %} fw-bold">
+                                    {{ "%.2f" % r.amount }}
+                                </td>
+                                <td class="fw-bold">{{ "%.2f" % r.balance }}</td>
+                                <td>
+                                    <span class="badge {% if r.amount >= 0 %}bg-success{% else %}bg-danger{% endif %}">
+                                        {% if r.amount >= 0 %}收入{% else %}支出{% endif %}
+                                    </span>
+                                </td>
+                                <td>{{ r.operator.name if r.operator else '系统' }}</td>
+                                                                
+                                <td class="text-truncate" style="max-width: 150px;">{{ r.note or '-' }}</td>
+                                <td>
+                                    {% if r.attachment %}
+                                    <a href="/{{ r.attachment }}" target="_blank" class="btn btn-sm btn-outline-primary" title="点击查看附件">
+                                        <i class="bi bi-file-earmark-text"></i> 查看
+                                    </a>
+                                    {% else %}
+                                    <span class="text-muted small">无</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td colspan="9" class="text-center text-muted py-5">暂无财务收支记录</td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
