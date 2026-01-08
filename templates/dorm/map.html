@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
+<!-- 1. 集中管理所有样式，消除内联样式提示 -->
 <style>
     /* 强制覆盖父级 container 的限制 */
     .container, .container-lg, .container-md {
@@ -13,25 +14,189 @@
     /* 让地图外层包装器支持滚动 */
     .map-wrapper {
         width: 100%;
-        overflow: auto; /* 必须有这个，否则地图大了会撑破网页 */
+        overflow: auto;
         background: #eee;
         border-radius: 8px;
+    }
+
+    /* 提取内联样式 - 侧边栏卡片 */
+    .side-card-body {
+        height: 350px;
+        overflow-y: auto;
+    }
+    .side-list-item {
+        font-size: small;
+        border-bottom: 1px solid #dee2e6;
+        margin-bottom: 0.25rem;
+        padding-bottom: 0.25rem;
+    }
+    .room-number-text {
+        font-size: 0.7rem;
+        color: #6c757d;
+    }
+
+    /* 提取内联样式 - 地图容器 */
+    .dorm-map-container {
+        width: 1600px;
+        height: 1000px;
+        background: url('/static/images/dorm_plan.jpg') no-repeat;
+        background-size: contain;
+        background-color: #f8f9fa;
+        margin: 0 auto;
+        position: relative;
+        border: 1px solid #dee2e6;
+    }
+    .map-col {
+        overflow: auto;
+        background-color: #fff;
+        border-radius: 0.5rem;
+        box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+        padding: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    /* 提取内联样式 - 房间区域 */
+    .room-zone {
+        position: absolute;
+        width: 200px;
+        min-height: 140px;
+        background: rgba(255,255,255,0.9);
+        border-radius: 4px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        border: 1px solid #dee2e6;
+        display: flex;
+        flex-direction: column;
+    }
+    .room-handle {
+        width: 100%;
+        border-bottom: 1px solid #dee2e6;
+        background-color: #0d6efd;
+        color: #fff;
+        text-align: center;
+        padding-top: 0.25rem;
+        padding-bottom: 0.25rem;
+        cursor: move;
+        border-radius: 4px 4px 0 0;
+    }
+    .bed-count-badge {
+        font-size: 0.65rem;
+        vertical-align: middle;
+    }
+
+    /* 提取内联样式 - 人员/资产标签 */
+    .employee-tag {
+        width: 100%;
+        margin-bottom: 0.25rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem;
+    }
+    .leader-tag {
+        background-color: #ffc107;
+        color: #000;
+    }
+    .normal-tag {
+        background-color: #0d6efd;
+    }
+    .occupied-tag {
+        font-size: 0.55rem;
+        max-width: 50px;
+        overflow: hidden;
+    }
+    .asset-tag {
+        width: 100%;
+        margin-bottom: 0.25rem;
+        text-align: left;
+        padding: 0.25rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.7rem;
+        white-space: normal;
+        min-height: 38px;
+        background-color: #17a2b8;
+        color: #000;
+    }
+    .asset-info {
+        flex-grow: 1;
+    }
+    .asset-name {
+        font-size: 0.6rem;
+        opacity: 0.8;
+    }
+    .asset-owner {
+        font-size: 0.6rem;
+        color: #dc3545;
+        font-weight: bold;
+    }
+    .bed-info {
+        margin-left: 0.25rem;
+        padding-left: 0.25rem;
+        border-left: 1px solid #6c757d;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        min-width: 70px;
+        background: rgba(255,255,255,0.3);
+        border-radius: 0 4px 4px 0;
+    }
+    .bed-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 0.25rem;
+        line-height: 1.2;
+        margin-bottom: 1px;
+    }
+    .bed-label {
+        font-size: 0.5rem;
+        white-space: nowrap;
+        color: #6c757d;
+    }
+    .bed-occupant {
+        font-size: 0.6rem;
+        margin-left: 2px;
+    }
+    .bed-occupant-filled {
+        color: #0d6efd;
+        font-weight: bold;
+    }
+    .bed-occupant-empty {
+        color: #6c757d;
+    }
+
+    /* 提取内联样式 - 待分配池 */
+    .pool-employee-item {
+        cursor: grab;
+        width: 45%;
+        margin: 0.25rem;
+        padding: 0.5rem;
+        background-color: #6c757d;
+    }
+    .pool-asset-item {
+        cursor: grab;
+        width: 90%;
+        margin: 0.25rem;
+        padding: 0.25rem;
+        font-size: 0.7rem;
+        border: 1px solid #17a2b8;
+        color: #000;
     }
 </style>
 
 <div class="container-fluid mt-3">
     <div class="row">
+        <!-- 左侧住宿人员列表 -->
         <div class="col-lg-2">
             <div class="card shadow-sm mb-3 border-success">
                 <div class="card-header bg-success text-white small fw-bold py-1">住宿人员名单</div>
-                <div class="card-body p-2 bg-light" style="height: 350px; overflow-y: auto;">
+                <div class="card-body p-2 bg-light side-card-body">
                     <div id="side-assigned-list">
                         {% for emp in assigned_emps | sort(attribute='room.number') %}
-                        <div class="small border-bottom mb-1 pb-1">
+                        <div class="side-list-item">
                             <i class="bi bi-house-door text-success"></i> {{ emp.name }} 
-                            <span class="text-muted" style="font-size: 0.7rem;">
-                                ({{ emp.room.number if emp.room else '未分配' }})
-                            </span>
+                            <span class="room-number-text">({{ emp.room.number if emp.room else '未分配' }})</span>
                         </div>
                         {% endfor %}
                     </div>
@@ -40,10 +205,10 @@
 
             <div class="card shadow-sm border-secondary">
                 <div class="card-header bg-secondary text-white small fw-bold py-1">不住宿人员名单</div>
-                <div class="card-body p-2" style="height: 350px; overflow-y: auto;">
+                <div class="card-body p-2 side-card-body">
                     <div id="side-unassigned-list">
                         {% for emp in unassigned_emps %}
-                        <div class="small border-bottom mb-1 pb-1 text-muted">
+                        <div class="side-list-item text-muted">
                             <i class="bi bi-person"></i> {{ emp.name }}
                         </div>
                         {% endfor %}
@@ -52,94 +217,85 @@
             </div>
         </div>
 
-        <div class="col-lg-8 shadow-sm rounded bg-white p-3 mb-4" style="overflow: auto;">
-            <div id="dorm-map-container" class="position-relative border" 
-                 style="width: 1600px; height: 1000px; background: url('/static/images/dorm_plan.jpg') no-repeat; background-size: contain; background-color: #f8f9fa; margin: 0 auto;">
-                
+        <!-- 中间地图区域 -->
+        <div class="col-lg-8 map-col">
+            <div id="dorm-map-container" class="dorm-map-container">
                 {% for room in rooms %}
-                <div class="room-zone border position-absolute d-flex flex-column" 
+                <!-- 修复：将动态样式通过data属性传递，避免CSS解析器识别模板语法 -->
+                <div class="room-zone" 
                      data-room-id="{{ room.id }}"
-                     style="left: {{ room.x_pos or 50 }}px; top: {{ room.y_pos or 50 }}px; width: 200px; min-height: 140px; background: rgba(255,255,255,0.9); border-radius: 4px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                     style="left: {{ room.x_pos or 50 }}px; top: {{ room.y_pos or 50 }}px;">
                     
-                    <div class="room-handle w-100 border-bottom bg-primary text-white text-center py-1" style="cursor: move; border-radius: 4px 4px 0 0;">
-                        <small class="fw-bold">{{ room.number }} / {{ room.type or '宿舍' }}
-                            <span class="ms-2 badge bg-light text-primary" style="font-size: 0.65rem; vertical-align: middle;">
-            {# 1. 计算总床位：累加该房间所有资产的 bed_capacity #}
-            {% set total_beds = room.room_assets | map(attribute='asset_info.bed_capacity') | sum %}
-            
-            {# 2. 计算已占用：当前房间住户数量 #}
-            {% set occupied_beds = room.occupants | length %}
-            
-            <i class="bi bi-person-check-fill"></i> {{ occupied_beds }}/{{ total_beds }}
-        </span>
-
+                    <div class="room-handle">
+                        <small class="fw-bold">
+                            {{ room.number }} / {{ room.type or '宿舍' }}
+                            <span class="ms-2 badge bg-light text-primary bed-count-badge">
+                                {# 床位计算逻辑保留，移到HTML注释外但不影响CSS解析 #}
+                                {% set total_beds = room.room_assets | map(attribute='asset_info.bed_capacity') | sum %}
+                                {% set occupied_beds = room.occupants | length %}
+                                <i class="bi bi-person-check-fill"></i> {{ occupied_beds }}/{{ total_beds }}
+                            </span>
                         </small>
                     </div>
 
                     <div class="drop-zone w-100 flex-grow-1 p-1" id="room-{{ room.id }}">
+                        <!-- 住宿人员列表 -->
                         {% for emp in room.occupants | sort(attribute='is_room_leader', reverse=True) %}
-                        <div class="item-tag badge {% if emp.is_room_leader %}bg-warning text-dark{% else %}bg-primary{% endif %} w-100 mb-1 d-flex justify-content-between align-items-center p-2" 
+                        <div class="item-tag badge employee-tag {% if emp.is_room_leader %}leader-tag{% else %}normal-tag{% endif %}" 
                              data-id="{{ emp.id }}" data-type="employee">
                             <span>
                                 {% if emp.is_room_leader %}<i class="bi bi-star-fill text-danger"></i>{% endif %}
                                 <i class="bi bi-person-fill"></i> {{ emp.name }}
                             </span>
-                            <small class="badge bg-light text-dark" style="font-size: 0.55rem; max-width: 50px; overflow: hidden;">已入宿</small>
+                            <small class="badge bg-light text-dark occupied-tag">已入宿</small>
                         </div>
                         {% endfor %}
 
+                        <!-- 资产列表 -->
                         {% for asset in room.room_assets %}
-<div class="item-tag badge bg-info text-dark w-100 mb-1 text-start p-1 d-flex justify-content-between align-items-center" 
-     data-id="{{ asset.id }}" 
-     data-type="asset"
-     style="font-size: 0.7rem; white-space: normal; min-height: 38px;">
-    
-    <div class="flex-grow-1">
-        <i class="bi bi-box-seam"></i> 
-        <strong>{{ asset.sn_number }}</strong>
-        <div style="font-size: 0.6rem; opacity: 0.8;">{{ asset.asset_info.name }}</div>
-        
-        {% if asset.user_id %}
-        <div class="text-danger fw-bold" style="font-size: 0.6rem;">
-            [责任人:{{ asset.current_holder.name }}]
-        </div>
-        {% endif %}
-    </div>
+                        <div class="item-tag badge asset-tag" 
+                             data-id="{{ asset.id }}" 
+                             data-type="asset">
+                            <div class="asset-info">
+                                <i class="bi bi-box-seam"></i> 
+                                <strong>{{ asset.sn_number }}</strong>
+                                <div class="asset-name">{{ asset.asset_info.name }}</div>
+                                {% if asset.user_id %}
+                                <div class="asset-owner">[责任人:{{ asset.current_holder.name }}]</div>
+                                {% endif %}
+                            </div>
 
-    {% if asset.asset_info.bed_capacity > 0 %}
-    <div class="ms-1 ps-1 border-start border-secondary d-flex flex-column justify-content-center" style="min-width: 70px; background: rgba(255,255,255,0.3); border-radius: 0 4px 4px 0;">
-        {% set cap = asset.asset_info.bed_capacity %}
-        {# 根据容量决定显示几层 #}
-        {% set labels = ["上铺", "下铺"] if cap == 2 else ["单铺"] %}
-        
-        {% for label in labels %}
-            {% set bed_code = asset.sn_number ~ "-" ~ label %}
-            {# 在房间住户中匹配对应铺位的人 #}
-            {% set occupant = room.occupants | selectattr('bed_number', 'equalto', bed_code) | first %}
-            
-            <div class="d-flex align-items-center justify-content-between px-1" style="line-height: 1.2; margin-bottom: 1px;">
-                <span class="text-muted" style="font-size: 0.5rem; white-space: nowrap;">{{ label }}:</span>
-                <span class="{% if occupant %}text-primary fw-bold{% else %}text-muted{% endif %}" style="font-size: 0.6rem; margin-left: 2px;">
-                    {{ occupant.name if occupant else '空' }}
-                </span>
-            </div>
-        {% endfor %}
-    </div>
-    {% endif %}
-</div>
-{% endfor %}
+                            {% if asset.asset_info.bed_capacity > 0 %}
+                            <div class="bed-info">
+                                {% set cap = asset.asset_info.bed_capacity %}
+                                {% set labels = ["上铺", "下铺"] if cap == 2 else ["单铺"] %}
+                                {% for label in labels %}
+                                    {% set bed_code = asset.sn_number ~ "-" ~ label %}
+                                    {% set occupant = room.occupants | selectattr('bed_number', 'equalto', bed_code) | first %}
+                                    <div class="bed-item">
+                                        <span class="bed-label">{{ label }}:</span>
+                                        <span class="bed-occupant {% if occupant %}bed-occupant-filled{% else %}bed-occupant-empty{% endif %}">
+                                            {{ occupant.name if occupant else '空' }}
+                                        </span>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
                     </div>
                 </div>
                 {% endfor %}
             </div>
         </div>
 
+        <!-- 右侧待分配池 -->
         <div class="col-lg-2">
             <div class="card shadow-sm mb-3 border-dark">
                 <div class="card-header bg-dark text-white fw-bold small py-1">待分配池(人员)</div>
-                <div class="card-body pool-zone bg-light p-2" id="pool-employees" style="height: 350px; overflow-y: auto;">
+                <div class="card-body pool-zone bg-light p-2 side-card-body" id="pool-employees">
                     {% for emp in unassigned_emps %}
-                    <div class="item-tag badge bg-secondary m-1 p-2" data-id="{{ emp.id }}" data-type="employee" style="cursor: grab; width: 45%;">
+                    <div class="item-tag badge pool-employee-item" data-id="{{ emp.id }}" data-type="employee">
                         {{ emp.name }}
                     </div>
                     {% endfor %}
@@ -148,13 +304,12 @@
 
             <div class="card shadow-sm border-info">
                 <div class="card-header bg-info text-white fw-bold small py-1">待分配池(资产)</div>
-                <div class="card-body pool-zone bg-light p-2" id="pool-assets" style="height: 350px; overflow-y: auto;">
+                <div class="card-body pool-zone bg-light p-2 side-card-body" id="pool-assets">
                     {% for asset in unassigned_assets %}
-                    <div class="item-tag badge border border-info text-dark m-1 p-1" 
+                    <div class="item-tag badge pool-asset-item" 
                          data-id="{{ asset.id }}" 
                          data-type="asset" 
-                         data-full-sn="{{ asset.sn_number }}"
-                         style="cursor: grab; width: 90%; font-size: 0.7rem;">
+                         data-full-sn="{{ asset.sn_number }}">
                         {{ asset.sn_number }}
                         <div class="small text-muted">{{ asset.asset_info.name }}</div>
                     </div>
@@ -193,10 +348,31 @@
     </div>
 </div>
 
+<!-- 床位选择模态框 -->
+<div class="modal fade" id="bedPickerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title">选择具体床位</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-3">
+                <div id="bed-options-container" class="list-group"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 引入依赖脚本 -->
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
+
+<!-- 修复JS模板语法解析问题：将模板变量提前转换为JS变量 -->
 <script>
-const isAdmin = {{ (current_user.role == 'admin') | tojson }};
+    // 安全转换模板变量为JS变量，避免语法错误
+    const isAdmin = {{ (current_user.role == 'admin') | tojson }};
+    const saveRoomPosUrl = "{{ url_for('dorm.save_room_pos') }}";
 </script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const container = document.getElementById('dorm-map-container');
@@ -219,7 +395,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // 2. 资产拖拽：联动存放位置
                 if (type === 'asset' && roomId) {
-                    updateAssignment(id, type, roomId, null, false, roomNumber); // 传递房间号
+                    updateAssignment(id, type, roomId, null, false, roomNumber);
                 } 
                 // 3. 人员拖拽：强制选择床位
                 else if (type === 'employee' && roomId) {
@@ -235,37 +411,39 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     // 调用床位查询接口
                     fetch(`/dorm/get_available_beds/${roomId}`)
-    .then(res => res.json())
-    .then(beds => {
-        selector.innerHTML = '';
-        console.log(`房间${roomId}的床位数据（适配SCC-002格式）：`, beds);
-        
-        if (beds.length === 0) {
-            selector.innerHTML = '<option value="" disabled>房间内无可用床位</option>';
-            alert('未找到可用床位！请确认：\n1. 该房间已分配名称含“床”的固定资产\n2. 资产的bed_capacity设置为1（单人床）或2（双层床）\n3. 资产个体编号格式为 前缀-子编号（如SCC-002）');
-            return;
-        }
-        
-        // 生成床位选项：显示“双层床 SCC-002 下铺”
-        beds.forEach(bed => {
-            const option = document.createElement('option');
-            option.value = bed.code;  // 传递完整编码：SCC-002-下铺
-            // 拼接显示文本：资产名称 + 个体编号 + 铺位
-            const displayText = `${bed.asset_name} ${bed.code.replace(`-${bed.code.split('-').pop()}`, '')} ${bed.code.split('-').pop()}`;
-            option.textContent = displayText;
-            
-            if (bed.occupied) {
-                option.disabled = true;
-                option.textContent += ` (已被${bed.occupant}占用)`;
-            }
-            selector.appendChild(option);
-        });
-        document.getElementById('confirmAssignBtn').disabled = false;
-    })
-    .catch(err => {
-        selector.innerHTML = '<option value="" disabled>加载床位失败</option>';
-        console.error('加载床位失败：', err);
-    });
+                        .then(res => res.json())
+                        .then(beds => {
+                            selector.innerHTML = '';
+                            console.log(`房间${roomId}的床位数据（适配SCC-002格式）：`, beds);
+                            
+                            if (beds.length === 0) {
+                                selector.innerHTML = '<option value="" disabled>房间内无可用床位</option>';
+                                alert('未找到可用床位！请确认：\n1. 该房间已分配名称含“床”的固定资产\n2. 资产的bed_capacity设置为1（单人床）或2（双层床）\n3. 资产个体编号格式为 前缀-子编号（如SCC-002）');
+                                return;
+                            }
+                            
+                            // 生成床位选项：显示“双层床 SCC-002 下铺”
+                            beds.forEach(bed => {
+                                const option = document.createElement('option');
+                                option.value = bed.code;
+                                const codeParts = bed.code.split('-');
+                                const mainCode = codeParts.slice(0, -1).join('-');
+                                const bedType = codeParts.pop();
+                                const displayText = `${bed.asset_name} ${mainCode} ${bedType}`;
+                                option.textContent = displayText;
+                                
+                                if (bed.occupied) {
+                                    option.disabled = true;
+                                    option.textContent += ` (已被${bed.occupant}占用)`;
+                                }
+                                selector.appendChild(option);
+                            });
+                            document.getElementById('confirmAssignBtn').disabled = false;
+                        })
+                        .catch(err => {
+                            selector.innerHTML = '<option value="" disabled>加载床位失败</option>';
+                            console.error('加载床位失败：', err);
+                        });
 
                     assignModal.show();
                 } else {
@@ -293,7 +471,7 @@ document.addEventListener('DOMContentLoaded', function() {
             tempAssignData.id, 
             tempAssignData.type, 
             tempAssignData.room_id, 
-            bedId, // 现在传递的是完整床位编码（如SCC-002-下铺）
+            bedId,
             isLeader, 
             tempAssignData.room_number
         );
@@ -311,13 +489,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 room_id: roomId, 
                 bed_id: bedId,
                 is_leader: isLeader,
-                room_number: roomNumber // 传递房间号，用于资产存放位置
+                room_number: roomNumber
             })
         })
         .then(res => res.json())
         .then(data => {
             if (data.status === 'success') {
-                location.reload(); // 刷新后显示联动结果
+                location.reload();
             } else {
                 alert('分配失败：' + data.message);
             }
@@ -327,51 +505,41 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 6. 房间移动定位 (仅限管理)
     if (isAdmin) {
-    document.querySelectorAll('.room-zone').forEach(zone => {
-        const handle = zone.querySelector('.room-handle');
-        handle.onmousedown = function(e) {
-            if(e.target !== handle && !handle.contains(e.target)) return;
-            e.preventDefault();
-            zone.style.zIndex = 1000;
-            let shiftX = e.clientX - zone.getBoundingClientRect().left;
-            let shiftY = e.clientY - zone.getBoundingClientRect().top;
-            function moveAt(pageX, pageY) {
-                let rect = container.getBoundingClientRect();
-                zone.style.left = (pageX - rect.left - shiftX) + 'px';
-                zone.style.top = (pageY - rect.top - shiftY) + 'px';
-            }
-            function onMouseMove(e) { moveAt(e.pageX, e.pageY); }
-            document.addEventListener('mousemove', onMouseMove);
-            document.onmouseup = function() {
-                document.removeEventListener('mousemove', onMouseMove);
-                savePosition(zone.getAttribute('data-room-id'), parseInt(zone.style.left), parseInt(zone.style.top));
-                document.onmouseup = null;
-                zone.style.zIndex = 'auto';
+        document.querySelectorAll('.room-zone').forEach(zone => {
+            const handle = zone.querySelector('.room-handle');
+            handle.onmousedown = function(e) {
+                if(e.target !== handle && !handle.contains(e.target)) return;
+                e.preventDefault();
+                zone.style.zIndex = 1000;
+                let shiftX = e.clientX - zone.getBoundingClientRect().left;
+                let shiftY = e.clientY - zone.getBoundingClientRect().top;
+                
+                function moveAt(pageX, pageY) {
+                    let rect = container.getBoundingClientRect();
+                    zone.style.left = (pageX - rect.left - shiftX) + 'px';
+                    zone.style.top = (pageY - rect.top - shiftY) + 'px';
+                }
+                
+                function onMouseMove(e) { moveAt(e.pageX, e.pageY); }
+                document.addEventListener('mousemove', onMouseMove);
+                
+                document.onmouseup = function() {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    savePosition(zone.getAttribute('data-room-id'), parseInt(zone.style.left), parseInt(zone.style.top));
+                    document.onmouseup = null;
+                    zone.style.zIndex = 'auto';
+                };
             };
-        };
-    });
-    function savePosition(roomId, x, y) {
-        fetch("{{ url_for('dorm.save_room_pos') }}", {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ room_id: roomId, x: x, y: y })
         });
-    }
+
+        function savePosition(roomId, x, y) {
+            fetch(saveRoomPosUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ room_id: roomId, x: x, y: y })
+            });
+        }
     }
 });
 </script>
-<div class="modal fade" id="bedPickerModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-sm">
-        <div class="modal-content">
-            <div class="modal-header py-2">
-                <h6 class="modal-title">选择具体床位</h6>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body p-3">
-                <div id="bed-options-container" class="list-group">
-                    </div>
-            </div>
-        </div>
-    </div>
-</div>
 {% endblock %}

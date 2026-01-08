@@ -178,7 +178,7 @@ def assign_to_room():
                 action_type="资产调拨",
                 target_type="AssetInstance",
                 target_id=instance.id,
-                description = f"将资产：【{asset.name}】，编号：{full_sn} 移至{f'{room_number}({room_type})' if target_room_id else '待分配池'}，负责人：{leader_name}",
+                description = f"将资产：【{asset.name}】，编号：{full_sn} 移至{room_number if target_room_id else '待分配池'}，负责人：{leader_name}",
                 **locals()
             )
         

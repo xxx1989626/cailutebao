@@ -42,7 +42,22 @@
     /* 适配双层表头导入后的日历显示 */
     .fc-event { border: none !important; padding: 2px 4px !important; font-size: 0.85em !important; }
     .shift-night { border-left: 3px solid #1a202c !important; } /* 夜班标记 */
+
+    /* Initialize color boxes */
+    .color-box {
+        width: 24px;
+        height: 24px;
+        border-radius: 4px;
+        background-color: inherit;
+    }
 </style>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.color-box').forEach(el => {
+            el.style.backgroundColor = el.getAttribute('data-color');
+        });
+    });
+</script>
 {% endblock %}
 
 {% block content %}
@@ -130,16 +145,16 @@
                         <div class="row mb-3">
                             <div class="col">
                                 <label class="small text-muted">上班</label>
-                                <input type="time" name="default_start" class="form-control" value="08:00">
+                                <input type="time" name="default_start" class="form-control" value="08:00" title="上班时间">
                             </div>
                             <div class="col">
                                 <label class="small text-muted">下班</label>
-                                <input type="time" name="default_end" class="form-control" value="20:00">
+                                <input type="time" name="default_end" class="form-control" value="20:00" title="下班时间">
                             </div>
                         </div>
                         <div class="mb-4">
                             <label class="small text-muted">日历显示颜色</label>
-                            <input type="color" name="color" class="form-control form-control-color w-100" value="#4299e1">
+                            <input type="color" name="color" class="form-control form-control-color w-100" value="#4299e1" title="选择岗位在日历中的显示颜色">
                         </div>
                         <button type="submit" class="btn btn-primary w-100 py-2">确认并保存</button>
                     </form>
@@ -155,7 +170,7 @@
                     <tbody>
                         {% for p in posts %}
                         <tr>
-                            <td><div style="width:24px;height:24px;background:{{p.color}};border-radius:4px;"></div></td>
+                            <td><div class="color-box" data-color="{{ p.color }}"></div></td>
                             <td class="fw-bold">{{ p.name }}</td>
                             <td class="text-muted">{{ p.default_start }} - {{ p.default_end }}</td>
                             <td class="text-end"><a href="{{ url_for('scheduling.post_delete', id=p.id) }}" class="btn btn-link btn-sm text-danger" onclick="return confirm('确定删除该岗位吗？')">删除</a></td>
@@ -178,13 +193,13 @@
                     <input type="hidden" id="post_user_id"><input type="hidden" id="post_date">
                     <div class="mb-3">
                         <label class="small text-muted">选择岗位</label>
-                        <select id="post_id" class="form-select">
+                        <select id="post_id" class="form-select" title="选择岗位">
                             {% for p in posts %}<option value="{{p.id}}">{{p.name}}</option>{% endfor %}
                         </select>
                     </div>
                     <div class="d-flex justify-content-center gap-4 mb-4">
-                        <div class="form-check"><input class="form-check-input" type="checkbox" id="is_night_toggle"><label>夜班</label></div>
-                        <div class="form-check"><input class="form-check-input" type="checkbox" id="is_overtime_toggle"><label>加班</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="is_night_toggle" title="标记为夜班"><label class="form-check-label" for="is_night_toggle">夜班</label></div>
+                        <div class="form-check"><input class="form-check-input" type="checkbox" id="is_overtime_toggle" title="标记为加班"><label class="form-check-label" for="is_overtime_toggle">加班</label></div>
                     </div>
                     <button type="button" class="btn btn-primary w-100 py-2" onclick="submitShift()">确认排班</button>
                 </form>

@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -12,11 +11,9 @@
             padding-top: 70px;
             background-color: #f8f9fa;
         }
-
         .navbar-brand {
             font-weight: bold;
         }
-
         .footer {
             margin-top: 50px;
             padding: 20px 0;
@@ -26,7 +23,6 @@
         }
     </style>
 </head>
-
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
         <div class="container-fluid">
@@ -38,77 +34,68 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
+                <!-- 核心修复：清理<ul>内的多余空白/注释，确保只有<li>作为直接子元素 -->
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('main.index') }}"><i class="bi bi-house"></i> 首页看板</a>
                     </li>
-
                     <li class="nav-item">
                         {% if current_user.is_authenticated %}
-                        {% if perm.can('hr.view') %}
-                        <a class="nav-link" href="{{ url_for('hr.hr_list') }}">
-                            <i class="bi bi-people"></i> 人事管理
-                            {# --- 新增：上级目录显示待审核红点 --- #}
-                            {% if pending_count > 0 %}
-                            <span class="badge bg-danger rounded-pill">{{ pending_count }}</span>
+                            {% if perm.can('hr.view') %}
+                                <a class="nav-link" href="{{ url_for('hr.hr_list') }}">
+                                    <i class="bi bi-people"></i> 人事管理
+                                    {% if pending_count > 0 %}
+                                        <span class="badge bg-danger rounded-pill">{{ pending_count }}</span>
+                                    {% endif %}
+                                </a>
+                            {% else %}
+                                <a class="nav-link" href="{{ url_for('hr.hr_detail', id_card=current_user.username) }}">我的信息</a>
                             {% endif %}
-                        </a>
                         {% else %}
-                        <a class="nav-link" href="{{ url_for('hr.hr_detail', id_card=current_user.username) }}">我的信息</a>
-                        {% endif %}
-                        {% else %}
-                        <a class="nav-link" href="{{ url_for('auth.login') }}">我的信息</a>
+                            <a class="nav-link" href="{{ url_for('auth.login') }}">我的信息</a>
                         {% endif %}
                     </li>
-
-                    {# 资产管理：判断是否有资产模块的权限 #}
                     {% if perm.can('asset.view') %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('asset.asset_list') }}"><i class="bi bi-box-seam"></i>
-                            资产管理</a>
-                    </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('asset.asset_list') }}"><i class="bi bi-box-seam"></i> 资产管理</a>
+                        </li>
                     {% endif %}
-
-                    {# 资金管理：判断是否有资金模块的权限 #}
                     {% if perm.can('fund.view') %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('fund.fund_list') }}"><i
-                                class="bi bi-currency-exchange"></i> 资金管理</a>
-                    </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('fund.fund_list') }}"><i class="bi bi-currency-exchange"></i> 资金管理</a>
+                        </li>
                     {% endif %}
-                    {# 宿舍管理：判断是否有宿舍模块的权限 #}
                     {% if perm.can('dorm.view') %}
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint and 'dorm.' in request.endpoint %}active{% endif %}"
-                            href="{{ url_for('dorm.dorm_map') }}">
-                            <i class="bi bi-door-open"></i> 宿舍管理
-                        </a>
-                    </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint and 'dorm.' in request.endpoint %}active{% endif %}"
+                               href="{{ url_for('dorm.dorm_map') }}">
+                                <i class="bi bi-door-open"></i> 宿舍管理
+                            </a>
+                        </li>
                     {% endif %}
-
-                    {# 考勤管理：判断是否有考勤模块的权限 #}
                     {% if perm.can('scheduling.view') %}
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint and 'scheduling.' in request.endpoint %}active{% endif %}"
-                            href="{{ url_for('scheduling.schedule_list') }}">
-                            <i class="bi bi-calendar-check"></i> 考勤管理</a>
-                    </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint and 'scheduling.' in request.endpoint %}active{% endif %}"
+                               href="{{ url_for('scheduling.schedule_list') }}">
+                                <i class="bi bi-calendar-check"></i> 考勤管理</a>
+                        </li>
                     {% endif %}
-
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('notification.notification_list') }}">
                             <i class="bi bi-bell"></i> 通知
                             {% if current_user.is_authenticated %}
-                            {% set unread_count = current_user.notifications|selectattr('is_read', 'equalto',
-                            false)|list|length %}
-                            {% if unread_count > 0 %}
-                            <span class="badge bg-danger rounded-pill">{{ unread_count }}</span>
-                            {% endif %}
+                                {% set unread_count = current_user.notifications|selectattr('is_read', 'equalto', false)|list|length %}
+                                {% if unread_count > 0 %}
+                                    <span class="badge bg-danger rounded-pill">{{ unread_count }}</span>
+                                {% endif %}
                             {% endif %}
                         </a>
                     </li>
-
-
+                    {% if current_user.role == 'admin' %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('permission.permission_manage') }}"><i class="bi bi-shield-lock"></i> 权限管理</a>
+                        </li>
+                    {% endif %}
                 </ul>
 
                 <!-- 右侧：日期 + 用户信息 + 登录/登出 -->
@@ -116,53 +103,43 @@
                     <span class="navbar-text me-3">
                         <i class="bi bi-calendar"></i> {{ today_str() }}
                     </span>
-
                     <span class="navbar-text me-3">
                         {% if current_user.is_authenticated %}
-                        <a class="nav-link" href="{{ url_for('permission.permission_operations') }}">
-                            <i class="bi bi-person-circle"></i> {{ current_user.name }}
-                        </a>
+                            <a class="nav-link" href="{{ url_for('permission.permission_operations') }}">
+                                <i class="bi bi-person-circle"></i> {{ current_user.name }}
+                            </a>
                         {% else %}
-                        <span class="text-muted">未登录</span>
+                            <span class="text-muted">未登录</span>
                         {% endif %}
                     </span>
-
                     {% if current_user.is_authenticated %}
-                    <a href="{{ url_for('auth.change_password') }}" class="btn btn-outline-light me-2">
-                        <i class="bi bi-key"></i> 修改密码
-                    </a>
-
-                    <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-light">
-                        <i class="bi bi-box-arrow-right"></i> 登出
-                    </a>
+                        <a href="{{ url_for('auth.change_password') }}" class="btn btn-outline-light me-2">
+                            <i class="bi bi-key"></i> 修改密码
+                        </a>
+                        <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-light">
+                            <i class="bi bi-box-arrow-right"></i> 登出
+                        </a>
                     {% else %}
-                    <a href="{{ url_for('auth.login') }}" class="btn btn-outline-light">
-                        <i class="bi bi-box-arrow-in-right"></i> 登录
-                    </a>
+                        <a href="{{ url_for('auth.login') }}" class="btn btn-outline-light">
+                            <i class="bi bi-box-arrow-in-right"></i> 登录
+                        </a>
                     {% endif %}
                 </div>
-                {% if current_user.role == 'admin' %}
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('permission.permission_manage') }}"><i
-                            class="bi bi-shield-lock"></i> 权限管理</a>
-                </li>
-                {% endif %}
             </div>
         </div>
     </nav>
 
     <div class="container mt-4">
         {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-        {% for category, message in messages %}
-        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-        {% endfor %}
-        {% endif %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
         {% endwith %}
-
         {% block content %}{% endblock %}
     </div>
 
@@ -174,7 +151,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     {% block scripts %}{% endblock %}
-
 
     <audio id="globalNoticeAudio" preload="auto">
         <source src="/static/audio/beep.mp3" type="audio/mpeg">
@@ -229,5 +205,4 @@
         }, { once: true });
     </script>
 </body>
-
 </html>
