@@ -376,16 +376,19 @@ def self_register():
                            education_options=get_education_options(),
                            today_str=today_str)
 # ==================== 管理员审核 ====================
+# ==================== 管理员审核 (修复版) ====================
 @hr_bp.route('/approve_pending/<int:id>', methods=['POST'])
 @login_required
 @perm.require('hr.edit')
 def approve_pending(id):
+    from utils import log_action # 确保导入日志工具
     emp = EmploymentCycle.query.get_or_404(id)
+    
     if emp.status != '待审核':
         flash('该记录不是待审核状态，无法批准', 'warning')
         return redirect(url_for('hr.hr_list', status='待审核'))
     
-    # 检查冲突：e.g., 身份证是否已存在于在职员工
+    # 1. 检查冲突
     existing = EmploymentCycle.query.filter(
         EmploymentCycle.id_card == emp.id_card,
         EmploymentCycle.status == '在职'
@@ -394,14 +397,44 @@ def approve_pending(id):
         flash('身份证已存在于在职员工，无法批准', 'danger')
         return redirect(url_for('hr.hr_list', status='待审核'))
     
-    # 批准逻辑：设为在职，设hire_date为当前（如果为空）
+    # 2. 变更状态
     emp.status = '在职'
     if not emp.hire_date:
         emp.hire_date = datetime.today().date()
     
-    db.session.commit()
-    flash(f'员工 {emp.name} 已批准为在职', 'success')
-    return redirect(url_for('hr.hr_list', status='在职'))  # 重定向到在职列表
+    # 3. 【修复】自动创建账号逻辑
+    user_created_msg = ''
+    # 检查 User 表中是否已有该身份证的账号
+    if not User.query.filter_by(username=emp.id_card).first():
+        default_password = emp.id_card[-6:]  # 身份证后六位
+        new_user = User(
+            username=emp.id_card,
+            name=emp.name,
+            role='member'  # 角色固定为队员
+        )
+        new_user.set_password(default_password)
+        db.session.add(new_user)
+        user_created_msg = f'（账号已自动创建，默认密码为身份证后6位）'
+    else:
+        user_created_msg = '（账号已存在，无需重复创建）'
+
+    # 4. 记录管理员审计日志
+    log_action(
+        action_type='审批入职',
+        target_type='Employee',
+        target_id=emp.id,
+        description=f"批准了自主登记的人员入职：{emp.name} (身份证:{emp.id_card}){user_created_msg}",
+        **locals()
+    )
+
+    try:
+        db.session.commit()
+        flash(f'员工 {emp.name} 已批准入职！{user_created_msg}', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'审批失败：{str(e)}', 'danger')
+
+    return redirect(url_for('hr.hr_list', status='在职'))
 # ==================== 删除待审核记录 ====================
 
 @hr_bp.route('/delete_pending/<int:id>', methods=['POST'])
