@@ -375,7 +375,6 @@ def self_register():
                            politics_options=get_politics_options(),
                            education_options=get_education_options(),
                            today_str=today_str)
-# ==================== 管理员审核 ====================
 # ==================== 管理员审核 (修复版) ====================
 @hr_bp.route('/approve_pending/<int:id>', methods=['POST'])
 @login_required
@@ -435,7 +434,7 @@ def approve_pending(id):
         flash(f'审批失败：{str(e)}', 'danger')
 
     return redirect(url_for('hr.hr_list', status='在职'))
-# ==================== 删除待审核记录 ====================
+# ==================== 删除人员记录 ====================
 
 @hr_bp.route('/delete_pending/<int:id>', methods=['POST'])
 @login_required
@@ -448,15 +447,21 @@ def delete_pending(id):
 
     # 2. 查找记录
     emp = EmploymentCycle.query.get_or_404(id)
+    id_card_to_delete = emp.id_card
     old_status = emp.status
     old_name = emp.name
 
     # 3. 执行删除
     try:
         # 如果该员工有关联的其他表数据（如资产领用记录），建议先处理或确认数据库开启了 cascade delete
+        user_account = User.query.filter_by(username=id_card_to_delete).first()
+        user_deleted_msg = ""
+        if user_account:
+            db.session.delete(user_account)
+            user_deleted_msg = "及关联登录账号"
         db.session.delete(emp)
         db.session.commit()
-        flash(f"已成功彻底删除记录：{old_name}", "success")
+        flash(f"已成功彻底删除记录：{old_name}{user_deleted_msg}", "success")
     except Exception as e:
         db.session.rollback()
         flash(f"删除失败，可能存在关联数据未清理：{str(e)}", "danger")
