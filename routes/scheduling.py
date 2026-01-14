@@ -7,6 +7,7 @@ from datetime import datetime
 import pandas as pd
 import io
 import re
+from models import BusinessTrip
 
 scheduling_bp = Blueprint('scheduling', __name__, url_prefix='/scheduling')
 
@@ -26,9 +27,7 @@ def schedule_list():
         return redirect(url_for('main.index'))
     
     if request.method == 'POST':
-        if not perm.can('scheduling.post'):
-            flash("无权管理岗位", "danger")
-            return redirect(url_for('scheduling.schedule_list', tab='posts'))
+        # ... 保持你原有的岗位保存逻辑不变 ...
         name = request.form.get('name')
         color = request.form.get('color', '#007bff')
         start = request.form.get('default_start', '08:30')
@@ -43,7 +42,29 @@ def schedule_list():
     active_tab = request.args.get('tab', 'calendar')
     employees = EmploymentCycle.query.filter_by(status='在职').all()
     posts = ShiftPost.query.all()
-    return render_template('scheduling/list.html', employees=employees, posts=posts, active_tab=active_tab)
+
+    # --- 新增逻辑：获取当前出差人员 ID 集合 ---
+    today = datetime.now().date()
+    # 查找：状态为出差中，或者结束日期未到，或者尚未归队(None)的记录
+    active_trips = BusinessTrip.query.filter(
+        BusinessTrip.status == '出差中',  # 只要状态不是“出差中”，就不在侧边栏显示状态
+        (
+            (BusinessTrip.end_date >= today) | 
+            (BusinessTrip.end_date == None)
+        )
+    ).all()
+
+    on_trip_ids = set()
+    for trip in active_trips:
+        for p in trip.participants:
+            on_trip_ids.add(p.id)
+    # ---------------------------------------
+
+    return render_template('scheduling/list.html', 
+                           employees=employees, 
+                           posts=posts, 
+                           active_tab=active_tab,
+                           on_trip_ids=on_trip_ids) # 将 ID 集合传给前端
 
 # --- 功能：为 FullCalendar 插件提供排班数据接口 ---
 @scheduling_bp.route('/api/get_shifts')

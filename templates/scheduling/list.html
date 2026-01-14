@@ -65,6 +65,7 @@
     <div class="hr-tabs">
         <a href="{{ url_for('scheduling.schedule_list', tab='calendar') }}" class="{% if active_tab == 'calendar' %}active{% endif %}">📅 排班视图</a>
         <a href="{{ url_for('scheduling.schedule_list', tab='posts') }}" class="{% if active_tab == 'posts' %}active{% endif %}">🛠️ 岗位设置</a>
+        <a href="{{ url_for('trip.trip_list') }}" class="active">💼 出差设置</a>
     </div>
 
     {% if active_tab == 'calendar' %}
@@ -102,12 +103,32 @@
             <div class="sticky-sidebar">
                 <div class="small text-muted mb-2 fw-bold">待排人员 (拖拽入日历)</div>
                 <div id="external-events">
-                    {% for emp in employees %}
-                    <div class="emp-tag fc-event-draggable" data-user-id="{{ emp.id }}" data-user-name="{{ emp.name }}">
-                        <strong>{{ emp.name }}</strong>
-                    </div>
-                    {% endfor %}
-                </div>
+    {% for emp in employees %}
+        {% set is_away = emp.id in on_trip_ids %}
+        <div class="emp-tag fc-event-draggable {% if is_away %}away-status{% endif %}" 
+             data-user-id="{{ emp.id }}" 
+             data-user-name="{{ emp.name }}">
+            
+            <div class="d-flex justify-content-between align-items-center">
+                <strong>{{ emp.name }}</strong>
+                {% if is_away %}
+                    <span class="badge bg-warning text-dark border border-dark-subtle" style="font-size: 0.65rem;">
+                        <i class="bi bi-airplane-fill"></i> 出差中
+                    </span>
+                {% endif %}
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
+<style>
+    /* 出差人员特殊背景：淡橙色虚线边框 */
+    .away-status {
+        background-color: #fffaf0 !important;
+        border: 2px dashed #ffc107 !important;
+        opacity: 0.8; /* 稍微透明，暗示不建议排本地班 */
+    }
+</style>
             </div>
         </div>
         <div class="col-md-10">
@@ -384,6 +405,16 @@ function deleteShiftDirectly(id) {
 }
 
 function handleDrop(id, name, date) {
+    // 检查被拖拽的元素是否带有出差样式
+    const empTag = document.querySelector(`.emp-tag[data-user-id="${id}"]`);
+    const isAway = empTag && empTag.classList.contains('away-status');
+
+    if (isAway) {
+        if (!confirm(`【排班预警】\n员工 ${name} 目前标记为“出差中”。\n你确定要给正在出差的员工排本岗位吗？`)) {
+            location.reload(); // 用户点取消，刷新页面撤销操作
+            return;
+        }
+    }
     document.getElementById('display_info').innerText = `${name} @ ${date}`;
     document.getElementById('post_user_id').value = id;
     document.getElementById('post_date').value = date;

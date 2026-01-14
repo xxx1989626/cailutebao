@@ -49,10 +49,22 @@ def send_operation_notice(title, content, operated_user_id):
 @notification_bp.route('/list')
 @login_required
 def notification_list():
-    notifications = Notification.query.filter_by(user_id=current_user.id)\
+    # 获取页码参数，默认为第 1 页，每页显示 10 条
+    page = request.args.get('page', 1, type=int)
+    per_page = 10
+    
+    # 使用 paginate 进行分页查询
+    pagination = Notification.query.filter_by(user_id=current_user.id)\
         .order_by(Notification.created_at.desc())\
-        .all()
-    return render_template('notification/list.html', notifications=notifications)
+        .paginate(page=page, per_page=per_page, error_out=False)
+    
+    # 获取当前用户的总未读数（用于顶部显示，不受分页影响）
+    unread_count = Notification.query.filter_by(user_id=current_user.id, is_read=False).count()
+    
+    return render_template('notification/list.html', 
+                           pagination=pagination, 
+                           notifications=pagination.items,
+                           unread_count=unread_count)
 
 @notification_bp.route('/read/<int:notify_id>')
 @login_required

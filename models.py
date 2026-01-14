@@ -338,3 +338,25 @@ class Notification(db.Model):
 
     # 关联用户
     user = db.relationship('User', backref='notifications')
+
+
+# ==================== 出差管理模型 ====================
+trip_participants = db.Table('trip_participants',
+    db.Column('trip_id', db.Integer, db.ForeignKey('business_trips.id'), primary_key=True),
+    db.Column('employee_id', db.Integer, db.ForeignKey('employment_cycles.id'), primary_key=True)
+)
+
+class BusinessTrip(db.Model):
+    __tablename__ = 'business_trips'
+    id = db.Column(db.Integer, primary_key=True)
+    destination = db.Column(db.String(100), nullable=False)
+    start_date = db.Column(db.Date, nullable=False)
+    end_date = db.Column(db.Date, nullable=True)
+    total_days = db.Column(db.Integer)  # 存储天数，方便后续SUM汇总
+    reason = db.Column(db.Text)
+    status = db.Column(db.String(20), default='进行中')
+    
+    # 建立多对多关联
+    participants = db.relationship('EmploymentCycle', 
+                                  secondary=trip_participants,
+                                  backref=db.backref('trips', lazy='dynamic'))

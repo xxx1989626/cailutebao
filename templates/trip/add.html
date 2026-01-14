@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}登记出差{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">登记出差信息</div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+    <label class="form-label">出差人员 (可多选)</label>
+    <select name="user_ids" class="form-select select2-multiple" multiple required>
+        {% for emp in employees %}
+        <option value="{{ emp.id }}">{{ emp.name }}</option>
+        {% endfor %}
+    </select>
+    <small class="text-muted">按住Ctrl键可点击选择多人，或使用搜索功能</small>
+</div>
+                        <div class="mb-3">
+                            <label class="form-label">目的地</label>
+                            <input type="text" name="destination" class="form-control" placeholder="输入出差地点" required>
+                        </div>
+                        <div class="row">
+    <div class="col-md-6 mb-3">
+        <label class="form-label">开始日期</label>
+        <input type="date" name="start_date" class="form-control" value="{{ trip.start_date if trip else today }}" required>
+    </div>
+    <div class="col-md-6 mb-3">
+        <label class="form-label">归队日期 (选填)</label>
+        <input type="date" name="end_date" class="form-control" value="{{ trip.end_date if trip else '' }}">
+        <div class="form-text">如尚未归队请留空</div>
+    </div>
+</div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success">提交记录</button>
+                            <a href="{{ url_for('trip.trip_list') }}" class="btn btn-outline-secondary">取消返回</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

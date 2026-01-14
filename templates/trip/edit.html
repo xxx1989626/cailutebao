@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}编辑出差记录{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">编辑出差信息</div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label class="form-label">出差人员 (可多选)</label>
+                            <select name="user_ids" class="form-select" multiple size="8" required>
+                                {% for emp in employees %}
+                                <option value="{{ emp.id }}" {% if emp.id in current_ids %}selected{% endif %}>
+                                    {{ emp.name }} - {{ emp.post }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">目的地</label>
+                            <input type="text" name="destination" class="form-control" value="{{ trip.destination }}" required>
+                        </div>
+                        <div class="row">
+    <div class="col-md-6 mb-3">
+        <label class="form-label">开始日期</label>
+        <input type="date" name="start_date" class="form-control" value="{{ trip.start_date if trip else today }}" required>
+    </div>
+    <div class="col-md-6 mb-3">
+        <label class="form-label">归队日期 (选填)</label>
+        <input type="date" name="end_date" class="form-control" value="{{ trip.end_date if trip else '' }}">
+        <div class="form-text">如尚未归队请留空</div>
+    </div>
+</div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success">保存修改</button>
+                            <a href="{{ url_for('trip.trip_list') }}" class="btn btn-outline-secondary">取消</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

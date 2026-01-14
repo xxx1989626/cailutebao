@@ -316,12 +316,14 @@ if __name__ == '__main__':
             from routes.fund import FUND_PERMISSIONS
             from routes.scheduling import SCHEDULING_PERMISSIONS
             from routes.dorm import DORM_PERMISSIONS
+            from routes.trip import TRIP_PERMISSIONS
             
             register_module_permissions('hr', HR_PERMISSIONS)
             register_module_permissions('asset', ASSET_PERMISSIONS)
             register_module_permissions('fund', FUND_PERMISSIONS)
             register_module_permissions('scheduling', SCHEDULING_PERMISSIONS)
             register_module_permissions('dorm', DORM_PERMISSIONS)
+            register_module_permissions('trip', TRIP_PERMISSIONS)
         except ImportError:
             pass  # 模块未定义权限列表，跳过
         

@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block title %}出差管理{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <div class="hr-tabs mb-3">
+        <a href="{{ url_for('scheduling.schedule_list', tab='calendar') }}">📅 排班视图</a>
+        <a href="{{ url_for('scheduling.schedule_list', tab='posts') }}">🛠️ 岗位设置</a>
+        <a href="{{ url_for('trip.trip_list') }}" class="active">💼 出差管理</a>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-middle">
+    <h5 class="mb-0">💼 {{ selected_year }}年度 出差管理</h5>
+    <div class="d-flex gap-2 align-items-center">
+        <div class="dropdown">
+            <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                📅 切换年份
+            </button>
+            <ul class="dropdown-menu">
+                {% for y in years %}
+                <li><a class="dropdown-item {% if y == selected_year %}active{% endif %}" 
+                       href="{{ url_for('trip.trip_list', year=y) }}">{{ y }}年</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+        <a href="{{ url_for('trip.trip_add') }}" class="btn btn-sm btn-light">登记出发</a>
+    </div>
+</div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>出差次数</th>
+                            <th>出差人员</th>
+                            <th>目的地</th>
+                            <th>日期范围 (开始 - 归队)</th>
+                            <th>时长</th>
+                            <th>状态</th>
+                            <th width="150">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for trip in trips %}
+                        <tr>
+                            <td>第{{ trips|length - loop.index0 }}次</td>
+                            
+                            <td>
+                                {% for p in trip.participants %}
+                                    <span class="badge border text-dark bg-light">{{ p.name }}</span>
+                                {% else %}
+                                    <span class="text-muted">未指定</span>
+                                {% endfor %}
+                            </td>
+
+                            <td>{{ trip.destination }}</td>
+
+                            <td>
+                                <span class="text-primary fw-bold">{{ trip.start_date }}</span>
+                                <i class="bi bi-arrow-right mx-1 text-muted"></i>
+                                {% if trip.end_date %}
+                                    {{ trip.end_date }}
+                                {% else %}
+                                    <span class="text-danger small">（归队待定）</span>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                {% if trip.total_days %}
+                                    <span class="badge bg-info text-dark">{{ trip.total_days }} 天</span>
+                                {% else %}
+                                    <span class="text-muted italic">--</span>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                {% if trip.status == '出差中' %}
+                                    <span class="badge rounded-pill bg-warning text-dark border border-warning">
+                                        <span class="spinner-grow spinner-grow-sm text-danger" role="status"></span> 执行中
+                                    </span>
+                                {% else %}
+                                    <span class="badge rounded-pill bg-light text-secondary border">已归队</span>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                <div class="btn-group">
+                                    <a href="{{ url_for('trip.trip_edit', id=trip.id) }}" 
+                                       class="btn btn-sm btn-outline-primary">
+                                       {% if not trip.end_date %}补全{% else %}编辑{% endif %}
+                                    </a>
+                                    {% if not trip.end_date %}
+            <button type="button" class="btn btn-sm btn-outline-info" 
+                    onclick="copyTripStart('{{ trip.reason }}', '{{ trip.participants|map(attribute='name')|join('、') }}', '{{ trip.destination }}', '{{ trip.start_date.strftime('%m月%d号') }}')">
+                📋 复制出发
+            </button>
+        {% else %}
+            <button type="button" class="btn btn-sm btn-outline-success" 
+                    onclick="copyTripEnd('{{ trip.reason }}', '{{ trip.participants|map(attribute='name')|join('、') }}')">
+                📋 复制归队
+            </button>
+        {% endif %}
+                                    {% if current_user.username == 'admin' %}
+                                    <a href="{{ url_for('trip.trip_delete', id=trip.id) }}" 
+                                       class="btn btn-sm btn-outline-danger" 
+                                       onclick="return confirm('确定要删除这条最新的记录吗？')">删除</a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">暂无出差记录</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+/**
+ * 核心复制函数
+ * 增加了传统 execCommand 兼容，防止在非 HTTPS 环境下 navigator.clipboard 失效
+ */
+function copyToClipboard(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(() => {
+            alert("✅ 报备内容已复制！");
+        }).catch(() => {
+            fallbackCopy(text);
+        });
+    } else {
+        fallbackCopy(text);
+    }
+}
+
+function fallbackCopy(text) {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    document.body.appendChild(textArea);
+    textArea.select();
+    try {
+        document.execCommand('copy');
+        alert("✅ 报备内容已复制！");
+    } catch (err) {
+        alert("无法自动复制，请手动选择文字复制。");
+    }
+    document.body.removeChild(textArea);
+}
+
+// 出发模板：蔡路派出所驻点 + 事由 (换行) 出差人员 + 目的地 + 归队不详 + 出发时间
+function copyTripStart(reason, names, dest, startDate) {
+    const baseTitle = "蔡路派出所驻点配合民警出差";
+    const text = `${baseTitle}${reason}\n出差人员：${names}\n目的地: ${dest}\n归队时间：不详\n出发时间: ${startDate}`;
+    copyToClipboard(text);
+}
+
+// 归队模板：蔡路派出所驻点 + 事由，姓名，出差结束，已归队。
+function copyTripEnd(reason, names) {
+    const baseTitle = "蔡路派出所驻点配合民警出差";
+    const text = `${baseTitle}${reason}，${names}，出差结束，已归队。`;
+    copyToClipboard(text);
+}
+</script>
+<style>
+/* 增加一个简单的闪烁效果，提醒有正在出差的人员 */
+.spinner-grow-sm {
+    width: 0.6rem;
+    height: 0.6rem;
+    vertical-align: middle;
+}
+</style>
+{% endblock %}
