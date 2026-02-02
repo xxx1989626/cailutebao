@@ -353,10 +353,29 @@ class BusinessTrip(db.Model):
     start_date = db.Column(db.Date, nullable=False)
     end_date = db.Column(db.Date, nullable=True)
     total_days = db.Column(db.Integer)  # 存储天数，方便后续SUM汇总
-    reason = db.Column(db.Text)
     status = db.Column(db.String(20), default='进行中')
     
     # 建立多对多关联
     participants = db.relationship('EmploymentCycle', 
                                   secondary=trip_participants,
                                   backref=db.backref('trips', lazy='dynamic'))
+
+# ==================== 请假管理模型 ====================
+class LeaveRecord(db.Model):
+    __tablename__ = 'leave_records'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # 关联人员（支持多人请假或单人，通常请假为单人）
+    user_id = db.Column(db.Integer, db.ForeignKey('employment_cycles.id'), nullable=False)
+    user = db.relationship('EmploymentCycle', backref='leaves')
+    
+    leave_type = db.Column(db.String(20), nullable=False)  # 事假、病假、年假等
+    reason = db.Column(db.Text)                            # 请假事由
+    start_date = db.Column(db.Date, nullable=False)        # 开始时间
+    end_date = db.Column(db.Date)                          # 预计结束时间
+    actual_end_date = db.Column(db.Date)                   # 实际销假时间
+    
+    total_days = db.Column(db.Float)                       # 请假天数
+    status = db.Column(db.String(20), default='请假中')    # 请假中、已销假、待审核
+    
+    created_at = db.Column(db.DateTime, default=datetime.now)

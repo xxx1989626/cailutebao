@@ -147,11 +147,13 @@
                                         <i class="bi bi-basket3-fill"></i> 消耗
                                     </button>
                                     {% endif %}
-                                    <!-- 补充库存按钮 -->          
+                                    <!-- 补充库存按钮 -->     
+                                     {% if asset.type != '固定资产' %}     
                                     <button class="btn btn-success" data-bs-toggle="modal"
                                         data-bs-target="#supplementModal">
                                         <i class="bi bi-plus-circle"></i> 补充
                                     </button>
+                                    {% endif %}
                                     <!-- 维修/修复按钮：排除消耗品类型 -->
                                     {% if asset.type != '消耗品' %}
                                         {% if asset.status == '维修中' %}

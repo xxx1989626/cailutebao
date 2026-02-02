@@ -241,6 +241,7 @@
                     <div class="drop-zone w-100 flex-grow-1 p-1" id="room-{{ room.id }}">
                         <!-- 住宿人员列表 -->
                         {% for emp in room.occupants | sort(attribute='is_room_leader', reverse=True) %}
+                        {% if emp.status == '在职' %}
                         <div class="item-tag badge employee-tag {% if emp.is_room_leader %}leader-tag{% else %}normal-tag{% endif %}" 
                              data-id="{{ emp.id }}" data-type="employee">
                             <span>
@@ -249,6 +250,7 @@
                             </span>
                             <small class="badge bg-light text-dark occupied-tag">已入宿</small>
                         </div>
+                        {% endif %}
                         {% endfor %}
 
                         <!-- 资产列表 -->

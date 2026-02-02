@@ -37,6 +37,12 @@ def serve_uploads(filename):
     # 那么这里的 filename 接收到的就是 "asset/xxx.jpg"
     # 我们应该去 "D:\cailu\uploads" 下面找这个 filename
     return send_from_directory(r"D:\cailu\uploads", filename)
+
+# 新增：允许访问根目录下的文件（用于微信验证）
+@app.route('/<filename>')
+def serve_root_file(filename):
+    # 直接从项目根目录返回文件（微信验证文件放在根目录）
+    return send_from_directory(app.root_path, filename)
 # ==================== Jinja2 自定义过滤器 ====================
 from datetime import datetime , date # 确保导入（已在上文）
 
@@ -317,6 +323,7 @@ if __name__ == '__main__':
             from routes.scheduling import SCHEDULING_PERMISSIONS
             from routes.dorm import DORM_PERMISSIONS
             from routes.trip import TRIP_PERMISSIONS
+            from routes.leave import LEAVE_PERMISSIONS
             
             register_module_permissions('hr', HR_PERMISSIONS)
             register_module_permissions('asset', ASSET_PERMISSIONS)
@@ -324,6 +331,7 @@ if __name__ == '__main__':
             register_module_permissions('scheduling', SCHEDULING_PERMISSIONS)
             register_module_permissions('dorm', DORM_PERMISSIONS)
             register_module_permissions('trip', TRIP_PERMISSIONS)
+            register_module_permissions('leave', LEAVE_PERMISSIONS)
         except ImportError:
             pass  # 模块未定义权限列表，跳过
         

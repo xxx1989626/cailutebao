@@ -44,6 +44,8 @@ def init_dorm_data():
             target_type = "卫生间"
         elif num == "113室":
             target_type = "走廊"
+        elif num == "114室":
+            target_type = "车棚"
         else:
             target_type = "宿舍"  # 兜底默认
         

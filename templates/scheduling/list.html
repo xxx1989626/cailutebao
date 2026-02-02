@@ -66,6 +66,7 @@
         <a href="{{ url_for('scheduling.schedule_list', tab='calendar') }}" class="{% if active_tab == 'calendar' %}active{% endif %}">📅 排班视图</a>
         <a href="{{ url_for('scheduling.schedule_list', tab='posts') }}" class="{% if active_tab == 'posts' %}active{% endif %}">🛠️ 岗位设置</a>
         <a href="{{ url_for('trip.trip_list') }}" class="active">💼 出差设置</a>
+        <a href="{{ url_for('leave.leave_list') }}" class="{% if active_tab == 'leave' %}active{% endif %}">📝 请假管理</a>
     </div>
 
     {% if active_tab == 'calendar' %}
@@ -105,6 +106,7 @@
                 <div id="external-events">
     {% for emp in employees %}
         {% set is_away = emp.id in on_trip_ids %}
+        {% set is_on_leave = emp.id in on_leave_ids %} {# 判断是否请假 #}
         <div class="emp-tag fc-event-draggable {% if is_away %}away-status{% endif %}" 
              data-user-id="{{ emp.id }}" 
              data-user-name="{{ emp.name }}">
@@ -114,6 +116,11 @@
                 {% if is_away %}
                     <span class="badge bg-warning text-dark border border-dark-subtle" style="font-size: 0.65rem;">
                         <i class="bi bi-airplane-fill"></i> 出差中
+                    </span>
+                {% endif %}
+                {% if is_on_leave %}
+                    <span class="badge bg-secondary" style="font-size: 0.65rem;">
+                        <i class="bi bi-clock-fill"></i> 请假中
                     </span>
                 {% endif %}
             </div>
@@ -126,7 +133,19 @@
     .away-status {
         background-color: #fffaf0 !important;
         border: 2px dashed #ffc107 !important;
-        opacity: 0.8; /* 稍微透明，暗示不建议排本地班 */
+        opacity: 0.8;
+    }
+
+    /* 请假人员特殊背景：淡粉色点状边框 */
+    .leave-status {
+        background-color: #fff5f5 !important;
+        border: 2px dotted #dc3545 !important;
+        opacity: 0.7; /* 请假权重通常比出差更高，颜色更显眼一点 */
+    }
+    
+    /* 如果一个人既请假又出差（极端情况），叠加样式 */
+    .away-status.leave-status {
+        background: linear-gradient(45deg, #fffaf0, #fff5f5) !important;
     }
 </style>
             </div>
@@ -358,37 +377,37 @@ function importExcelSchedule(input) {
     })
     .catch(err => alert("导入失败，请检查文件格式"));
 }
-// 清空本月排班数据
+// 清空本月排班数据 - 动态获取日历当前月份版
 function clearCurrentMonth() {
-    // 增加一次确认，防止误点
-    if (!confirm("确定要清空 2026年1月 的所有排班数据吗？此操作不可恢复！")) {
+    // 1. 动态获取当前月份 (假设使用 FullCalendar)
+    let targetMonth = '2026-01'; // 默认值
+    if (typeof calendar !== 'undefined') {
+        const date = calendar.getDate();
+        targetMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    }
+
+    // 2. 确认提示显示动态月份
+    if (!confirm(`确定要清空 ${targetMonth} 的所有排班数据吗？此操作不可恢复！`)) {
         return;
     }
 
     fetch('/scheduling/clear_month', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ month: '2026-01' }) // 你可以根据当前日历显示的月份动态获取
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ month: targetMonth }) // 使用动态变量
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
             alert(data.message);
-            // 刷新日历
-            if (typeof calendar !== 'undefined') {
-                calendar.refetchEvents();
-            } else {
-                location.reload();
-            }
+            typeof calendar !== 'undefined' ? calendar.refetchEvents() : location.reload();
         } else {
             alert("错误: " + data.message);
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert("请求失败，请检查网络或后端日志");
+        alert("请求失败");
     });
 }
 

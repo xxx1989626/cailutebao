@@ -5,16 +5,10 @@ from models import db, BusinessTrip, EmploymentCycle
 from utils import perm
 from datetime import datetime
 from sqlalchemy.orm import joinedload
+from io import BytesIO
+import pandas as pd
 
 trip_bp = Blueprint('trip', __name__, url_prefix='/trip')
-
-# 出差模块权限定义
-TRIP_PERMISSIONS = [
-    ('view', '查看出差', '查看所有出差记录'),
-    ('add', '登记出差', '新增出差申请'),
-    ('edit', '编辑出差记录', '编辑出差记录'),
-    ('delete', '删除记录', '删除出差历史'),
-]
 
 # ==================== 出差列表 ====================
 @trip_bp.route('/list')
@@ -89,7 +83,7 @@ def trip_add():
             target_type='BusinessTrip',
             target_id=new_trip.id,
             description=f"登记了人员出差：{names}，目的地：{new_trip.destination}，出发时间：{start_date}",
-            **locals()
+            cycle_id=participant_ids[0] if participant_ids else None
         )
         
         db.session.commit()
@@ -148,8 +142,7 @@ def trip_edit(id):
                 target_type='BusinessTrip',
                 target_id=trip.id,
                 description=f"{names} 的出差记录已更新。目的地：{trip.destination}，当前状态：{trip.status}",
-                cycle_id=p.id,  # 传入 cycle_id，触发你 log_action 里的场景2，自动识别被操作人
-                **locals()
+                cycle_id=participant_ids[0] if participant_ids else None
             )
         # --- 审计与通知逻辑结束 ---
 
@@ -172,36 +165,48 @@ def trip_delete(id):
     return redirect(url_for('trip.trip_list'))
 
 # ==================== 导出出差 ====================
-@trip_bp.route('/export')
+@trip_bp.route('/export_report')
 @login_required
-@perm.require('trip.view')
 def export_trip_report():
-    """导出出差报表 (CSV格式，可用Excel打开)"""
-    trips = BusinessTrip.query.order_by(BusinessTrip.start_date.asc()).all()
+    year = request.args.get('year', datetime.now().year, type=int)
     
-    # 创建内存文件
-    output = StringIO()
-    # 写入 BOM 防止中文乱码
-    output.write('\ufeff')
-    writer = csv.writer(output)
+    # 1. 获取数据
+    trips = BusinessTrip.query.filter(
+        db.extract('year', BusinessTrip.start_date) == year
+    ).order_by(BusinessTrip.id.desc()).all()
     
-    # 写入表头 (参考你上传的模板)
-    writer.writerow(['序号', '出差日期', '出差目的地', '出差人员', '归队日期', '出差时长(天)', '事由'])
+    # 2. 构造数据列表
+    data = []
+    for index, t in enumerate(trips):
+        data.append({
+            "出差次数": f"第{len(trips) - index}次",
+            "出差人员": "、".join([p.name for p in t.participants]),
+            "目的地": t.destination,
+            "开始日期": t.start_date,
+            "归队日期": t.end_date or "执行中",
+            "天数": t.total_days or "--",
+            "状态": t.status
+        })
     
-    for index, trip in enumerate(trips, 1):
-        # 将多个参与人合并为一个字符串，或者分行显示
-        names = "、".join([p.name for p in trip.participants])
-        writer.writerow([
-            index,
-            trip.start_date.strftime('%Y.%m.%d'),
-            trip.destination,
-            names,
-            trip.end_date.strftime('%Y.%m.%d') if trip.end_date else "尚未归队",
-            trip.total_days if trip.total_days else 0,
-            trip.reason
-        ])
+    # 3. 使用 Pandas 转换为 Excel
+    df = pd.DataFrame(data)
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='出差记录')
     
+    output.seek(0)
+    
+    # 4. 生成响应对象
     response = make_response(output.getvalue())
-    response.headers["Content-Disposition"] = "attachment; filename=business_trip_report.csv"
-    response.headers["Content-type"] = "text/csv"
+    response.headers['Content-Disposition'] = f'attachment; filename=Business_Trips_{year}.xlsx'
+    response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    
     return response
+
+# 出差模块权限定义
+TRIP_PERMISSIONS = [
+    ('view', '查看出差', '查看所有出差记录'),
+    ('add', '登记出差', '新增出差申请'),
+    ('edit', '编辑出差记录', '编辑出差记录'),
+    ('delete', '删除记录', '删除出差历史'),
+]

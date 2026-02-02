@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+    <i class="bi bi-pencil-square"></i> 
+    {{ '编辑请假记录' if leave else '登记请假申请' }}
+</h5>
+            </div>
+            <div class="card-body">
+                
+
+<form method="POST">
+    <div class="mb-3">
+        <label class="form-label">请假人员</label>
+        <select name="user_id" class="form-select" required {% if leave %}disabled{% endif %}>
+            {% for emp in employees %}
+            <option value="{{ emp.id }}" {% if leave and leave.user_id == emp.id %}selected{% endif %}>
+                {{ emp.name }} ({{ emp.post }})
+            </option>
+            {% endfor %}
+        </select>
+        {% if leave %}<input type="hidden" name="user_id" value="{{ leave.user_id }}">{% endif %}
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label class="form-label">请假类型</label>
+            <select name="leave_type" class="form-select" required>
+                {% for type in ['事假', '病假', '年假', '调休', '婚庆/产假'] %}
+                <option value="{{ type }}" {% if leave and leave.leave_type == type %}selected{% endif %}>{{ type }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-6 mb-3">
+            <label class="form-label">开始日期</label>
+            <input type="date" name="start_date" class="form-control" 
+                   value="{{ leave.start_date if leave else today_str }}" required>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label class="form-label">预计结束日期</label>
+            <input type="date" name="end_date" class="form-control" 
+                   value="{{ leave.end_date if leave else '' }}" required>
+        </div>
+        <div class="col-md-6 mb-3">
+            <label class="form-label">天数估算</label>
+            <input type="number" step="0.5" name="total_days" class="form-control" 
+                   value="{{ leave.total_days if leave else '' }}">
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">请假事由</label>
+        <textarea name="reason" class="form-control" rows="3">{{ leave.reason if leave else '' }}</textarea>
+    </div>
+
+    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+        <a href="{{ url_for('leave.leave_list') }}" class="btn btn-light">取消</a>
+        <button type="submit" class="btn btn-primary px-5">保存修改</button>
+    </div>
+</form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const startInput = document.querySelector('input[name="start_date"]');
+    const endInput = document.querySelector('input[name="end_date"]');
+    const daysInput = document.querySelector('input[name="total_days"]');
+
+    function calculateLeaveDays() {
+        const startVal = startInput.value;
+        const endVal = endInput.value;
+
+        // --- 新增：最小值联动逻辑 ---
+        if (startVal) {
+            endInput.min = startVal; // 设置结束日期的最小值为开始日期
+        }
+        // ---------------------------
+
+        if (startVal && endVal) {
+            const startDate = new Date(startVal);
+            const endDate = new Date(endVal);
+            
+            if (endDate >= startDate) {
+                // 计算差值并 +1（包含首尾）
+                const diffTime = endDate.getTime() - startDate.getTime();
+                const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                daysInput.value = diffDays;
+            } else {
+                daysInput.value = 0;
+            }
+        }
+    }
+
+    // 监听两个日期控件的变化
+    // 建议把 'change' 改为 'input'，这样选择日期后会立即触发，不用等失去焦点
+    startInput.addEventListener('input', calculateLeaveDays);
+    endInput.addEventListener('input', calculateLeaveDays);
+
+    // 如果是编辑页面，初始化时跑一遍，确保天数能显示出来
+    if (startInput.value && endInput.value) {
+        calculateLeaveDays();
+    }
+});
+</script>
+
+{% endblock %}

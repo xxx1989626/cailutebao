@@ -800,7 +800,30 @@ def departure(cycle_id):
             note=f'{cycle.name}离职自动归还'
         )
         db.session.add(history)
+    # 2. 床位占用释放（核心新增逻辑）
+    room_id = cycle.room_id
+    is_room_leader = cycle.is_room_leader
     
+    # 清空队员床位关联
+    cycle.bed_number = None  # 释放床位编号
+    cycle.is_room_leader = False  # 取消宿舍长身份
+    
+    # 若为宿舍长，同步清理房间资产负责人
+    from models import AssetInstance
+    if is_room_leader and room_id:
+        # 清空该房间所有资产个体的负责人
+        AssetInstance.query.filter(
+            AssetInstance.room_id == room_id
+        ).update({AssetInstance.user_id: None})
+        
+        # 同步更新资产主表的当前使用人
+        asset_ids = db.session.query(AssetInstance.asset_id).filter(
+            AssetInstance.room_id == room_id
+        ).distinct().subquery()
+        Asset.query.filter(
+            Asset.id.in_(asset_ids)
+        ).update({Asset.current_user_id: None})
+
     # 2. 正常离职人事逻辑
     reason = request.form.get('departure_reason', '').strip()
     dep_date_str = request.form.get('departure_date')
@@ -815,6 +838,8 @@ def departure(cycle_id):
     cycle.archives = json.dumps(archives, ensure_ascii=False)
     
     # 3. 【核心新增】写入管理员审计日志
+    bed_msg = " | 已释放床位" if cycle.bed_number else ""
+    leader_msg = " | 已取消宿舍长身份" if is_room_leader else ""
     asset_msg = f" | 自动回收资产: {', '.join(returned_assets_summary)}" if returned_assets_summary else " | 无资产需回收"
     log_description = (
         f"为队员【{cycle.name}】办理了离职手续。"
@@ -834,7 +859,7 @@ def departure(cycle_id):
     # 4. 提交所有变更（资产 + 人事 + 日志）
     try:
         db.session.commit()
-        flash(f'离职成功，已自动归还全部个人装备({len(returned_assets_summary)}项)', 'success')
+        flash(f'离职成功，已自动归还全部个人装备({len(returned_assets_summary)}项)，并释放床位', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'办理离职失败：{str(e)}', 'danger')

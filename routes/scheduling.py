@@ -7,7 +7,7 @@ from datetime import datetime
 import pandas as pd
 import io
 import re
-from models import BusinessTrip
+from models import BusinessTrip, LeaveRecord
 
 scheduling_bp = Blueprint('scheduling', __name__, url_prefix='/scheduling')
 
@@ -58,13 +58,24 @@ def schedule_list():
     for trip in active_trips:
         for p in trip.participants:
             on_trip_ids.add(p.id)
+    # 查找：状态为“请假中”的所有记录        
+    active_leaves = LeaveRecord.query.filter(
+    LeaveRecord.status == '请假中',
+    LeaveRecord.start_date <= today,
+    LeaveRecord.end_date >= today
+    ).all()
+
+    on_leave_ids = set()
+    for leave in active_leaves:
+        on_leave_ids.add(leave.user_id)
     # ---------------------------------------
 
     return render_template('scheduling/list.html', 
                            employees=employees, 
                            posts=posts, 
                            active_tab=active_tab,
-                           on_trip_ids=on_trip_ids) # 将 ID 集合传给前端
+                           on_trip_ids=on_trip_ids,
+                           on_leave_ids=on_leave_ids) # 将 ID 集合传给前端
 
 # --- 功能：为 FullCalendar 插件提供排班数据接口 ---
 @scheduling_bp.route('/api/get_shifts')

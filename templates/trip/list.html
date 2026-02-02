@@ -2,10 +2,11 @@
 {% block title %}出差管理{% endblock %}
 {% block content %}
 <div class="container mt-4">
-    <div class="hr-tabs mb-3">
-        <a href="{{ url_for('scheduling.schedule_list', tab='calendar') }}">📅 排班视图</a>
-        <a href="{{ url_for('scheduling.schedule_list', tab='posts') }}">🛠️ 岗位设置</a>
-        <a href="{{ url_for('trip.trip_list') }}" class="active">💼 出差管理</a>
+    <div class="hr-tabs">
+        <a href="{{ url_for('scheduling.schedule_list', tab='calendar') }}" class="{% if active_tab == 'calendar' %}active{% endif %}">📅 排班视图</a>
+        <a href="{{ url_for('scheduling.schedule_list', tab='posts') }}" class="{% if active_tab == 'posts' %}active{% endif %}">🛠️ 岗位设置</a>
+        <a href="{{ url_for('trip.trip_list') }}" class="active">💼 出差设置</a>
+        <a href="{{ url_for('leave.leave_list') }}" class="{% if active_tab == 'leave' %}active{% endif %}">📝 请假管理</a>
     </div>
 
     <div class="card shadow">
@@ -23,6 +24,9 @@
                 {% endfor %}
             </ul>
         </div>
+        <a href="{{ url_for('trip.export_trip_report', year=current_year) }}" class="btn btn-sm btn-outline-success">
+    <i class="bi bi-download"></i> 导出报表
+</a>
         <a href="{{ url_for('trip.trip_add') }}" class="btn btn-sm btn-light">登记出发</a>
     </div>
 </div>
