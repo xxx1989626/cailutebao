@@ -193,11 +193,13 @@ def hr_add():
             household_city=request.form.get('household_city'),#户籍市
             household_district=request.form.get('household_district'),#户籍区
             household_town=request.form.get('household_town'),#户籍镇
+            household_village=request.form.get('household_village'),#户籍村/居委
             household_detail=request.form.get('household_detail'),#户籍详址
             residence_province=request.form.get('residence_province'),#居住省
             residence_city=request.form.get('residence_city'),#居住市
             residence_district=request.form.get('residence_district'),#居住区
             residence_town=request.form.get('residence_town'),#居住镇
+            residence_village=request.form.get('residence_village'),#居住村/居委
             residence_detail=request.form.get('residence_detail'),#居住详址
             military_service='military_service' in request.form,#兵役情况
             enlistment_date=parse_date(request.form.get('enlistment_date')),#入伍日期
@@ -324,11 +326,13 @@ def self_register():
             household_city=request.form.get('household_city'),#户籍市
             household_district=request.form.get('household_district'),#户籍区
             household_town=request.form.get('household_town'),#户籍镇
+            household_village=request.form.get('household_village'),#户籍村/居委
             household_detail=request.form.get('household_detail'),#户籍详址
             residence_province=request.form.get('residence_province'),#居住省
             residence_city=request.form.get('residence_city'),#居住市
             residence_district=request.form.get('residence_district'),#居住区
             residence_town=request.form.get('residence_town'),#居住镇
+            residence_village=request.form.get('residence_village'),#居住村/居委
             residence_detail=request.form.get('residence_detail'),#居住详址
             military_service='military_service' in request.form,#兵役情况
             enlistment_date=parse_date(request.form.get('enlistment_date')),#入伍日期
@@ -344,6 +348,7 @@ def self_register():
             emergency_name=request.form.get('emergency_name'),#紧急联系人
             emergency_relation=request.form.get('emergency_relation'),#联系人关系
             emergency_phone=request.form.get('emergency_phone'),#联系人电话
+            salary_mode=request.form['salary_mode'],#薪资模式
             position=request.form['position'],#职位
             post=request.form['post'],#岗位
             hat_size=request.form.get('hat_size'),#帽子尺寸
@@ -352,7 +357,7 @@ def self_register():
             winter_uniform=request.form.get('winter_uniform'),#冬装尺寸
             shoe_size=request.form.get('shoe_size'),#鞋码
             archives=archives,#其他证书档案
-            salary_mode=request.form['salary_mode'],#薪资模式
+            
         )
 
         try:
@@ -540,9 +545,9 @@ def edit_cycle(cycle_id):
             'name': '姓名', 'phone': '手机号', 'ethnic': '民族', 'politics': '政治面貌',
             'education': '学历', 'position': '职位', 'post': '岗位', 'salary_mode': '工资模式',
             'hire_date': '入职日期', 'household_province': '户籍省', 'household_city': '户籍市',
-            'household_district': '户籍区', 'household_town': '户籍镇', 'household_detail': '户籍详址',
+            'household_district': '户籍区', 'household_town': '户籍镇', 'household_village': '户籍村','household_detail': '户籍详址',
             'residence_province': '居住省', 'residence_city': '居住市', 'residence_district': '居住区',
-            'residence_town': '居住镇', 'residence_detail': '居住详址', 'military_service': '服役经历',
+            'residence_town': '居住镇', 'residence_village': '居住村', 'residence_detail': '居住详址', 'military_service': '服役经历',
             'enlistment_date': '入伍日期', 'unit_number': '部队代号', 'branch': '兵种',
             'discharge_date': '退伍日期', 'has_license': '驾照', 'license_date': '领证日期',
             'license_type': '驾照类型', 'license_expiry': '驾照到期', 'security_license_number': '保安证号',

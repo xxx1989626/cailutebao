@@ -157,52 +157,62 @@
     </audio>
 
     <script>
-        let globalAlarmInterval = null;
+    let globalAlarmInterval = null;
+    window.originalTitle = document.title;
+    let isChecking = false; // 状态锁，防止并发请求
 
-        function doGlobalCheck() {
-            // 使用绝对路径请求接口
-            fetch("/notification/unread_count")
-                .then(response => response.json())
-                .then(data => {
-                    const count = data.unread_count;
-                    const audio = document.getElementById('globalNoticeAudio');
+    function doGlobalCheck() {
+        if (isChecking) return; // 如果上一个请求还没回来，不发新的
+        isChecking = true;
 
-                    if (count > 0) {
-                        // 启动报警
-                        if (!globalAlarmInterval) {
-                            console.log("全局监控：发现新消息，开始报警");
-                            globalAlarmInterval = setInterval(() => {
-                                audio.play().catch(e => {
-                                    // 如果被拦截，在控制台静默，不干扰用户
-                                });
-                            }, 2000); // 每2秒嘀一声
-                        }
-                        // 在所有页面的标签栏显示数量
-                        document.title = `(新消息 ${count}) ` + (window.originalTitle || document.title);
-                    } else {
-                        // 停止报警
-                        if (globalAlarmInterval) {
-                            clearInterval(globalAlarmInterval);
-                            globalAlarmInterval = null;
-                        }
-                        if (window.originalTitle) document.title = window.originalTitle;
+        fetch("/notification/unread_count")
+            .then(response => response.json())
+            .then(data => {
+                isChecking = false; // 请求结束，释放锁
+                const count = data.unread_count;
+                const audio = document.getElementById('globalNoticeAudio');
+
+                if (count > 0) {
+                    // 1. 更新标题
+                    document.title = `(新消息 ${count}) ` + window.originalTitle;
+                    
+                    // 2. 启动/维持报警音
+                    if (!globalAlarmInterval) {
+                        console.log("全局监控：发现新消息");
+                        globalAlarmInterval = setInterval(() => {
+                            audio.play().catch(e => { /* 忽略静音拦截错误 */ });
+                        }, 2000); 
                     }
-                }).catch(err => console.log("通知接口请求失败"));
-        }
+                } else {
+                    // 3. 停止报警，恢复标题
+                    if (globalAlarmInterval) {
+                        clearInterval(globalAlarmInterval);
+                        globalAlarmInterval = null;
+                    }
+                    document.title = window.originalTitle;
+                }
+            })
+            .catch(err => {
+                isChecking = false;
+                console.log("通知接口请求失败");
+            });
+    }
 
-        // 记录原始标题，方便恢复
-        window.originalTitle = document.title;
+    // 逻辑优化：每 5 秒检查一次，其实对于“队务管理”来说，5秒已经非常及时了
+    // 相比于 3秒，5秒能减少服务器 40% 的压力
+    setInterval(doGlobalCheck, 5000);
 
-        // 1. 立即执行一次
-        doGlobalCheck();
+    // 初始执行
+    doGlobalCheck();
 
-        // 2. 每 3 秒检查一次 (解决你说的等太久问题)
-        setInterval(doGlobalCheck, 3000);
-
-        // 3. 激活音频权限 (只要点过页面任何地方就开始生效)
-        document.addEventListener('click', () => {
-            doGlobalCheck();
-        }, { once: true });
-    </script>
+    // 只有在点击时尝试播放一下静音音频，以此解锁浏览器的自动播放限制
+    document.addEventListener('click', () => {
+        const audio = document.getElementById('globalNoticeAudio');
+        audio.play().then(() => {
+            audio.pause(); // 只是为了骗过浏览器权限，不需要真的响
+            console.log("音频权限已激活");
+        }).catch(e => {});
+    }, { once: true });
+</script>
 </body>
 </html>

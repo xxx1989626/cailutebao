@@ -76,16 +76,18 @@ class EmploymentCycle(db.Model):
     education = db.Column(db.String(20))
     
     # 地址
-    household_province = db.Column(db.String(20))
-    household_city = db.Column(db.String(20))
-    household_district = db.Column(db.String(20))
-    household_town = db.Column(db.String(20))
-    household_detail = db.Column(db.String(100))
-    residence_province = db.Column(db.String(20))
-    residence_city = db.Column(db.String(20))
-    residence_district = db.Column(db.String(20))
-    residence_town = db.Column(db.String(20))
-    residence_detail = db.Column(db.String(100))
+    household_province = db.Column(db.String(20)) # 省/直辖市
+    household_city = db.Column(db.String(20)) # 市/市辖区
+    household_district = db.Column(db.String(20)) # 区/县
+    household_town = db.Column(db.String(50))   # 镇/街道
+    household_village = db.Column(db.String(50)) # 新增：村/居委
+    household_detail = db.Column(db.String(255)) # 调大详细地址
+    residence_province = db.Column(db.String(20)) # 省/直辖市
+    residence_city = db.Column(db.String(20)) # 市/市辖区
+    residence_district = db.Column(db.String(20)) # 区/县
+    residence_town = db.Column(db.String(50))    # 镇/街道
+    residence_village = db.Column(db.String(50))  # 新增：村/居委
+    residence_detail = db.Column(db.String(255))  # 调大详细地址
     
     # 资质
     military_service = db.Column(db.Boolean, default=False)

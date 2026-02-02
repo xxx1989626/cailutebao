@@ -77,52 +77,66 @@
 
 <h5 class="border-bottom pb-2 mb-3">地址信息</h5>
 <div class="row mb-4">
-    <div class="col-md-6">
-        <strong class="d-block mb-2">户籍地址</strong>
-        <div class="row g-2 mb-2">
-            <div class="col-3">
-                <input type="text" name="household_province" class="form-control" placeholder="省"
-                    value="{{ employee.household_province or '' }}">
+    <div class="col-md-6 border-end">
+        <strong class="d-block mb-2 text-primary">户籍地址</strong>
+        <div id="hh_address_row" class="row g-2 mb-2">
+            <div class="col">
+                <input type="text" name="household_province" class="form-control amap-node" placeholder="省" list="l_h_p" value="{{ employee.household_province or '' }}" autocomplete="off">
+                <input type="hidden" class="adcode-val">
+                <datalist id="l_h_p"></datalist>
             </div>
-            <div class="col-3">
-                <input type="text" name="household_city" class="form-control" placeholder="市"
-                    value="{{ employee.household_city or '' }}">
+            <div class="col">
+                <input type="text" name="household_city" class="form-control amap-node" placeholder="市" list="l_h_c" value="{{ employee.household_city or '' }}" autocomplete="off">
+                <input type="hidden" class="adcode-val">
+                <datalist id="l_h_c"></datalist>
             </div>
-            <div class="col-3">
-                <input type="text" name="household_district" class="form-control" placeholder="区/县"
-                    value="{{ employee.household_district or '' }}">
+            <div class="col">
+                <input type="text" name="household_district" class="form-control amap-node" placeholder="区/县" list="l_h_d" value="{{ employee.household_district or '' }}" autocomplete="off">
+                <input type="hidden" class="adcode-val">
+                <datalist id="l_h_d"></datalist>
             </div>
-            <div class="col-3">
-                <input type="text" name="household_town" class="form-control" placeholder="镇/街道"
-                    value="{{ employee.household_town or '' }}">
+            <div class="col">
+                <input type="text" name="household_town" class="form-control amap-node" placeholder="镇/街道" list="l_h_t" value="{{ employee.household_town or '' }}" autocomplete="off">
+                <input type="hidden" class="adcode-val">
+                <datalist id="l_h_t"></datalist>
+            </div>
+            <div class="col">
+                <input type="text" name="household_village" class="form-control amap-village" placeholder="村/居委" list="l_h_v" value="{{ employee.household_village or '' }}" autocomplete="off">
+                <datalist id="l_h_v"></datalist>
             </div>
         </div>
-        <input type="text" name="household_detail" class="form-control" placeholder="详细地址（如村、门牌号）"
-            value="{{ employee.household_detail or '' }}">
+        <input type="text" name="household_detail" class="form-control" placeholder="户籍详细地址" value="{{ employee.household_detail or '' }}">
     </div>
 
     <div class="col-md-6">
-        <strong class="d-block mb-2">居住地址 <small class="text-muted"></small></strong>
-        <div class="row g-2 mb-2">
-            <div class="col-3">
-                <input type="text" name="residence_province" class="form-control" placeholder="省"
-                    value="{{ employee.residence_province or '' }}">
+        <strong class="d-block mb-2 text-success">居住地址</strong>
+        <div id="res_address_row" class="row g-2 mb-2">
+            <div class="col">
+                <input type="text" name="residence_province" class="form-control amap-node" placeholder="省" list="l_r_p" value="{{ employee.residence_province or '' }}" autocomplete="off">
+                <input type="hidden" class="adcode-val">
+                <datalist id="l_r_p"></datalist>
             </div>
-            <div class="col-3">
-                <input type="text" name="residence_city" class="form-control" placeholder="市"
-                    value="{{ employee.residence_city or '' }}">
+            <div class="col">
+                <input type="text" name="residence_city" class="form-control amap-node" placeholder="市" list="l_r_c" value="{{ employee.residence_city or '' }}" autocomplete="off">
+                <input type="hidden" class="adcode-val">
+                <datalist id="l_r_c"></datalist>
             </div>
-            <div class="col-3">
-                <input type="text" name="residence_district" class="form-control" placeholder="区/县"
-                    value="{{ employee.residence_district or '' }}">
+            <div class="col">
+                <input type="text" name="residence_district" class="form-control amap-node" placeholder="区/县" list="l_r_d" value="{{ employee.residence_district or '' }}" autocomplete="off">
+                <input type="hidden" class="adcode-val">
+                <datalist id="l_r_d"></datalist>
             </div>
-            <div class="col-3">
-                <input type="text" name="residence_town" class="form-control" placeholder="镇/街道"
-                    value="{{ employee.residence_town or '' }}">
+            <div class="col">
+                <input type="text" name="residence_town" class="form-control amap-node" placeholder="镇/街道" list="l_r_t" value="{{ employee.residence_town or '' }}" autocomplete="off">
+                <input type="hidden" class="adcode-val">
+                <datalist id="l_r_t"></datalist>
+            </div>
+            <div class="col">
+                <input type="text" name="residence_village" class="form-control amap-village" placeholder="村/居委" list="l_r_v" value="{{ employee.residence_village or '' }}" autocomplete="off">
+                <datalist id="l_r_v"></datalist>
             </div>
         </div>
-        <input type="text" name="residence_detail" class="form-control" placeholder="详细地址（如村、门牌号）"
-            value="{{ employee.residence_detail or '' }}">
+        <input type="text" name="residence_detail" class="form-control" placeholder="居住详细地址" value="{{ employee.residence_detail or '' }}">
     </div>
 </div>
 
@@ -358,4 +372,177 @@
             certIndex++;
         });
     }
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const QQ_KEY = "YJOBZ-KKW3V-Z5TPU-5F6OG-4CPWV-RPFKU"; 
+    const DIRECT_CITIES = ["北京市", "上海市", "天津市", "重庆市"];
+
+    function setupTencentCascade(containerId) {
+        const container = document.querySelector(containerId);
+        if (!container) return;
+
+        const allInputs = container.querySelectorAll('input.form-control:not([name*="detail"])');
+        
+        // --- 新增：页面加载时初始化回显 ---
+        initEcho(allInputs);
+
+        allInputs.forEach((input, index) => {
+            // 1. 聚焦加载逻辑
+            input.addEventListener('focus', function() {
+                const list = document.getElementById(this.getAttribute('list'));
+                if (!list || list.innerHTML !== "") return;
+                loadLevelData(allInputs, index);
+            });
+
+            // 2. 变更级联重置
+            input.addEventListener('change', function() {
+                updateAdcode(this);
+                
+                // 直辖市特殊逻辑
+                if (index === 0 && DIRECT_CITIES.includes(this.value)) {
+                    allInputs[1].value = "市辖区";
+                    const provinceHidden = this.parentNode.querySelector('.adcode-val');
+                    const cityHidden = allInputs[1].parentNode.querySelector('.adcode-val');
+                    if (cityHidden && provinceHidden) cityHidden.value = provinceHidden.value;
+                }
+
+                // 清空后级
+                for (let i = index + 1; i < allInputs.length; i++) {
+                    allInputs[i].value = "";
+                    const h = allInputs[i].parentNode.querySelector('.adcode-val');
+                    if (h) h.value = "";
+                    const l = document.getElementById(allInputs[i].getAttribute('list'));
+                    if (l) l.innerHTML = "";
+                }
+            });
+        });
+
+        // 3. 村级动态搜索
+        allInputs[4].addEventListener('input', function() {
+            searchVillages(container, this.value.trim());
+        });
+    }
+
+    // --- 新增函数：初始化回显逻辑 ---
+    async function initEcho(nodes) {
+        // 第一步：如果省份有值，先加载省份列表并填充adcode
+        await loadLevelData(nodes, 0);
+        updateAdcode(nodes[0]);
+
+        // 第二步：循环处理后续级别
+        for (let i = 1; i < nodes.length; i++) {
+            if (nodes[i-1].value && nodes[i].value) {
+                await loadLevelData(nodes, i);
+                updateAdcode(nodes[i]);
+            }
+        }
+    }
+
+    // 更新当前 input 对应的 adcode-val
+    function updateAdcode(input) {
+        const list = document.getElementById(input.getAttribute('list'));
+        const hiddenInput = input.parentNode.querySelector('.adcode-val');
+        if (list && hiddenInput) {
+            const selected = Array.from(list.options).find(o => o.value === input.value);
+            if (selected) hiddenInput.value = selected.dataset.id;
+        }
+    }
+
+    // 封装数据加载，支持 Promise 以便 initEcho 顺序执行
+    function loadLevelData(nodes, index) {
+        return new Promise((resolve) => {
+            const input = nodes[index];
+            const list = document.getElementById(input.getAttribute('list'));
+            let params = { key: QQ_KEY };
+
+            if (index > 0) {
+                const parentId = getPrevAdcode(nodes, index);
+                if (!parentId) return resolve();
+                params.id = parentId;
+            }
+
+            jsonpRequest(`https://apis.map.qq.com/ws/district/v1/getchildren`, params, (data) => {
+                if (data.status === 0 && data.result) {
+                    list.innerHTML = '';
+                    data.result[0].forEach(item => {
+                        if (index === 1 && DIRECT_CITIES.includes(nodes[0].value)) {
+                            if (!list.querySelector('option[value="市辖区"]')) {
+                                addOption(list, "市辖区", item.id);
+                            }
+                        } else {
+                            addOption(list, item.fullname || item.name, item.id);
+                        }
+                    });
+                }
+                resolve();
+            });
+        });
+    }
+
+    // 搜索村落逻辑 (保持不变)
+    function searchVillages(container, keyword) {
+        const allInputs = container.querySelectorAll('input.form-control:not([name*="detail"])');
+        const townName = allInputs[3].value;
+        const districtName = allInputs[2].value;
+        const list = document.getElementById(allInputs[4].getAttribute('list'));
+        if (!districtName) return;
+
+        jsonpRequest(`https://apis.map.qq.com/ws/place/v1/suggestion`, {
+            keyword: townName + " " + keyword,
+            region: districtName,
+            region_fix: 1,
+            policy: 1,
+            key: QQ_KEY
+        }, (data) => {
+            if (data.status === 0 && data.data) {
+                list.innerHTML = '';
+                data.data.forEach(item => {
+                    const cat = item.category || "";
+                    if (cat.includes("行政地名") || cat.includes("村") || cat.includes("居") || cat.includes("住宅")) {
+                        let cleanName = item.title.replace(districtName, '').replace(townName, '');
+                        if(!cleanName.includes("政府") && !cleanName.includes("办事处") && cleanName.length > 0) {
+                            addOption(list, cleanName, item.id);
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    function getPrevAdcode(nodes, currentIndex) {
+        if (currentIndex === 2 && DIRECT_CITIES.includes(nodes[0].value)) {
+            const p = nodes[0].parentNode.querySelector('.adcode-val');
+            return p ? p.value : "";
+        }
+        const prev = nodes[currentIndex - 1].parentNode.querySelector('.adcode-val');
+        return prev ? prev.value : "";
+    }
+
+    function addOption(list, text, id) {
+        const opt = document.createElement('option');
+        opt.value = text;
+        opt.dataset.id = id;
+        list.appendChild(opt);
+    }
+
+    function jsonpRequest(url, params, callback) {
+        const callbackName = 'qq_cb_' + Math.random().toString(36).substr(2, 9);
+        window[callbackName] = function(data) {
+            callback(data);
+            document.body.removeChild(script);
+            delete window[callbackName];
+        };
+        const script = document.createElement('script');
+        params.output = 'jsonp';
+        params.callback = callbackName;
+        const queryString = Object.keys(params).map(k => `${k}=${encodeURIComponent(params[k])}`).join('&');
+        script.src = `${url}?${queryString}`;
+        document.body.appendChild(script);
+    }
+
+    setupTencentCascade('#hh_address_row');
+    setupTencentCascade('#res_address_row');
+});
 </script>
