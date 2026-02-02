@@ -1,26 +1,28 @@
-# 忽略数据库
-*.db
+# --- 数据库与数据 ---
 *.db-journal
 data/database.db
 
-# 忽略 Python 缓存
+# --- Python 缓存 ---
 __pycache__/
 *.py[cod]
 *$py.class
 
-# 忽略 IDE 和系统文件
+# --- IDE 与 系统文件 ---
 .vscode/
 .DS_Store
+Thumbs.db
 
-# 忽略你之前的压缩包
+# --- 压缩包与证书 ---
 *.rar
 *.zip
+*.7z
 server.crt
 server.key
-.gitignore
 
-
-d5c7f0bcc5e6ef2aef14317ac3fe05e3.txt
-merged_project_code.txt
-.gitignore
+# --- 敏感信息与临时文件 ---
 .env
+d5c7f0bcc5e6ef2aef14317ac3f05e3.txt
+merged_project_code.txt
+
+# --- 脚本文件 (如果你确认不需要追踪它) ---
+merge_code.py
