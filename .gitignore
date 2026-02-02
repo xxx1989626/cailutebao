@@ -22,3 +22,5 @@ server.key
 
 d5c7f0bcc5e6ef2aef14317ac3fe05e3.txt
 merged_project_code.txt
+.gitignore
+.env

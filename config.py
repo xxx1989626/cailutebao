@@ -3,6 +3,20 @@
 
 import os
 from datetime import datetime
+from dotenv import load_dotenv
+
+# 外部API（用于动态获取选项）
+load_dotenv()
+class Config:
+    # 从环境变量中获取 Key，如果获取不到则为空字符串
+    TENCENT_KEY = os.getenv("TENCENT_KEY")
+    AMAP_KEY = os.getenv("AMAP_KEY", "")
+    
+    # 其他配置...
+    API_ENDPOINTS = {
+        'tencent_division': 'https://apis.map.qq.com/ws/district/v1/getchildren',
+        'tencent_suggestion': 'https://apis.map.qq.com/ws/place/v1/suggestion',
+    }
 
 # 项目根目录绝对路径（用于文件上传、数据库定位）
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -22,25 +36,6 @@ SECRET_KEY = 'cailutebao-local-dev-secret-key-2025'
 
 # 分页配置
 PER_PAGE = 20
-
-# 外部API（用于动态获取选项）
-API_ENDPOINTS = {
-    # 高德行政区划 API（省市区镇四级联动）
-    'amap_division': 'https://restapi.amap.com/v3/config/district',
-
-    # 中国56个民族
-    'ethnic': 'https://api.example.com/ethnic',
-
-    # 政治面貌
-    'politics': 'https://api.example.com/politics',
-
-    # 学历
-    'education': 'https://api.example.com/education',
-}
-
-# 高德 API KEY
-AMAP_KEY = "156d9a978ac9aaa01d7ad802a433e073"
-
 
 # 内置兜底数据（如果网络不可用或API失效，使用本地列表）
 FALLBACK_DATA = {

@@ -9,7 +9,7 @@ from utils import (
     save_uploaded_file, get_ethnic_options, get_politics_options, get_education_options,
     parse_date, format_date, today_str,get_unreturned_assets, perm
 )
-from config import SALARY_MODES, POSITIONS, POSTS
+from config import SALARY_MODES, POSITIONS, POSTS,Config
 from datetime import datetime, timedelta
 from sqlalchemy import or_
 import pandas as pd

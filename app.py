@@ -3,7 +3,7 @@ from flask_migrate import Migrate
 from flask import Flask,jsonify,request,send_from_directory
 from flask_login import LoginManager, current_user
 from utils import today_str,perm,format_date,format_datetime,validate_id_card,get_gender_from_id_card, get_birthday_from_id_card,get_unreturned_assets, register_module_permissions
-from config import SECRET_KEY, DATABASE_PATH, UPLOAD_FOLDER,SALARY_MODES, POSITIONS, POSTS
+from config import Config,SECRET_KEY, DATABASE_PATH, UPLOAD_FOLDER,SALARY_MODES, POSITIONS, POSTS
 from models import db, Asset, User, Permission
 from routes import register_blueprints
 import json
@@ -28,6 +28,11 @@ login_manager.login_message = '请先登录系统'
 login_manager.login_message_category = 'warning'
 login_manager.init_app(app)
 
+
+@app.context_processor
+def inject_keys():
+    # 这样所有模板都能直接使用 {{ TENCENT_KEY_GLOBAL }}
+    return dict(TENCENT_KEY_GLOBAL=Config.TENCENT_KEY)
 
 @app.route('/uploads/<path:filename>')
 def serve_uploads(filename):
