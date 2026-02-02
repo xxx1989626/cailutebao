@@ -137,7 +137,7 @@
         display: flex;
         flex-direction: column;
         justify-content: center;
-        min-width: 70px;
+        min-width: 90px;
         background: rgba(255,255,255,0.3);
         border-radius: 0 4px 4px 0;
     }
@@ -155,7 +155,7 @@
         color: #6c757d;
     }
     .bed-occupant {
-        font-size: 0.6rem;
+        font-size: 0.8rem;
         margin-left: 2px;
     }
     .bed-occupant-filled {
@@ -190,7 +190,7 @@
         <!-- 左侧住宿人员列表 -->
         <div class="col-lg-2">
             <div class="card shadow-sm mb-3 border-success">
-                <div class="card-header bg-success text-white small fw-bold py-1">住宿人员名单</div>
+                <div class="card-header bg-success text-white small fw-bold py-1">住宿人员({{ assigned_emps|length }}人)</div>
                 <div class="card-body p-2 bg-light side-card-body">
                     <div id="side-assigned-list">
                         {% for emp in assigned_emps | sort(attribute='room.number') %}
@@ -204,7 +204,7 @@
             </div>
 
             <div class="card shadow-sm border-secondary">
-                <div class="card-header bg-secondary text-white small fw-bold py-1">不住宿人员名单</div>
+                <div class="card-header bg-secondary text-white small fw-bold py-1">不住宿人员({{ unassigned_emps|length }}人)</div>
                 <div class="card-body p-2 side-card-body">
                     <div id="side-unassigned-list">
                         {% for emp in unassigned_emps %}

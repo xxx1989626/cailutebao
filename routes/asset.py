@@ -1,4 +1,5 @@
-# 资产管理模块 - 完整版（支持消耗品、装备、固定资产）
+# routes/asset.py
+# 资产管理模块
 import os
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, jsonify, current_app
 from flask_login import login_required, current_user
@@ -18,22 +19,21 @@ asset_bp = Blueprint('asset', __name__, url_prefix='/asset')
 def asset_list():
     # 1. 获取筛选参数
     type_filter = request.args.get('type', '固定资产')  # 默认显示固定资产标签
-    status_filter = request.args.get('status', '')    # 具体的某种状态过滤（如：维修中）
+    status_filter = request.args.get('status', '')    # 具体的某种状态过滤
     search = request.args.get('search', '').strip()
     user_filter = request.args.get('user_id')
     
-    # 2. 统计报修中的资产总数（用于标签页红点显示，类似人事的待审核）
-    # 假设你的模型是 AssetInstance，如果是 Asset 请自行替换
+    # 2. 统计报修中的资产总数
     repair_count = Asset.query.filter_by(status='维修中').count()
 
     # 3. 构建基础查询
     query = Asset.query
 
-    # 4. 类型过滤（对应标签页：装备、服饰、消耗品、固定资产、工具）
+    # 4. 类型过滤
     if type_filter:
         query = query.filter_by(type=type_filter)
     
-    # 5. 状态过滤（可选，用于在某个类型下进一步筛选状态）
+    # 5. 状态过滤
     if status_filter:
         query = query.filter_by(status=status_filter)
         
@@ -41,7 +41,7 @@ def asset_list():
     if user_filter:
         query = query.filter_by(current_user_id=user_filter)
 
-    # 7. 搜索过滤（支持名称和SN号/编号）
+    # 7. 搜索过滤
     if search:
         query = query.filter(
             db.or_(
@@ -50,7 +50,7 @@ def asset_list():
             )
         )
 
-    # 8. 字段显示控制（仿照人事逻辑）
+    # 8. 字段显示控制
     show_fields = request.args.getlist('show')
     if not show_fields:
         show_fields = ['name', 'number', 'status', 'location', 'current_user', 'ownership']  # 默认显示的字段
@@ -121,7 +121,7 @@ def perform_asset_save(form_data, files=None):
     db.session.add(asset)
     db.session.flush()
 
-    # 3. 完整找回：子资产个体生成逻辑
+    # 3. 子资产个体生成逻辑
     if asset_type == '固定资产' and quantity > 0:
         # 获取前端传来的自定义编号列表
         custom_suffixes = form_data.getlist('instance_numbers[]')
@@ -141,6 +141,7 @@ def perform_asset_save(form_data, files=None):
 
 @asset_bp.route('/get_form_snippet')
 @login_required
+@perm.require('asset.add')
 def get_form_snippet():
     """供财务页面 AJAX 调用，返回资产表单 HTML"""
     return render_template('asset/_partial_asset_form.html', default_date=today_str())
@@ -806,6 +807,14 @@ def asset_repair_sub():
         note=f"SN: {instance.sn_number} | 备注: {note}"
     )
     db.session.add(history)
+
+    log_action(
+        action_type='子资产维修',
+        target_type='AssetInstance',
+        target_id=instance.id,
+        description=f"单件资产标记维修：{instance.asset_info.name} (SN: {instance.sn_number})。备注: {note}"
+    )
+
     db.session.commit()
     flash(f'子资产 {instance.sn_number} 已标记为维修状态', 'success')
     return redirect(url_for('asset.asset_detail', asset_id=instance.asset_id))
@@ -834,6 +843,14 @@ def asset_scrap_sub():
         note=f"SN: {instance.sn_number} | 原因: {reason}"
     )
     db.session.add(history)
+
+    log_action(
+        action_type='子资产报废',
+        target_type='AssetInstance',
+        target_id=instance.id,
+        description=f"单件资产报废：{asset.name} (SN: {instance.sn_number})。主库存已扣减。"
+    )
+
     db.session.commit()
     flash(f'子资产 {instance.sn_number} 已成功报废', 'warning')
     return redirect(url_for('asset.asset_detail', asset_id=asset.id))
@@ -861,6 +878,14 @@ def asset_complete_repair_sub():
     )
     
     db.session.add(history)
+
+    log_action(
+        action_type='子资产维修完成',
+        target_type='AssetInstance',
+        target_id=instance.id,
+        description=f"单件资产修复：{instance.asset_info.name} (SN: {instance.sn_number})，状态已恢复正常。"
+    )
+    
     db.session.commit()
     
     flash(f'子资产 {instance.sn_number} 维修完成，已恢复正常状态', 'success')

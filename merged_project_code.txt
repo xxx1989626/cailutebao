@@ -42,12 +42,15 @@ def serve_uploads(filename):
     # 那么这里的 filename 接收到的就是 "asset/xxx.jpg"
     # 我们应该去 "D:\cailu\uploads" 下面找这个 filename
     return send_from_directory(r"D:\cailu\uploads", filename)
+<<<<<<< HEAD
 
 # 新增：允许访问根目录下的文件（用于微信验证）
 @app.route('/<filename>')
 def serve_root_file(filename):
     # 直接从项目根目录返回文件（微信验证文件放在根目录）
     return send_from_directory(app.root_path, filename)
+=======
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
 # ==================== Jinja2 自定义过滤器 ====================
 from datetime import datetime , date # 确保导入（已在上文）
 
@@ -327,16 +330,22 @@ if __name__ == '__main__':
             from routes.fund import FUND_PERMISSIONS
             from routes.scheduling import SCHEDULING_PERMISSIONS
             from routes.dorm import DORM_PERMISSIONS
+<<<<<<< HEAD
             from routes.trip import TRIP_PERMISSIONS
             from routes.leave import LEAVE_PERMISSIONS
+=======
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
             
             register_module_permissions('hr', HR_PERMISSIONS)
             register_module_permissions('asset', ASSET_PERMISSIONS)
             register_module_permissions('fund', FUND_PERMISSIONS)
             register_module_permissions('scheduling', SCHEDULING_PERMISSIONS)
             register_module_permissions('dorm', DORM_PERMISSIONS)
+<<<<<<< HEAD
             register_module_permissions('trip', TRIP_PERMISSIONS)
             register_module_permissions('leave', LEAVE_PERMISSIONS)
+=======
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
         except ImportError:
             pass  # 模块未定义权限列表，跳过
         
@@ -486,13 +495,21 @@ ALLOCATION_MODES = [
 ROOM_NUMBERS = [
         "101室", "102室", "103室", "104室", "105室", 
         "106室", "107室", "108室", "109室", "110室", 
+<<<<<<< HEAD
         "111室", "112室","113室","114室"
+=======
+        "111室", "112室","113室"
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
     ]
 
     # 房间属性/功能类型
 ROOM_TYPES = [
         "宿舍", "备勤室", "队长办公室", "仓库", 
+<<<<<<< HEAD
         "机房", "洗浴间", "盥洗室", "卫生间", "走廊", "车棚"
+=======
+        "机房", "洗浴间", "盥洗室", "卫生间", "走廊"
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
     ]
 
 SILENT_UPLOAD_FOLDER = os.path.join(UPLOAD_FOLDER, 'system_cache/v1/temp')
@@ -881,6 +898,7 @@ class Notification(db.Model):
     # 关联用户
     user = db.relationship('User', backref='notifications')
 
+<<<<<<< HEAD
 
 # ==================== 出差管理模型 ====================
 trip_participants = db.Table('trip_participants',
@@ -922,6 +940,8 @@ class LeaveRecord(db.Model):
     
     created_at = db.Column(db.DateTime, default=datetime.now)
 
+=======
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
 ==================================================
 FILE: .\utils.py
 ==================================================
@@ -1671,6 +1691,7 @@ def downgrade():
 
 
 ==================================================
+<<<<<<< HEAD
 FILE: .\migrations\versions\1d1193ab9f93_fix_business_trip_schema.py
 ==================================================
 
@@ -1722,6 +1743,8 @@ def downgrade():
 
 
 ==================================================
+=======
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
 FILE: .\migrations\versions\2c6bcac6aa31_initial_migration.py
 ==================================================
 
@@ -2069,6 +2092,7 @@ def downgrade():
 
 
 ==================================================
+<<<<<<< HEAD
 FILE: .\migrations\versions\4393a28e9282_增加出差管理.py
 ==================================================
 
@@ -2157,6 +2181,8 @@ def downgrade():
 
 
 ==================================================
+=======
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
 FILE: .\migrations\versions\cbc23843eb6b_增加了资产子编号反向关联.py
 ==================================================
 
@@ -2201,6 +2227,7 @@ def downgrade():
 
 
 ==================================================
+<<<<<<< HEAD
 FILE: .\migrations\versions\cc5f78c5318d_删除出差事由字段.py
 ==================================================
 
@@ -2290,6 +2317,13 @@ FILE: .\routes\asset.py
 ==================================================
 
 # 资产管理模块 - 完整版（支持消耗品、装备、固定资产）
+=======
+FILE: .\routes\asset.py
+==================================================
+
+# routes/asset.py
+# 资产管理模块
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
 import os
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, jsonify, current_app
 from flask_login import login_required, current_user
@@ -2309,22 +2343,38 @@ asset_bp = Blueprint('asset', __name__, url_prefix='/asset')
 def asset_list():
     # 1. 获取筛选参数
     type_filter = request.args.get('type', '固定资产')  # 默认显示固定资产标签
+<<<<<<< HEAD
     status_filter = request.args.get('status', '')    # 具体的某种状态过滤（如：维修中）
     search = request.args.get('search', '').strip()
     user_filter = request.args.get('user_id')
     
     # 2. 统计报修中的资产总数（用于标签页红点显示，类似人事的待审核）
     # 假设你的模型是 AssetInstance，如果是 Asset 请自行替换
+=======
+    status_filter = request.args.get('status', '')    # 具体的某种状态过滤
+    search = request.args.get('search', '').strip()
+    user_filter = request.args.get('user_id')
+    
+    # 2. 统计报修中的资产总数
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
     repair_count = Asset.query.filter_by(status='维修中').count()
 
     # 3. 构建基础查询
     query = Asset.query
 
+<<<<<<< HEAD
     # 4. 类型过滤（对应标签页：装备、服饰、消耗品、固定资产、工具）
     if type_filter:
         query = query.filter_by(type=type_filter)
     
     # 5. 状态过滤（可选，用于在某个类型下进一步筛选状态）
+=======
+    # 4. 类型过滤
+    if type_filter:
+        query = query.filter_by(type=type_filter)
+    
+    # 5. 状态过滤
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
     if status_filter:
         query = query.filter_by(status=status_filter)
         
@@ -2332,7 +2382,11 @@ def asset_list():
     if user_filter:
         query = query.filter_by(current_user_id=user_filter)
 
+<<<<<<< HEAD
     # 7. 搜索过滤（支持名称和SN号/编号）
+=======
+    # 7. 搜索过滤
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
     if search:
         query = query.filter(
             db.or_(
@@ -2341,7 +2395,11 @@ def asset_list():
             )
         )
 
+<<<<<<< HEAD
     # 8. 字段显示控制（仿照人事逻辑）
+=======
+    # 8. 字段显示控制
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
     show_fields = request.args.getlist('show')
     if not show_fields:
         show_fields = ['name', 'number', 'status', 'location', 'current_user', 'ownership']  # 默认显示的字段
@@ -2412,7 +2470,11 @@ def perform_asset_save(form_data, files=None):
     db.session.add(asset)
     db.session.flush()
 
+<<<<<<< HEAD
     # 3. 完整找回：子资产个体生成逻辑
+=======
+    # 3. 子资产个体生成逻辑
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
     if asset_type == '固定资产' and quantity > 0:
         # 获取前端传来的自定义编号列表
         custom_suffixes = form_data.getlist('instance_numbers[]')
@@ -2432,6 +2494,10 @@ def perform_asset_save(form_data, files=None):
 
 @asset_bp.route('/get_form_snippet')
 @login_required
+<<<<<<< HEAD
+=======
+@perm.require('asset.add')
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
 def get_form_snippet():
     """供财务页面 AJAX 调用，返回资产表单 HTML"""
     return render_template('asset/_partial_asset_form.html', default_date=today_str())
@@ -3097,6 +3163,17 @@ def asset_repair_sub():
         note=f"SN: {instance.sn_number} | 备注: {note}"
     )
     db.session.add(history)
+<<<<<<< HEAD
+=======
+
+    log_action(
+        action_type='子资产维修',
+        target_type='AssetInstance',
+        target_id=instance.id,
+        description=f"单件资产标记维修：{instance.asset_info.name} (SN: {instance.sn_number})。备注: {note}"
+    )
+
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
     db.session.commit()
     flash(f'子资产 {instance.sn_number} 已标记为维修状态', 'success')
     return redirect(url_for('asset.asset_detail', asset_id=instance.asset_id))
@@ -3125,6 +3202,17 @@ def asset_scrap_sub():
         note=f"SN: {instance.sn_number} | 原因: {reason}"
     )
     db.session.add(history)
+<<<<<<< HEAD
+=======
+
+    log_action(
+        action_type='子资产报废',
+        target_type='AssetInstance',
+        target_id=instance.id,
+        description=f"单件资产报废：{asset.name} (SN: {instance.sn_number})。主库存已扣减。"
+    )
+
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
     db.session.commit()
     flash(f'子资产 {instance.sn_number} 已成功报废', 'warning')
     return redirect(url_for('asset.asset_detail', asset_id=asset.id))
@@ -3152,6 +3240,17 @@ def asset_complete_repair_sub():
     )
     
     db.session.add(history)
+<<<<<<< HEAD
+=======
+
+    log_action(
+        action_type='子资产维修完成',
+        target_type='AssetInstance',
+        target_id=instance.id,
+        description=f"单件资产修复：{instance.asset_info.name} (SN: {instance.sn_number})，状态已恢复正常。"
+    )
+    
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
     db.session.commit()
     
     flash(f'子资产 {instance.sn_number} 维修完成，已恢复正常状态', 'success')
@@ -3528,8 +3627,11 @@ def init_dorm_data():
             target_type = "卫生间"
         elif num == "113室":
             target_type = "走廊"
+<<<<<<< HEAD
         elif num == "114室":
             target_type = "车棚"
+=======
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
         else:
             target_type = "宿舍"  # 兜底默认
         
@@ -3735,15 +3837,23 @@ def assign_to_room():
                 description=f"将队员 【{emp.name}】 分配到{room_number if target_room_id else '待分配池'}，床位: {bed_desc} {leader_desc}",
                 **locals()
             )
+<<<<<<< HEAD
             # =========================================================
+=======
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
         
         db.session.commit()
         return jsonify({"status": "success"})
     except Exception as e:
         db.session.rollback()
         return jsonify({"status": "error", "message": str(e)}), 500
+<<<<<<< HEAD
 
 # 这是一个新增加的“查询接口”，请紧贴在上面那个函数下面粘贴
+=======
+    
+# ===================查询床位======================================
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
 @dorm_bp.route('/get_available_beds/<int:room_id>')
 @login_required
 @perm.require('dorm.edit')
@@ -4054,7 +4164,11 @@ def fund_import():
             flash(f'导入失败：{str(e)}', 'danger')
             
     return render_template('fund/import.html')
+<<<<<<< HEAD
 # ==================== 4. 导出清单（字段：日期|资方|项目|金额|类型|操作人|凭证|备注|余额） ====================
+=======
+# ==================== 4. 导出清单 ====================
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
 @fund_bp.route('/export')
 @login_required
 @perm.require('fund.export')
@@ -4903,6 +5017,7 @@ def departure(cycle_id):
             note=f'{cycle.name}离职自动归还'
         )
         db.session.add(history)
+<<<<<<< HEAD
     # 2. 床位占用释放（核心新增逻辑）
     room_id = cycle.room_id
     is_room_leader = cycle.is_room_leader
@@ -4927,6 +5042,9 @@ def departure(cycle_id):
             Asset.id.in_(asset_ids)
         ).update({Asset.current_user_id: None})
 
+=======
+    
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
     # 2. 正常离职人事逻辑
     reason = request.form.get('departure_reason', '').strip()
     dep_date_str = request.form.get('departure_date')
@@ -4941,8 +5059,11 @@ def departure(cycle_id):
     cycle.archives = json.dumps(archives, ensure_ascii=False)
     
     # 3. 【核心新增】写入管理员审计日志
+<<<<<<< HEAD
     bed_msg = " | 已释放床位" if cycle.bed_number else ""
     leader_msg = " | 已取消宿舍长身份" if is_room_leader else ""
+=======
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
     asset_msg = f" | 自动回收资产: {', '.join(returned_assets_summary)}" if returned_assets_summary else " | 无资产需回收"
     log_description = (
         f"为队员【{cycle.name}】办理了离职手续。"
@@ -4962,7 +5083,11 @@ def departure(cycle_id):
     # 4. 提交所有变更（资产 + 人事 + 日志）
     try:
         db.session.commit()
+<<<<<<< HEAD
         flash(f'离职成功，已自动归还全部个人装备({len(returned_assets_summary)}项)，并释放床位', 'success')
+=======
+        flash(f'离职成功，已自动归还全部个人装备({len(returned_assets_summary)}项)', 'success')
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
     except Exception as e:
         db.session.rollback()
         flash(f'办理离职失败：{str(e)}', 'danger')
@@ -5302,6 +5427,7 @@ HR_PERMISSIONS = [
 ]
 
 ==================================================
+<<<<<<< HEAD
 FILE: .\routes\leave.py
 ==================================================
 
@@ -5416,6 +5542,8 @@ LEAVE_PERMISSIONS = [
 
 
 ==================================================
+=======
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
 FILE: .\routes\main.py
 ==================================================
 
@@ -5583,6 +5711,7 @@ def send_operation_notice(title, content, operated_user_id):
 @notification_bp.route('/list')
 @login_required
 def notification_list():
+<<<<<<< HEAD
     # 获取页码参数，默认为第 1 页，每页显示 10 条
     page = request.args.get('page', 1, type=int)
     per_page = 10
@@ -5599,6 +5728,12 @@ def notification_list():
                            pagination=pagination, 
                            notifications=pagination.items,
                            unread_count=unread_count)
+=======
+    notifications = Notification.query.filter_by(user_id=current_user.id)\
+        .order_by(Notification.created_at.desc())\
+        .all()
+    return render_template('notification/list.html', notifications=notifications)
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
 
 @notification_bp.route('/read/<int:notify_id>')
 @login_required
@@ -5828,7 +5963,10 @@ from datetime import datetime
 import pandas as pd
 import io
 import re
+<<<<<<< HEAD
 from models import BusinessTrip, LeaveRecord
+=======
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
 
 scheduling_bp = Blueprint('scheduling', __name__, url_prefix='/scheduling')
 
@@ -5848,7 +5986,13 @@ def schedule_list():
         return redirect(url_for('main.index'))
     
     if request.method == 'POST':
+<<<<<<< HEAD
         # ... 保持你原有的岗位保存逻辑不变 ...
+=======
+        if not perm.can('scheduling.post'):
+            flash("无权管理岗位", "danger")
+            return redirect(url_for('scheduling.schedule_list', tab='posts'))
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
         name = request.form.get('name')
         color = request.form.get('color', '#007bff')
         start = request.form.get('default_start', '08:30')
@@ -5863,6 +6007,7 @@ def schedule_list():
     active_tab = request.args.get('tab', 'calendar')
     employees = EmploymentCycle.query.filter_by(status='在职').all()
     posts = ShiftPost.query.all()
+<<<<<<< HEAD
 
     # --- 新增逻辑：获取当前出差人员 ID 集合 ---
     today = datetime.now().date()
@@ -5897,6 +6042,9 @@ def schedule_list():
                            active_tab=active_tab,
                            on_trip_ids=on_trip_ids,
                            on_leave_ids=on_leave_ids) # 将 ID 集合传给前端
+=======
+    return render_template('scheduling/list.html', employees=employees, posts=posts, active_tab=active_tab)
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
 
 # --- 功能：为 FullCalendar 插件提供排班数据接口 ---
 @scheduling_bp.route('/api/get_shifts')
@@ -6210,6 +6358,7 @@ def get_daily_duty():
         return jsonify({"error": str(e)}), 500
 
 ==================================================
+<<<<<<< HEAD
 FILE: .\routes\trip.py
 ==================================================
 
@@ -6427,6 +6576,8 @@ TRIP_PERMISSIONS = [
 ]
 
 ==================================================
+=======
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
 FILE: .\routes\__init__.py
 ==================================================
 
@@ -6443,8 +6594,11 @@ def register_blueprints(app):
     from .scheduling import scheduling_bp, SCHEDULING_PERMISSIONS
     from .dorm import dorm_bp
     from .notification import notification_bp
+<<<<<<< HEAD
     from .trip import trip_bp
     from routes.leave import leave_bp
+=======
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(hr_bp)
@@ -6454,8 +6608,11 @@ def register_blueprints(app):
     app.register_blueprint(scheduling_bp)
     app.register_blueprint(dorm_bp)
     app.register_blueprint(notification_bp)
+<<<<<<< HEAD
     app.register_blueprint(trip_bp)
     app.register_blueprint(leave_bp)
+=======
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
 
 
 ==================================================
@@ -7172,13 +7329,20 @@ FILE: .\templates\asset\detail.html
                                         <i class="bi bi-basket3-fill"></i> 消耗
                                     </button>
                                     {% endif %}
+<<<<<<< HEAD
                                     <!-- 补充库存按钮 -->     
                                      {% if asset.type != '固定资产' %}     
+=======
+                                    <!-- 补充库存按钮 -->          
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
                                     <button class="btn btn-success" data-bs-toggle="modal"
                                         data-bs-target="#supplementModal">
                                         <i class="bi bi-plus-circle"></i> 补充
                                     </button>
+<<<<<<< HEAD
                                     {% endif %}
+=======
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
                                     <!-- 维修/修复按钮：排除消耗品类型 -->
                                     {% if asset.type != '消耗品' %}
                                         {% if asset.status == '维修中' %}
@@ -8315,6 +8479,7 @@ FILE: .\templates\asset\list.html
 {% endblock %}
 
 ==================================================
+<<<<<<< HEAD
 FILE: .\templates\asset\public_info.html
 ==================================================
 
@@ -8361,6 +8526,8 @@ FILE: .\templates\asset\public_info.html
 </html>
 
 ==================================================
+=======
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
 FILE: .\templates\asset\_partial_asset_form.html
 ==================================================
 
@@ -8820,7 +8987,10 @@ FILE: .\templates\dorm\map.html
                     <div class="drop-zone w-100 flex-grow-1 p-1" id="room-{{ room.id }}">
                         <!-- 住宿人员列表 -->
                         {% for emp in room.occupants | sort(attribute='is_room_leader', reverse=True) %}
+<<<<<<< HEAD
                         {% if emp.status == '在职' %}
+=======
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
                         <div class="item-tag badge employee-tag {% if emp.is_room_leader %}leader-tag{% else %}normal-tag{% endif %}" 
                              data-id="{{ emp.id }}" data-type="employee">
                             <span>
@@ -8829,7 +8999,10 @@ FILE: .\templates\dorm\map.html
                             </span>
                             <small class="badge bg-light text-dark occupied-tag">已入宿</small>
                         </div>
+<<<<<<< HEAD
                         {% endif %}
+=======
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
                         {% endfor %}
 
                         <!-- 资产列表 -->
@@ -11367,6 +11540,7 @@ FILE: .\templates\hr\_employee_form.html
 </script>
 
 ==================================================
+<<<<<<< HEAD
 FILE: .\templates\leave\add.html
 ==================================================
 
@@ -11587,6 +11761,8 @@ function copyLeaveMsg(name, type, reason, startDate) {
 {% endblock %}
 
 ==================================================
+=======
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
 FILE: .\templates\notification\list.html
 ==================================================
 
@@ -11626,6 +11802,7 @@ FILE: .\templates\notification\list.html
                     </div>
                 </a>
                 {% endfor %}
+<<<<<<< HEAD
                 </div>
 
                 {% if pagination.pages > 1 %}
@@ -11655,6 +11832,10 @@ FILE: .\templates\notification\list.html
                 {% endif %}                    
                 
                 {% else %}
+=======
+            </div>
+            {% else %}
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
             <div class="text-center text-muted py-5">
                 <i class="bi bi-bell-slash fs-4 mb-2"></i>
                 <p>暂无通知</p>
@@ -12101,8 +12282,11 @@ FILE: .\templates\scheduling\list.html
     <div class="hr-tabs">
         <a href="{{ url_for('scheduling.schedule_list', tab='calendar') }}" class="{% if active_tab == 'calendar' %}active{% endif %}">📅 排班视图</a>
         <a href="{{ url_for('scheduling.schedule_list', tab='posts') }}" class="{% if active_tab == 'posts' %}active{% endif %}">🛠️ 岗位设置</a>
+<<<<<<< HEAD
         <a href="{{ url_for('trip.trip_list') }}" class="active">💼 出差设置</a>
         <a href="{{ url_for('leave.leave_list') }}" class="{% if active_tab == 'leave' %}active{% endif %}">📝 请假管理</a>
+=======
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
     </div>
 
     {% if active_tab == 'calendar' %}
@@ -12140,6 +12324,7 @@ FILE: .\templates\scheduling\list.html
             <div class="sticky-sidebar">
                 <div class="small text-muted mb-2 fw-bold">待排人员 (拖拽入日历)</div>
                 <div id="external-events">
+<<<<<<< HEAD
     {% for emp in employees %}
         {% set is_away = emp.id in on_trip_ids %}
         {% set is_on_leave = emp.id in on_leave_ids %} {# 判断是否请假 #}
@@ -12184,6 +12369,14 @@ FILE: .\templates\scheduling\list.html
         background: linear-gradient(45deg, #fffaf0, #fff5f5) !important;
     }
 </style>
+=======
+                    {% for emp in employees %}
+                    <div class="emp-tag fc-event-draggable" data-user-id="{{ emp.id }}" data-user-name="{{ emp.name }}">
+                        <strong>{{ emp.name }}</strong>
+                    </div>
+                    {% endfor %}
+                </div>
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
             </div>
         </div>
         <div class="col-md-10">
@@ -12413,6 +12606,7 @@ function importExcelSchedule(input) {
     })
     .catch(err => alert("导入失败，请检查文件格式"));
 }
+<<<<<<< HEAD
 // 清空本月排班数据 - 动态获取日历当前月份版
 function clearCurrentMonth() {
     // 1. 动态获取当前月份 (假设使用 FullCalendar)
@@ -12424,26 +12618,52 @@ function clearCurrentMonth() {
 
     // 2. 确认提示显示动态月份
     if (!confirm(`确定要清空 ${targetMonth} 的所有排班数据吗？此操作不可恢复！`)) {
+=======
+// 清空本月排班数据
+function clearCurrentMonth() {
+    // 增加一次确认，防止误点
+    if (!confirm("确定要清空 2026年1月 的所有排班数据吗？此操作不可恢复！")) {
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
         return;
     }
 
     fetch('/scheduling/clear_month', {
         method: 'POST',
+<<<<<<< HEAD
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ month: targetMonth }) // 使用动态变量
+=======
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ month: '2026-01' }) // 你可以根据当前日历显示的月份动态获取
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
             alert(data.message);
+<<<<<<< HEAD
             typeof calendar !== 'undefined' ? calendar.refetchEvents() : location.reload();
+=======
+            // 刷新日历
+            if (typeof calendar !== 'undefined') {
+                calendar.refetchEvents();
+            } else {
+                location.reload();
+            }
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
         } else {
             alert("错误: " + data.message);
         }
     })
     .catch(error => {
         console.error('Error:', error);
+<<<<<<< HEAD
         alert("请求失败");
+=======
+        alert("请求失败，请检查网络或后端日志");
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
     });
 }
 
@@ -12460,6 +12680,7 @@ function deleteShiftDirectly(id) {
 }
 
 function handleDrop(id, name, date) {
+<<<<<<< HEAD
     // 检查被拖拽的元素是否带有出差样式
     const empTag = document.querySelector(`.emp-tag[data-user-id="${id}"]`);
     const isAway = empTag && empTag.classList.contains('away-status');
@@ -12470,6 +12691,8 @@ function handleDrop(id, name, date) {
             return;
         }
     }
+=======
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f
     document.getElementById('display_info').innerText = `${name} @ ${date}`;
     document.getElementById('post_user_id').value = id;
     document.getElementById('post_date').value = date;
@@ -12559,6 +12782,7 @@ FILE: .\templates\scheduling\posts.html
     </div>
 </div>
 {% endblock %}
+<<<<<<< HEAD
 
 ==================================================
 FILE: .\templates\trip\add.html
@@ -12847,3 +13071,5 @@ function copyTripEnd(reason, names) {
 }
 </style>
 {% endblock %}
+=======
+>>>>>>> 82880d565f114c6a0c0ced7d12c47e4ef7a76f3f

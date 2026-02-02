@@ -251,15 +251,14 @@ def assign_to_room():
                 description=f"将队员 【{emp.name}】 分配到{room_number if target_room_id else '待分配池'}，床位: {bed_desc} {leader_desc}",
                 **locals()
             )
-            # =========================================================
         
         db.session.commit()
         return jsonify({"status": "success"})
     except Exception as e:
         db.session.rollback()
         return jsonify({"status": "error", "message": str(e)}), 500
-
-# 这是一个新增加的“查询接口”，请紧贴在上面那个函数下面粘贴
+    
+# ===================查询床位======================================
 @dorm_bp.route('/get_available_beds/<int:room_id>')
 @login_required
 @perm.require('dorm.edit')

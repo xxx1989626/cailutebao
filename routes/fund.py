@@ -218,7 +218,7 @@ def fund_import():
             flash(f'导入失败：{str(e)}', 'danger')
             
     return render_template('fund/import.html')
-# ==================== 4. 导出清单（字段：日期|资方|项目|金额|类型|操作人|凭证|备注|余额） ====================
+# ==================== 4. 导出清单 ====================
 @fund_bp.route('/export')
 @login_required
 @perm.require('fund.export')
