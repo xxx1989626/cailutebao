@@ -6,7 +6,7 @@ from utils import today_str,perm,format_date,format_datetime,validate_id_card,ge
 from config import Config,SECRET_KEY, DATABASE_PATH, UPLOAD_FOLDER,SALARY_MODES, POSITIONS, POSTS
 from models import db, Asset, User, Permission
 from routes import register_blueprints
-import json
+import json, os
 from sqlalchemy import func
 app = Flask(__name__)
 app.config.update(
@@ -307,16 +307,16 @@ def validate_id_card_ajax():
     })
 
 
-
 if __name__ == '__main__':
     with app.app_context():
         # 创建表
         #db.create_all()
 
-
         # 新增：启动定时备份服务（项目启动时自动运行）
-        from utils import start_backup_scheduler
-        start_backup_scheduler(interval=86400)  # 86400秒=24小时，可修改间隔
+        from utils import start_backup_scheduler, start_notification_cleanup_scheduler
+        if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+            start_backup_scheduler(interval=86400)  # 86400秒=24小时，可修改间隔
+        start_notification_cleanup_scheduler(weekday=0, hour=3, minute=33, retention_days=30)  # weekly 03:33 cleanup
         
         
 

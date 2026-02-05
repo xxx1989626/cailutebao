@@ -4,6 +4,7 @@ data/database.db
 
 # --- Python 缓存 ---
 __pycache__/
+migrations/
 *.py[cod]
 *$py.class
 

@@ -12,7 +12,7 @@ import time
 import threading
 import re
 import json
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, date,time as dt_time
 from typing import Union, Optional
 from flask import current_app, flash, redirect, url_for
 from flask_login import current_user
@@ -385,7 +385,7 @@ def cleanup_isolated_files():
     """
     深度解析版：专门针对 archives JSON 结构进行文件保护
     """
-    from models import db, Asset, FundsRecord, User, EmploymentCycle
+    from models import db, Asset, FundsRecord, User, EmploymentCycle, LeaveRecord
     
     base_dir = r"D:\cailu"
     uploads_dir = os.path.join(base_dir, 'uploads')
@@ -438,6 +438,21 @@ def cleanup_isolated_files():
                             add_to_used(c_path)
                 except Exception as e:
                     print(f"JSON解析跳过: {e}")
+
+        leaves = db.session.query(LeaveRecord.attachments).filter(LeaveRecord.attachments.isnot(None)).all()
+        for (attachments,) in leaves:
+            # attachments 在 SQLAlchemy JSON 模式下会自动转为 list
+            if isinstance(attachments, list):
+                for p in attachments:
+                    add_to_used(p)
+            elif isinstance(attachments, str):
+                try:
+                    # 预防万一字段被存成了字符串 JSON
+                    parsed = json.loads(attachments)
+                    if isinstance(parsed, list):
+                        for p in parsed: add_to_used(p)
+                except:
+                    add_to_used(attachments)
 
         # --- 第二步：系统级保护名单 ---
         # 保护默认头像、系统图标，以及你提到的 archive 关键词以防万一
@@ -526,20 +541,113 @@ def auto_backup_database():
         print(f"备份失败: {str(e)}")
 
 # ==================== 后台调度器 ====================
-def start_backup_scheduler(interval=86400):
-    def maintenance_task():
-        time.sleep(30) # 启动后避开高峰
+
+def cleanup_old_notifications(days=30):
+
+    try:
+
+        from models import Notification, db
+
+        cutoff = datetime.now() - timedelta(days=days)
+
+        Notification.query.filter(Notification.created_at < cutoff).delete(synchronize_session=False)
+
+        db.session.commit()
+
+        print(f"[{datetime.now()}] ?????????{days}????")
+
+    except Exception as e:
+
+        try:
+
+            db.session.rollback()
+
+        except Exception:
+
+            pass
+
+        print(f"[{datetime.now()}] ??????: {e}")
+
+
+
+def _next_weekly_run(now, weekday, hour, minute):
+
+    days_ahead = (weekday - now.weekday()) % 7
+
+    run_date = (now + timedelta(days=days_ahead)).date()
+
+    run_dt = datetime.combine(run_date, dt_time(hour, minute))
+
+    if run_dt <= now:
+
+        run_dt += timedelta(days=7)
+
+    return run_dt
+
+
+
+def start_notification_cleanup_scheduler(weekday=0, hour=3, minute=33, retention_days=30):
+
+    def task():
+
+        time.sleep(30)
+
         while True:
+
+            next_run = _next_weekly_run(datetime.now(), weekday, hour, minute)
+
+            sleep_sec = max(1, (next_run - datetime.now()).total_seconds())
+
+            time.sleep(sleep_sec)
+
             try:
+
                 from app import app
+
                 with app.app_context():
-                    print(f"[{datetime.now()}] 启动例行维护任务...")
-                    # 只有在这里被调用，清理才会执行
-                    cleanup_isolated_files()
-                    auto_backup_database()
+
+                    cleanup_old_notifications(retention_days)
+
             except Exception as e:
+
+                print(f"[{datetime.now()}] ????????: {e}")
+
+
+
+    thread = threading.Thread(target=task, daemon=True)
+
+    thread.start()
+
+def start_backup_scheduler(interval=86400):
+
+    def maintenance_task():
+
+        time.sleep(30) # 启动后避开高峰
+
+        while True:
+
+            try:
+
+                from app import app
+
+                with app.app_context():
+
+                    print(f"[{datetime.now()}] 启动例行维护任务...")
+
+                    # 只有在这里被调用，清理才会执行
+
+                    cleanup_isolated_files()
+
+                    auto_backup_database()
+
+            except Exception as e:
+
                 print(f"维护线程遇到致命错误: {e}")
+
             time.sleep(interval)
 
+
+
     thread = threading.Thread(target=maintenance_task, daemon=True)
+
     thread.start()
