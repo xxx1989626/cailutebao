@@ -6,13 +6,9 @@
 <div class="container mt-4">
     <div class="card shadow">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-            <h4 class="mb-0"><i class="bi bi-person-lines-fill"></i> {{ cycles[0].name }} - 任职档案（共 {{ cycles|length }}
-                次）</h4>
+            <h4 class="mb-0"><i class="bi bi-person-lines-fill"></i> {{ cycles[0].name }} - 任职档案（共 {{ cycles|length }} 次）</h4>
             <div class="d-flex gap-2">
-                <!-- 优化点：添加图标+调整尺寸，与状态标签视觉分离 -->
-                <a href="{{ url_for('hr.hr_list') }}" class="badge bg-light text-dark fs-5 px-3 py-1">
-                    <i class="bi bi-arrow-left-short me-1"></i> 返回列表
-                </a>
+                <a href="{{ url_for('hr.hr_list') }}" class="badge bg-light text-dark fs-5 px-3 py-1"><i class="bi bi-arrow-left-short me-1"></i> 返回列表 </a>
                 <span class="badge bg-light text-dark fs-5 px-3 py-1">{{ cycles[0].status }}</span>
             </div>
         </div>
@@ -24,23 +20,19 @@
                     <div class="card mb-4 {% if cycle.status == '在职' %}border-primary shadow-lg{% endif %}">
                         <div
                             class="card-header d-flex justify-content-between {% if cycle.status == '在职' %}bg-primary text-white{% endif %}">
-
                             <strong>
                                 第 {{ cycles|length - loop.index + 1 }} 次任职
                                 （{{ format_date(cycle.hire_date) }} ~ {{ format_date(cycle.departure_date) or '至今' }}）
-
                                 在职 {{ cycle.hire_date | calc_work_duration(cycle.departure_date) }}
-                                <!-- 新过滤器：自动处理None -->
                             </strong>
                             <span class="badge bg-light text-dark">{{ cycle.status }}</span>
                         </div>
                         <div class="card-body">
-                            <!-- 基本信息表格（保持原有） -->
+                            <!-- 基本信息表格 -->
                             <div class="row">
                                 <div class="col-md-3 text-center mb-3">
                                     {% if cycle.photo_path %}
-                                    <img src="/{{ cycle.photo_path }}" class="rounded-circle shadow" width="180"
-                                        height="180" alt="照片">
+                                    <img src="/{{ cycle.photo_path }}" class="rounded-circle shadow" width="180" height="180" alt="照片">
                                     {% else %}
                                     <div class="bg-light rounded-circle shadow d-flex align-items-center justify-content-center text-muted"
                                         style="width:180px;height:180px;font-size:24px;">
@@ -50,7 +42,6 @@
                                 </div>
                                 <div class="col-md-9">
                                     <table class="table table-sm table-borderless">
-                                        <!-- 保持您原有所有字段显示 -->
                                         <tr>
                                             <th width="140">身份证</th>
                                             <td>{{ cycle.id_card }}</td>
@@ -130,8 +121,8 @@
                                         </tr>
                                         <tr>
                                             <th>工作服尺码</th>
-                                            <td>帽{{ cycle.hat_size or '-' }} | 短袖{{ cycle.short_sleeve or '-' }} | 长袖{{
-                                                cycle.long_sleeve or '-' }} | 冬装{{ cycle.winter_uniform or '-' }} | 鞋{{
+                                            <td>帽围{{ cycle.hat_size or '-' }} | 短袖{{ cycle.short_sleeve or '-' }} | 长袖{{
+                                                cycle.long_sleeve or '-' }} | 冬装{{ cycle.winter_uniform or '-' }} | 鞋码{{
                                                 cycle.shoe_size or '-' }}</td>
                                         </tr>
                                     </table>
@@ -147,79 +138,86 @@
                                     {% endif %}
                                     <!-- 装备领用情况 -->
                                     <div class="card mt-5 shadow-sm border-0">
-                                        <div
-                                            class="card-header bg-light d-flex justify-content-between align-items-center py-2">
+                                        <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
                                             <h6 class="mb-0 fw-bold text-dark">
                                                 <i class="bi bi-shield-check text-primary me-1"></i> 装备领用情况
                                             </h6>
                                             <div class="d-flex align-items-center">
                                                 {% if cycle.status == '在职' and perm.can('asset.issue') %}
-                                                <button type="button" class="btn btn-warning btn-sm fw-bold shadow-sm"
-                                                    data-bs-toggle="modal" data-bs-target="#quickIssueModal">
-                                                    <i class="bi bi-plus-lg"></i> 发放资产
+                                                <button type="button" class="btn btn-warning btn-sm fw-bold shadow-sm" data-bs-toggle="modal"
+                                                    data-bs-target="#quickIssueModal">
+                                                    <i class="bi bi-plus-lg"></i> 批量发放资产
                                                 </button>
                                                 {% endif %}
                                             </div>
                                         </div>
-
                                         <div class="card-body p-0">
                                             {% set equipped_assets = get_equipped_assets(cycle.id) %}
                                             {% if equipped_assets %}
-                                            <div class="equipped-scroll-container"
-                                                style="max-height: 400px; overflow-y: auto;">
+                                            {% set can_view_asset = perm.can('asset.view') %}
+                                            <div class="equipped-scroll-container" style="max-height: 400px; overflow-y: auto;">
                                                 <div class="list-group list-group-flush">
                                                     {% for item in equipped_assets | reverse %}
-                                                    <div class="list-group-item list-group-item-action py-3">
-                                                        <div class="row align-items-center">
-                                                            <div class="col-auto">
-                                                                <div
-                                                                    class="rounded-circle bg-primary bg-opacity-10 p-2">
-                                                                    <i class="bi bi-box-seam text-primary"></i>
+                                                    {% if can_view_asset %}
+                                                    <a href="{{ url_for('asset.asset_detail', asset_id=item.asset.id) }}"
+                                                        class="list-group-item list-group-item-action py-3">
+                                                        {% else %}
+                                                        <div class="list-group-item py-3">
+                                                            {% endif %}
+                                                            <div class="row align-items-center">
+                                                                <div class="col-auto">
+                                                                    <div class="rounded-circle bg-primary bg-opacity-10 p-2">
+                                                                        <i class="bi bi-box-seam text-primary"></i>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col">
+                                                                    <strong class="d-block text-dark">
+                                                                        {{ item.asset.name }}
+                                                                        {% if can_view_asset %}
+                                                                        <i class="bi bi-arrow-right-short text-muted"></i>
+                                                                        {% endif %}
+                                                                    </strong>
+                                                                    <div class="d-flex align-items-center gap-2 mt-1">
+                                                                        <span class="badge bg-light text-secondary border">编号: {{ item.asset.number
+                                                                            }}</span>
+                                                                        <span class="badge bg-primary-subtle text-primary">数量 × {{ item.quantity }}</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="col-md-4 text-end">
+                                                                    <div class="small text-muted">发放于: {{ format_datetime(item.issue_date) }}</div>
+                                                                    <div class="small text-muted">发放人: <span class="text-dark">{{ item.issued_by or '系统'
+                                                                            }}</span></div>
+                                                                    {% if item.note %}
+                                                                    <div class="mt-1">
+                                                                        <span class="badge bg-info-subtle text-info fw-normal">
+                                                                            <i class="bi bi-info-circle me-1"></i>{{ item.note }}
+                                                                        </span>
+                                                                    </div>
+                                                                    {% endif %}
                                                                 </div>
                                                             </div>
-                                                            <div class="col">
-                                                                <strong class="d-block text-dark">{{ item.asset.name
-                                                                    }}</strong>
-                                                                <div class="d-flex align-items-center gap-2 mt-1">
-                                                                    <span
-                                                                        class="badge bg-light text-secondary border">编号:
-                                                                        {{ item.asset.number }}</span>
-                                                                    <span
-                                                                        class="badge bg-primary-subtle text-primary">数量
-                                                                        × {{ item.quantity }}</span>
-                                                                </div>
-                                                            </div>
-                                                            <div class="col-md-4 text-end">
-                                                                <div class="small text-muted">发放于: {{
-                                                                    format_datetime(item.issue_date) }}</div>
-                                                                <div class="small text-muted">发放人: <span
-                                                                        class="text-dark">{{ item.issued_by or '系统'
-                                                                        }}</span></div>
-                                                                {% if item.note %}
-                                                                <div class="mt-1"><span
-                                                                        class="badge bg-info-subtle text-info fw-normal"><i
-                                                                            class="bi bi-info-circle me-1"></i>{{
-                                                                        item.note }}</span></div>
-                                                                {% endif %}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    {% endfor %}
+                                                            {% if can_view_asset %}
+                                                    </a>
+                                                    {% else %}
                                                 </div>
+                                                {% endif %}
+                                                {% endfor %}
                                             </div>
-                                            <div class="card-footer bg-white py-2">
-                                                <p class="small text-muted mb-0 text-center">共领用 {{
-                                                    equipped_assets|length }} 项资产 · <strong class="text-danger">如有遗失或人为损坏，每项罚款200元</strong> · 向下滚动查看更多</p>
-                                            </div>
-                                            {% else %}
-                                            <div class="py-5 text-center text-muted">
-                                                <i class="bi bi-inbox fs-2 d-block mb-2 opacity-50"></i>
-                                                <p class="mb-0">暂未领用任何装备</p>
-                                            </div>
-                                            {% endif %}
                                         </div>
+                                        <div class="card-footer bg-white py-2">
+                                            <p class="small text-muted mb-0 text-center">
+                                                共领用 {{ equipped_assets|length }} 项资产 ·
+                                                <strong class="text-danger">如有遗失或人为损坏，每项罚款200元</strong> · 向下滚动查看更多
+                                            </p>
+                                        </div>
+                                        {% else %}
+                                        <div class="py-5 text-center text-muted">
+                                            <i class="bi bi-inbox fs-2 d-block mb-2 opacity-50"></i>
+                                            <p class="mb-0">暂未领用任何装备</p>
+                                        </div>
+                                        {% endif %}
                                     </div>
-
+                                    
                                     <style>
                                         /* 美化滚动条 */
                                         .equipped-scroll-container::-webkit-scrollbar {
@@ -241,23 +239,21 @@
                                     </style>
 
                                     <!-- 档案记录区域 -->
-                                    <div
-                                        class="d-flex justify-content-between align-items-center mt-5 border-bottom pb-2 mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mt-5 border-bottom pb-2 mb-3">
                                         <h6 class="mb-0">档案记录</h6>
-                                        {# 只有在职且有编辑权限才显示添加按钮 #}
                                         {% if cycle.status == '在职' and perm.can('hr.edit') %}
-                                        <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal"
-                                            data-bs-target="#addArchiveModal">
+                                        <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addArchiveModal">
                                             <i class="bi bi-plus-circle"></i> 添加档案
                                         </button>
                                         {% endif %}
                                     </div>
-
-                                    {% if cycle.archives %}
-                                    {% set archives = cycle.archives | fromjson %}
-                                    {% if archives.archive_records %}
+                                    
+                                    {# 1. 首先尝试解析 JSON 数据 #}
+                                    {% set archives = cycle.archives | fromjson if cycle.archives else none %}
+                                    
+                                    {# 2. 统一判断：只有当 archives 存在且 archive_records 不为空时才显示列表 #}
+                                    {% if archives and archives.archive_records %}
                                     <div class="list-group mb-4 shadow-sm">
-                                        {# --- 关键修改：在这里加上 | reverse --- #}
                                         {% for record in archives.archive_records | reverse %}
                                         <div class="list-group-item list-group-item-action">
                                             <div class="d-flex w-100 justify-content-between align-items-center">
@@ -267,32 +263,25 @@
                                                         {{ record.type }}
                                                     </span>
                                                     <strong>{{ record.title }}</strong>
-                                                    <small class="text-muted ms-2">操作人：{{ record.operator or '未知'
-                                                        }}</small>
+                                                    <small class="text-muted ms-2">操作人：{{ record.operator or '未知' }}</small>
                                                 </h6>
-                                                {# 显示记录时间 #}
-                                                <small class="text-secondary fw-bold">{{ format_datetime(record.date)
-                                                    }}</small>
+                                                <small class="text-secondary fw-bold">{{ format_datetime(record.date) }}</small>
                                             </div>
-
+                                    
                                             {% if record.description %}
-                                            <p class="mb-2 mt-1 small text-muted border-start ps-2"
-                                                style="white-space: pre-wrap;">{{ record.description }}</p>
+                                            <p class="mb-2 mt-1 small text-muted border-start ps-2" style="white-space: pre-wrap;">{{ record.description }}
+                                            </p>
                                             {% endif %}
-
-                                            {# 附件显示逻辑保持不变 #}
+                                    
                                             {% if record.file_path %}
                                             <div class="mt-2 bg-light p-2 rounded border-dashed">
                                                 {% set lower_path = record.file_path|lower %}
-                                                {% if lower_path.endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp',
-                                                '.webp')) %}
+                                                {% if lower_path.endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp')) %}
                                                 <a href="/{{ record.file_path }}" target="_blank">
-                                                    <img src="/{{ record.file_path }}" class="img-thumbnail shadow-sm"
-                                                        style="max-height:150px;">
+                                                    <img src="/{{ record.file_path }}" class="img-thumbnail shadow-sm" style="max-height:150px;">
                                                 </a>
                                                 {% else %}
-                                                <a href="/{{ record.file_path }}" target="_blank"
-                                                    class="btn btn-xs btn-outline-primary py-1 px-2">
+                                                <a href="/{{ record.file_path }}" target="_blank" class="btn btn-xs btn-outline-primary py-1 px-2">
                                                     <i class="bi bi-file-earmark-arrow-down"></i> 查看附件
                                                 </a>
                                                 {% endif %}
@@ -301,9 +290,6 @@
                                         </div>
                                         {% endfor %}
                                     </div>
-                                    {% else %}
-                                    <p class="text-muted py-3 text-center bg-light rounded">暂无档案记录</p>
-                                    {% endif %}
                                     {% else %}
                                     <p class="text-muted py-3 text-center bg-light rounded">暂无档案记录</p>
                                     {% endif %}
@@ -542,7 +528,6 @@
         </div>
     </div>
 </div>
-
 <script>
     // 控制数量框开关
     document.querySelectorAll('.asset-checkbox').forEach(chk => {

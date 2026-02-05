@@ -300,13 +300,17 @@ def asset_detail(asset_id):
     pagination = AssetHistory.query.filter_by(asset_id=asset_id)\
         .order_by(AssetHistory.action_date.desc())\
         .paginate(page=page, per_page=10, error_out=False) # 针对该资产的操作历史进行分页查询
-    history_items = pagination.items# 获取当前页的历史记录列表
-    
+    history_items = pagination.items  # current page history items
+
+    next_url = request.args.get('next')
+    if next_url and not next_url.startswith('/'):
+        next_url = None
     return render_template('asset/detail.html',
                            asset=asset,
                            in_service_employees=in_service_employees,
                            pagination=pagination,  # 传递分页对象用于渲染页码)
-                           history_items=history_items) # 传递当前页数据
+                           history_items=history_items,
+                           return_url=next_url) # 传递当前页数据
 
 # ==================== 发放资产（支持多数量） ====================
 @asset_bp.route('/issue/<int:asset_id>', methods=['POST'])
@@ -366,6 +370,109 @@ def asset_issue(asset_id):
     )
     db.session.commit()
     flash('发放成功', 'success')
+    return redirect(url_for('asset.asset_detail', asset_id=asset_id))
+
+# ==================== 更换资产（归还+报废+发放） ====================
+@asset_bp.route('/exchange/<int:asset_id>', methods=['POST'])
+@login_required
+@perm.require('asset.issue') # 更换涉及发放权限
+def asset_exchange(asset_id):
+    from utils import log_action
+    from datetime import datetime
+    from models import EmploymentCycle, AssetAllocation, AssetHistory
+
+    asset = Asset.query.get_or_404(asset_id)
+    user_id = request.form.get('user_id')
+    quantity = int(request.form.get('quantity', 1))
+    reason = request.form.get('note', '以旧换新')
+
+    emp = EmploymentCycle.query.get(user_id)
+    emp_name = emp.name if emp else f"ID:{user_id}"
+
+    # --- 1. 校验环节 ---
+    # 检查用户持有的旧物资是否够换
+    allocations = AssetAllocation.query.filter_by(asset_id=asset_id, user_id=user_id, return_date=None).all()
+    total_held = sum(a.quantity for a in allocations)
+    if total_held < quantity:
+        flash(f'更换失败：该员工仅持有 {total_held} 个，无法更换 {quantity} 个', 'danger')
+        return redirect(url_for('asset.asset_detail', asset_id=asset_id))
+    
+    # 检查仓库是否有新物资可换
+    if asset.stock_quantity < quantity:
+        flash(f'更换失败：库存余量 {asset.stock_quantity} 不足以支持更换 {quantity} 个新装备', 'danger')
+        return redirect(url_for('asset.asset_detail', asset_id=asset_id))
+
+    try:
+        now_time = datetime.now()
+        
+        # --- 2. 执行“归还”并直接“报废”逻辑 ---
+        # 我们合并这两步：不增加 stock_quantity，而是直接从 total_quantity 中扣除
+        # 依次核销分配记录
+        remaining_to_return = quantity
+        for alloc in allocations:
+            if remaining_to_return <= 0: break
+            if alloc.quantity <= remaining_to_return:
+                remaining_to_return -= alloc.quantity
+                alloc.return_date = now_time
+            else:
+                alloc.quantity -= remaining_to_return
+                db.session.add(AssetAllocation(
+                    asset_id=asset_id, user_id=user_id, quantity=remaining_to_return,
+                    issue_date=alloc.issue_date, return_date=now_time, note="更换时部分归还"
+                ))
+                remaining_to_return = 0
+
+        # 核心：资产家底扣减 (报废旧物)
+        asset.total_quantity -= quantity
+        # 注意：此处不增加 stock_quantity，因为旧的直接丢弃了
+        asset.allocated_quantity -= quantity 
+
+        # --- 3. 执行“发放”新物逻辑 ---
+        asset.stock_quantity -= quantity
+        asset.allocated_quantity += quantity
+        
+        # 记录新分配
+        new_alloc = AssetAllocation(
+            asset_id=asset_id, 
+            user_id=user_id, 
+            quantity=quantity,
+            issue_date=now_time.date(), 
+            note=f"更换发放：{reason}"
+        )
+        db.session.add(new_alloc)
+
+        # --- 4. 记录历史 (两条记录：一收一发) ---
+        db.session.add(AssetHistory(
+            asset_id=asset_id, 
+            action='更换(回收)', 
+            user_id=user_id,
+            operator_id=current_user.id, 
+            quantity=quantity, 
+            note=f"回收报废: {reason}"
+        ))
+        db.session.add(AssetHistory(
+            asset_id=asset_id, 
+            action='更换(发放)', 
+            user_id=user_id,
+            operator_id=current_user.id, 
+            quantity=quantity, 
+            note=f"发放新物: {reason}"
+        ))
+
+        # --- 5. 审计日志 ---
+        log_action(
+            action_type='更换资产', target_type='Asset', target_id=asset_id,
+            description=f"为队员【{emp_name}】更换了{asset.name}：回收报废 {quantity} 件，重新发放 {quantity} 件。备注：{reason}",
+            **locals()
+        )
+
+        db.session.commit()
+        flash(f'更换成功：已回收并报废队员手中的旧装备，并下发了新库存。', 'success')
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f'系统错误：{str(e)}', 'danger')
+
     return redirect(url_for('asset.asset_detail', asset_id=asset_id))
 
 

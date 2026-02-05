@@ -86,7 +86,7 @@
                     <tbody>
                         {% if assets %}
                         {% for asset in assets %}
-                        <tr class="clickable-row" onclick="window.location.href='{{ url_for('asset.asset_detail', asset_id=asset.id) }}'" style="cursor:pointer">
+                        <tr class="clickable-row" onclick="window.location.href='{{ url_for('asset.asset_detail', asset_id=asset.id, next=request.full_path.rstrip('?')) }}'" style="cursor:pointer">
                             <td class="ps-3">
                                 <div class="img-wrapper rounded border">
                                     {% if asset.photo_path %}

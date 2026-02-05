@@ -9,7 +9,7 @@
             <div class="card shadow">
                 <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
                     <h4 class="mb-0"><i class="bi bi-box-seam"></i> 资产详情 - {{ asset.name }}</h4>
-                    <a href="{{ url_for('asset.asset_list') }}" class="btn btn-outline-light btn-sm">返回列表</a>
+                    <a href="{{ return_url or url_for('asset.asset_list') }}" class="btn btn-outline-light btn-sm">返回列表</a>
                 </div>
 
                 <div class="card-body">
@@ -140,6 +140,13 @@
                                         <i class="bi bi-box-arrow-in-left"></i> 归还
                                     </button>
                                     {% endif %}
+                                    <!-- 更换装备 -->
+                                    {% if asset.type in ['装备', '服饰'] and asset.allocated_quantity > 0 %}
+                                    <button class="btn btn-info text-white shadow-sm" 
+                                        data-bs-toggle="modal" data-bs-target="#exchangeModal">
+                                        <i class="bi bi-arrow-left-right"></i> 更换
+                                    </button>
+                                    {% endif %}
                                     <!-- 消耗按钮，仅消耗品类型显示 -->
                                     {% if asset.type == '消耗品' %}
                                     <button class="btn btn-danger" data-bs-toggle="modal"
@@ -155,7 +162,7 @@
                                     </button>
                                     {% endif %}
                                     <!-- 维修/修复按钮：排除消耗品类型 -->
-                                    {% if asset.type != '消耗品' %}
+                                    {% if asset.type == '固定资产' %}
                                         {% if asset.status == '维修中' %}
                                         <button class="btn btn-info text-white" onclick="handleRepairClick()"
                                             id="mainRepairBtn">
@@ -224,6 +231,7 @@
                     {% set badge_color = 'bg-secondary' %}
                     {% if h.action == '发放' %}{% set badge_color = 'bg-primary' %}
                     {% elif h.action == '归还' or h.action.startswith('归还') %}{% set badge_color = 'bg-info text-dark' %}
+                    {% elif h.action.startswith('更换') %}{% set badge_color = 'bg-info text-white' %}
                     {% elif h.action == '补充' %}{% set badge_color = 'bg-success' %}
                     {% elif h.action == '报废' or h.action == '消耗' %}{% set badge_color = 'bg-danger' %}
                     {% elif h.action == '维修' %}{% set badge_color = 'bg-warning text-dark' %}{% endif %}
@@ -236,27 +244,30 @@
             </div>
             <div class="ms-1 ps-3 border-start">
                 <p class="mb-0 text-dark">
-                    {% if h.action in ['发放', '归还'] and h.user %}
-                        <strong>{{ h.user.name }}</strong>
-                        {% if h.action == '发放' %}领用了{% else %}归还了{% endif %}
-                        <span class="text-primary fw-bold">{{ h.quantity }}</span> 个{{ asset.name }}
+                    {# 将 更换(发放) 和 更换(回收) 加入友好显示列表 #}
+                    {% if h.action in ['发放', '归还', '更换(发放)', '更换(回收)'] and h.user %}
+                    <strong>{{ h.user.name }}</strong>
+            
+                    {# 根据不同动作显示不同的动词 #}
+                    {% if h.action == '发放' %}领用了
+                    {% elif h.action == '更换(发放)' %}领用了(新)
+                    {% elif h.action == '更换(回收)' %}归还了(旧)
+                    {% else %}归还了{% endif %}
+            
+                    <span class="text-primary fw-bold">{{ h.quantity }}</span> 个{{ asset.name }}
+            
                     {% elif h.action.startswith('归还（离职自动）') %}
-                        <span class="text-danger"><i class="bi bi-person-x"></i> {{ h.note }}</span>
+                    <span class="text-danger"><i class="bi bi-person-x"></i> {{ h.note }}</span>
                     {% else %}
-                        {{ h.action }}数量: <span class="fw-bold">{{ h.quantity }}</span>
+                    {{ h.action }}数量: <span class="fw-bold">{{ h.quantity }}</span>
                     {% endif %}
                 </p>
-                {% if h.note and h.note != h.action and not h.action.startswith('归还（离职自动）') %}
-                <small class="text-muted d-block mt-1">
-                    <i class="bi bi-chat-left-dots"></i> 备注：{{ h.note }}
-                </small>
-                {% endif %}
             </div>
-        </div>
-        {% endfor %}
-    </div>
-
-    <nav class="mt-4">
+            </div>
+            {% endfor %}
+            </div>
+            
+            <nav class="mt-4">
         <ul class="pagination justify-content-center">
             <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
                 <a class="page-link" href="{{ url_for('asset.asset_detail', asset_id=asset.id, page=pagination.prev_num) if pagination.has_prev else '#' }}">上一页</a>
@@ -333,9 +344,22 @@
                 <div class="modal-body">
                     <label class="form-label">选择使用人 <span class="text-danger">*</span></label>
                     <select name="user_id" class="form-select" required>
-                        <option value="">-- 请选择在职员工 --</option>
+                        <option value="">-- 请选择在职队员 --</option>
+                        {# 1. 预计算每个人的持有量 #}
+                        {% set current_holdings = {} %}
+                        {% for a in asset.allocations if a.return_date is none %}
+                        {% set _ = current_holdings.update({a.user_id: (current_holdings.get(a.user_id, 0) + a.quantity)}) %}
+                        {% endfor %}
+                    
+                        {# 2. 循环员工列表 #}
                         {% for emp in in_service_employees %}
-                        <option value="{{ emp.id }}">{{ emp.name }} ({{ emp.position or '无' }}/{{ emp.post or '无' }})
+                        {% set held_qty = current_holdings.get(emp.id, 0) %}
+                        <option value="{{ emp.id }}">
+                            {{ emp.name }}
+                            {# 3. 判断：只有持有量大于 0 才显示括号内容 #}
+                            {% if held_qty > 0 %}
+                            (当前持有: {{ held_qty }} 个)
+                            {% endif %}
                         </option>
                         {% endfor %}
                     </select>
@@ -378,7 +402,7 @@
                         {% endfor %}
                         {% for uid, qty in summary.items() %}
                         {% set uname = (asset.allocations|selectattr('user_id', 'equalto', uid)|first).user.name %}
-                        <option value="{{ uid }}">{{ uname }} (剩余持有: {{ qty }} 个)</option>
+                        <option value="{{ uid }}">{{ uname }} (当前持有: {{ qty }} 个)</option>
                         {% endfor %}
                     </select>
                     <div class="mb-3 mt-3">
@@ -392,6 +416,58 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
                     <button type="submit" class="btn btn-warning">确认归还</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+<!-- 更换模态框 -->
+ {% if asset.allocated_quantity > 0 and asset.stock_quantity > 0 %}
+<div class="modal fade" id="exchangeModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="bi bi-arrow-left-right"></i> 更换新装备</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('asset.asset_exchange', asset_id=asset.id) }}">
+                <div class="modal-body">
+                    <div class="alert alert-warning small">
+                        <strong>操作说明：</strong> 自动执行“旧物回收报废”与“新物发放”。请确保新装备库存充足。
+                    </div>
+                    
+                    <label class="form-label">选择更换人 <span class="text-danger">*</span></label>
+                    <select name="user_id" class="form-select" required>
+                        <option value="">-- 选择当前持有人 --</option>
+                        {% set summary = {} %}
+                        {% for a in asset.allocations if a.return_date is none %}
+                            {% set _ = summary.update({a.user_id: (summary.get(a.user_id, 0) + a.quantity)}) %}
+                        {% endfor %}
+                        {% for uid, qty in summary.items() %}
+                            {% set uname = (asset.allocations|selectattr('user_id', 'equalto', uid)|first).user.name %}
+                            <option value="{{ uid }}">{{ uname }} (持有: {{ qty }} 件)</option>
+                        {% endfor %}
+                    </select>
+
+                    <div class="mt-3">
+                        <label class="form-label">更换数量</label>
+                        <input type="number" name="quantity" class="form-control" value="1" min="1" required>
+                        <small class="text-muted">剩余库存（可供更换）：{{ asset.stock_quantity }}</small>
+                    </div>
+
+                    <div class="mt-3">
+                        <label class="form-label">更换原因</label>
+                        <textarea name="note" class="form-control" rows="2" placeholder="如：破损、尺寸不合等"></textarea>
+                    </div>
+                    
+                    <div class="mt-3 text-center">
+                        <strong class="text-danger">如有遗失或人为损坏，每项罚款200元</strong>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-info text-white">确认更换</button>
                 </div>
             </form>
         </div>
