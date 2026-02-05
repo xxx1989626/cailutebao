@@ -239,7 +239,7 @@
                     {% if h.action in ['发放', '归还'] and h.user %}
                         <strong>{{ h.user.name }}</strong>
                         {% if h.action == '发放' %}领用了{% else %}归还了{% endif %}
-                        <span class="text-primary fw-bold">{{ h.quantity }}</span> 个资产
+                        <span class="text-primary fw-bold">{{ h.quantity }}</span> 个{{ asset.name }}
                     {% elif h.action.startswith('归还（离职自动）') %}
                         <span class="text-danger"><i class="bi bi-person-x"></i> {{ h.note }}</span>
                     {% else %}

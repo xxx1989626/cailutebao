@@ -13,7 +13,7 @@
             <div class="card-body">
                 
 
-<form method="POST">
+<form method="POST" enctype="multipart/form-data">
     <div class="mb-3">
         <label class="form-label">请假人员</label>
         <select name="user_id" class="form-select" required {% if leave %}disabled{% endif %}>
@@ -38,7 +38,7 @@
         <div class="col-md-6 mb-3">
             <label class="form-label">开始日期</label>
             <input type="date" name="start_date" class="form-control" 
-                   value="{{ leave.start_date if leave else today_str }}" required>
+                   value="{{ leave.start_date if leave else form_default_date }}" required>
         </div>
     </div>
 
@@ -59,18 +59,28 @@
         <label class="form-label">请假事由</label>
         <textarea name="reason" class="form-control" rows="3">{{ leave.reason if leave else '' }}</textarea>
     </div>
-
+    <div class="mb-3">
+        <label class="form-label fw-bold">证明材料</label>
+        <div id="dropZone" class="border border-2 border-dashed rounded p-4 text-center bg-light" style="cursor: pointer;">
+            <i class="bi bi-cloud-arrow-up fs-2 text-primary"></i>
+            <p class="mb-0">将文件拖拽至此处，或点击上传</p>
+            <input type="file" name="files" id="fileInput" class="form-control d-none" multiple accept="image/*,.pdf">
+        </div>
+        <div id="imagePreview" class="mt-2 d-flex flex-wrap gap-2"></div>
+        <small class="text-muted">文件预览。</small>
+    </div>
+    
     <div class="d-grid gap-2 d-md-flex justify-content-md-end">
         <a href="{{ url_for('leave.leave_list') }}" class="btn btn-light">取消</a>
         <button type="submit" class="btn btn-primary px-5">保存修改</button>
     </div>
-</form>
-            </div>
-        </div>
+    </form>
     </div>
-</div>
-
-<script>
+    </div>
+    </div>
+    </div>
+    
+    <script>
 document.addEventListener('DOMContentLoaded', function() {
     const startInput = document.querySelector('input[name="start_date"]');
     const endInput = document.querySelector('input[name="end_date"]');
@@ -112,5 +122,83 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+<script>
+// 图片预览逻辑
+document.getElementById('fileInput').addEventListener('change', function(e) {
+    const previewContainer = document.getElementById('imagePreview');
+    previewContainer.innerHTML = ''; // 清空旧预览
 
+    for (const file of e.target.files) {
+        if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const imgWrapper = document.createElement('div');
+                imgWrapper.style.position = 'relative';
+                imgWrapper.innerHTML = `
+                    <img src="${event.target.result}" class="img-thumbnail" style="width: 100px; height: 100px; object-fit: cover;">
+                `;
+                previewContainer.appendChild(imgWrapper);
+            }
+            reader.readAsDataURL(file);
+        } else if (file.type === 'application/pdf') {
+            const pdfIcon = document.createElement('div');
+            pdfIcon.className = 'alert alert-secondary p-2';
+            pdfIcon.innerHTML = `<i class="bi bi-file-pdf"></i> PDF文件`;
+            previewContainer.appendChild(pdfIcon);
+        }
+    }
+});
+// 拖拽上传逻辑
+document.addEventListener('DOMContentLoaded', function() {
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+
+    // 1. 点击拖拽框触发文件选择
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    // 2. 阻止浏览器默认打开文件的行为
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, e => {
+            e.preventDefault();
+            e.stopPropagation();
+        }, false);
+    });
+
+    // 3. 拖拽高亮效果
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.add('border-primary', 'bg-white'), false);
+    });
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.remove('border-primary', 'bg-white'), false);
+    });
+
+    // 4. 处理拖拽释放
+    dropZone.addEventListener('drop', e => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        
+        if (files.length > 0) {
+            // 将拖拽的文件赋值给 input 控件
+            fileInput.files = files;
+            // 手动触发 change 事件以运行你原有的预览逻辑
+            fileInput.dispatchEvent(new Event('change'));
+        }
+    });
+});
+
+</script>
+
+<style>
+    #dropZone {
+        transition: all 0.3s ease;
+        border-style: dashed !important;
+    }
+    #dropZone:hover {
+        border-color: #0d6efd !important;
+        background-color: #f8f9fa !important;
+    }
+    .bi-cloud-arrow-up {
+        opacity: 0.6;
+    }
+</style>
 {% endblock %}

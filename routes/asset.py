@@ -17,47 +17,51 @@ asset_bp = Blueprint('asset', __name__, url_prefix='/asset')
 @login_required
 @perm.require('asset.view')
 def asset_list():
-    # 1. 获取筛选参数
-    type_filter = request.args.get('type', '固定资产')  # 默认显示固定资产标签
-    status_filter = request.args.get('status', '')    # 具体的某种状态过滤
+    # 1. 获取参数
+    # 注意：这里不再给 type_filter 设硬编码默认值，后面根据逻辑判断
+    type_filter = request.args.get('type')  
+    status_filter = request.args.get('status', '')
     search = request.args.get('search', '').strip()
     user_filter = request.args.get('user_id')
     
-    # 2. 统计报修中的资产总数
+    # 2. 统计报修
     repair_count = Asset.query.filter_by(status='维修中').count()
 
     # 3. 构建基础查询
     query = Asset.query
 
-    # 4. 类型过滤
-    if type_filter:
-        query = query.filter_by(type=type_filter)
-    
-    # 5. 状态过滤
-    if status_filter:
-        query = query.filter_by(status=status_filter)
-        
-    # 6. 使用人过滤
-    if user_filter:
-        query = query.filter_by(current_user_id=user_filter)
-
-    # 7. 搜索过滤
+    # 4. 全局搜索逻辑（优先级最高）
     if search:
+        # 先执行全局模糊搜索
         query = query.filter(
             db.or_(
                 Asset.name.ilike(f'%{search}%'),
                 Asset.number.ilike(f'%{search}%') 
             )
         )
+        # 自动切换标签：如果没选标签，或者搜到的第一个结果不在当前标签
+        first_asset = query.first()
+        if first_asset:
+            type_filter = first_asset.type  # 核心：自动跳转到匹配到的资产分类
+    
+    # 5. 类型过滤（如果没有搜索，或者搜索后确定了类型）
+    if not type_filter:
+        type_filter = '固定资产'  # 仅在既没搜索也没选标签时，默认显示固定资产
+    
+    query = query.filter_by(type=type_filter)
+    
+    # 6. 其他过滤
+    if status_filter:
+        query = query.filter_by(status=status_filter)
+    if user_filter:
+        query = query.filter_by(current_user_id=user_filter)
 
-    # 8. 字段显示控制
-    show_fields = request.args.getlist('show')
-    if not show_fields:
-        show_fields = ['name', 'number', 'status', 'location', 'current_user', 'ownership']  # 默认显示的字段
-
-    # 9. 获取数据
+    # 7. 获取数据
     assets = query.order_by(Asset.id.desc()).all()
     in_service_employees = EmploymentCycle.query.filter_by(status='在职').order_by(EmploymentCycle.name).all()
+
+    # 8. 默认显示所有字段（因为你删除了字段控制功能）
+    show_fields = ['name', 'number', 'status', 'location', 'current_user', 'ownership']
 
     return render_template('asset/list.html',
                            assets=assets,

@@ -3,45 +3,61 @@
 {% block title %}资产列表{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
+<style>
+    .container { max-width: 1400px; }
+    @media (max-width: 768px) {
+        .nav-tabs { flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; border-bottom: 2px solid #eee; }
+        .nav-tabs::-webkit-scrollbar { display: none; }
+        .clickable-row:active { background-color: #f0f2f5 !important; }
+        .card-body { padding: 10px !important; }
+        .table td, .table th { padding: 8px 4px !important; font-size: 0.85rem; }
+    }
+    .img-wrapper { width: 50px; height: 50px; overflow: hidden; position: relative; flex-shrink: 0; background-color: #f8f9fa; }
+    .asset-cache-img { width: 100%; height: 100%; object-fit: cover; display: none; }
+</style>
+
+<div class="container mt-3 mt-md-4">
     <div class="card shadow-sm border-0">
-        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-            <h4 class="mb-0"><i class="bi bi-box-seam me-2"></i>资产总览</h4>
-            <div>
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-2 py-md-3">
+            <h4 class="mb-0 fs-5 fs-md-4"><i class="bi bi-box-seam me-2"></i>资产总览</h4>
+            <div class="d-flex gap-1">
                 {% if perm.can('hr.view') %}
-                <a href="{{ url_for('asset.asset_export', status=status_filter, search=search) }}" class="btn btn-light me-2">
-                    <i class="bi bi-download"></i> 导出数据
+                <a href="{{ url_for('asset.asset_export', status=status_filter, search=search) }}" class="btn btn-sm btn-light">
+                    <i class="bi bi-download"></i> <span class="d-none d-md-inline">导出</span>
                 </a>
-                <a href="{{ url_for('asset.asset_import') }}" class="btn btn-light me-2">
-                    <i class="bi bi-upload"></i> 导入数据
+                <a href="{{ url_for('asset.asset_import') }}" class="btn btn-sm btn-light">
+                    <i class="bi bi-upload"></i> <span class="d-none d-md-inline">导入</span>
                 </a>
-                <a href="{{ url_for('asset.asset_inventory') }}" class="btn btn-light me-2">  <!-- 新增盘点入口 -->
-        <i class="bi bi-clipboard-check"></i> 资产盘点
-    </a>
-                <a href="{{ url_for('asset.asset_add') }}" class="btn btn-light">
-                    <i class="bi bi-person-plus"></i> 新增数据
+                <a href="{{ url_for('asset.asset_inventory') }}" class="btn btn-sm btn-light">
+                    <i class="bi bi-clipboard-check"></i> <span class="d-none d-md-inline">盘点</span>
+                </a>
+                <a href="{{ url_for('asset.asset_add') }}" class="btn btn-sm btn-warning">
+                    <i class="bi bi-plus-lg"></i> <span class="d-none d-md-inline">新增</span>
                 </a>
                 {% endif %}
             </div>
         </div>
 
         <div class="card-body">
-            <form method="GET" class="mb-4">
-                <div class="row g-3">
-                    <div class="col-md-8">
-                        <input type="text" name="search" class="form-control" placeholder="搜索资产名称 / 编号 / 序列号"
-                            value="{{ search or '' }}">
+            <form method="GET" action="{{ url_for('asset.asset_list') }}" class="mb-3 mb-md-4">
+                {% for field in show_fields %}
+                <input type="hidden" name="show" value="{{ field }}">
+                {% endfor %}
+                
+                <div class="row g-2">
+                    <div class="col-8 col-md-9 col-lg-10">
+                        <input type="text" name="search" class="form-control" placeholder="全局搜索名称/编号/SN..." value="{{ search or '' }}">
                     </div>
-                    <div class="col-md-4">
-                        <button type="submit" class="btn btn-outline-primary w-100">搜索资产</button>
+                    <div class="col-3 col-md-2 col-lg-2">
+                        <button type="submit" class="btn btn-primary w-100 text-nowrap">搜索</button>
                     </div>
                 </div>
             </form>
 
-            <ul class="nav nav-tabs mb-4">
+            <ul class="nav nav-tabs mb-3 mb-md-4">
                 {% for t in ['固定资产', '装备', '服饰', '工具', '消耗品'] %}
                 <li class="nav-item">
-                    <a class="nav-link {% if type_filter == t %}active{% endif %}"
+                    <a class="nav-link {% if type_filter == t %}active fw-bold text-primary{% endif %}"
                         href="{{ url_for('asset.asset_list', type=t) }}">
                         {{ t }}
                         {% if t == '固定资产' and repair_count > 0 %}
@@ -52,159 +68,63 @@
                 {% endfor %}
             </ul>
 
-            <form method="GET" class="mb-4 bg-light p-3 rounded">
-                <input type="hidden" name="type" value="{{ type_filter }}">
-                <input type="hidden" name="search" value="{{ search }}">
-                <div class="row align-items-center">
-                    <div class="col-auto"><strong>显示字段：</strong></div>
-                    <div class="col">
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="checkbox" name="show" value="name" id="show_name" 
-                                {% if 'name' in show_fields %}checked{% endif %}>
-                            <label class="form-check-label" for="show_name">名称</label>
-                        </div>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="checkbox" name="show" value="number" id="show_number" 
-                                {% if 'number' in show_fields %}checked{% endif %}>
-                            <label class="form-check-label" for="show_number">编号/SN码</label>
-                        </div>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="checkbox" name="show" value="status" id="show_status" 
-                                {% if 'status' in show_fields %}checked{% endif %}>
-                            <label class="form-check-label" for="show_status">状态</label>
-                        </div>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="checkbox" name="show" value="ownership" id="show_ownership" 
-                                {% if 'ownership' in show_fields %}checked{% endif %}>
-                            <label class="form-check-label" for="show_ownership">资产归属</label>
-                        </div>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="checkbox" name="show" value="location" id="show_loc" 
-                                {% if 'location' in show_fields %}checked{% endif %}>
-                            <label class="form-check-label" for="show_loc">位置</label>
-                        </div>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="checkbox" name="show" value="current_user" id="show_user" 
-                                {% if 'current_user' in show_fields %}checked{% endif %}>
-                            <label class="form-check-label" for="show_user">领用人</label>
-                        </div>
-                    </div>
-                    <div class="col-auto">
-                        <button type="submit" class="btn btn-outline-secondary btn-sm">应用视图</button>
-                    </div>
-                </div>
-            </form>
-
             <div class="table-responsive">
                 <table class="table table-hover align-middle border-top">
                     <thead class="bg-light">
-                        <tr class="text-secondary small text-uppercase">
-                            <th class="ps-3" style="width: 80px;">资产</th>
-                            
-                            {% if 'name' in show_fields %}<th>名称信息</th>{% endif %}
-                            {% if 'number' in show_fields %}<th>编号/SN</th>{% endif %}
-                            
-                            <th>资产类型</th> 
-                            {% if 'ownership' in show_fields %}<th>资产归属</th>{% endif %}
-                            <th class="text-center">总数 / 库存/ 已分配</th>
-                            
-                            {% if 'status' in show_fields %}<th>当前状态</th>{% endif %}
-                            {% if 'location' in show_fields %}<th>存放位置</th>{% endif %}
-                            {% if 'current_user' in show_fields %}<th>使用方/领用人</th>{% endif %}
-                            
-                            <th class="text-end pe-3">操作</th>
+                        <tr class="text-secondary small">
+                            <th class="ps-3" style="width: 70px;">资产</th>
+                            {% if 'name' in show_fields %}<th>名称</th>{% endif %}
+                            {% if 'number' in show_fields %}<th class="d-none d-md-table-cell">编号/SN</th>{% endif %}
+                            <th class="d-none d-md-table-cell">资产类型</th> 
+                            {% if 'ownership' in show_fields %}<th class="d-none d-md-table-cell">归属</th>{% endif %}
+                            <th class="text-center">总数 / 在库 / 已分配</th>
+                            {% if 'status' in show_fields %}<th>状态</th>{% endif %}
+                            {% if 'location' in show_fields %}<th class="d-none d-md-table-cell">位置</th>{% endif %}
+                            <th class="text-end pe-3">详情</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% if assets %}
                         {% for asset in assets %}
-                        <tr>
+                        <tr class="clickable-row" onclick="window.location.href='{{ url_for('asset.asset_detail', asset_id=asset.id) }}'" style="cursor:pointer">
                             <td class="ps-3">
-                                {% if asset.photo_path %}
-                                <img src="/{{ asset.photo_path }}" 
-                                     class="rounded shadow-sm border" style="width:50px; height:50px; object-fit:cover;">
-                                {% else %}
-                                <div class="rounded bg-light d-flex align-items-center justify-content-center border" 
-                                     style="width:50px; height:50px;">
-                                    <i class="bi bi-image text-muted"></i>
+                                <div class="img-wrapper rounded border">
+                                    {% if asset.photo_path %}
+                                        <img data-src="/{{ asset.photo_path }}" class="asset-cache-img">
+                                        <div class="spinner-border spinner-border-sm text-secondary placeholder-icon" style="position: absolute; top: 35%; left: 35%;"></div>
+                                    {% else %}
+                                        <div class="d-flex align-items-center justify-content-center h-100"><i class="bi bi-image text-muted"></i></div>
+                                    {% endif %}
                                 </div>
-                                {% endif %}
                             </td>
-
                             {% if 'name' in show_fields %}
-                            <td><div class="fw-bold text-dark">{{ asset.name }}</div></td>
+                            <td>
+                                <div class="fw-bold text-dark text-truncate" style="max-width: 150px;">{{ asset.name }}</div>
+                                <div class="d-md-none text-muted small">{{ asset.type }} | {{ asset.location or '未设定' }}</div>
+                            </td>
                             {% endif %}
-
-                            {% if 'number' in show_fields %}
-                            <td><div class="text-muted small">{{ asset.number or '-' }}</div></td>
-                            {% endif %}
-
-                            <td><span class="badge bg-light text-dark border">{{ asset.type }}</span></td>
-                            
-                            {% if 'ownership' in show_fields %}
-                            <td>{{ asset.ownership or '' }}</td>
-                            {% endif %}
-                            
+                            {% if 'number' in show_fields %}<td class="d-none d-md-table-cell small text-muted">{{ asset.number or '-' }}</td>{% endif %}
+                            <td class="d-none d-md-table-cell"><span class="badge bg-light text-dark border">{{ asset.type }}</span></td>
+                            {% if 'ownership' in show_fields %}<td class="d-none d-md-table-cell">{{ asset.ownership or '' }}</td>{% endif %}
                             <td class="text-center">
-    <span class="text-muted small" title="总数量">{{ asset.total_quantity }}</span>
-    <span class="mx-1 text-muted">/</span>
-
-    <span class="fw-bold {% if asset.stock_quantity > 0 %}text-success{% else %}text-danger{% endif %}" title="在库数量">
-        {{ asset.stock_quantity }}
-    </span>
-        <span class="mx-1 text-muted">/</span>
-
-    <span class="text-primary" title="已分配数量">
-        {{ asset.total_quantity - asset.stock_quantity }}
-    </span>
-    
-    
-</td>
-
+                                <span class="text-muted small">{{ asset.total_quantity }}</span>/
+                                <span class="fw-bold {% if asset.stock_quantity > 0 %}text-success{% else %}text-danger{% endif %}">{{ asset.stock_quantity }}</span>/
+                                <span class="text-primary">{{ asset.total_quantity - asset.stock_quantity }}</span>
+                            </td>
                             {% if 'status' in show_fields %}
                             <td>
-                                {% set status_map = {'库存': 'success', '使用中': 'primary', '维修中': 'warning', '报废': 'danger'} %}
-                                <span class="badge rounded-pill bg-{{ status_map.get(asset.status, 'secondary') }}">
-                                    {{ asset.status }}
-                                </span>
+                                {% set s_map = {'库存': 'success', '使用中': 'primary', '维修中': 'warning', '报废': 'danger'} %}
+                                <span class="badge rounded-pill bg-{{ s_map.get(asset.status, 'secondary') }}" style="font-size: 0.75rem;">{{ asset.status }}</span>
                             </td>
                             {% endif %}
-
-                            {% if 'location' in show_fields %}
-                            <td>{{ asset.location or '未设定' }}</td>
-                            {% endif %}
-
-                            {% if 'current_user' in show_fields %}
-                            <td>
-                                <small class="text-muted">
-                                    {% if asset.allocation_mode == 'group' %}
-                                        <i class="bi bi-people me-1"></i>{{ asset.department or '集体' }}
-                                    {% else %}
-                                        {% if asset.current_user %}
-                                            <i class="bi bi-person me-1"></i>{{ asset.current_user.name }}
-                                        {% else %}
-                                            <span class="text-light-emphasis">-</span>
-                                        {% endif %}
-                                    {% endif %}
-                                </small>
-                            </td>
-                            {% endif %}
-
+                            {% if 'location' in show_fields %}<td class="d-none d-md-table-cell">{{ asset.location or '-' }}</td>{% endif %}
                             <td class="text-end pe-3">
-                                <div class="btn-group">
-                                    <a href="{{ url_for('asset.asset_detail', asset_id=asset.id) }}" 
-                                       class="btn btn-sm btn-outline-primary shadow-sm">查看详情</a>
-                                </div>
+                                <i class="bi bi-chevron-right text-muted"></i>
                             </td>
                         </tr>
                         {% endfor %}
                         {% else %}
-                        <tr>
-                            <td colspan="10" class="text-center py-5">
-                                <img src="https://cdn-icons-png.flaticon.com/512/7486/7486744.png" style="width: 64px; opacity: 0.3;">
-                                <p class="text-muted mt-2">没有找到符合条件的资产</p>
-                            </td>
-                        </tr>
+                        <tr><td colspan="10" class="text-center py-5 text-muted">未找到相关资产</td></tr>
                         {% endif %}
                     </tbody>
                 </table>
@@ -212,4 +132,35 @@
         </div>
     </div>
 </div>
+
+<script>
+// --- IndexedDB 图片缓存逻辑 ---
+const ASSET_DB = { name: 'AssetImageCache', store: 'photos', version: 1 };
+function openDB() {
+    return new Promise(r => {
+        const req = indexedDB.open(ASSET_DB.name, ASSET_DB.version);
+        req.onupgradeneeded = e => e.target.result.createObjectStore(ASSET_DB.store);
+        req.onsuccess = e => r(e.target.result);
+    });
+}
+async function loadImgs() {
+    const db = await openDB();
+    document.querySelectorAll('.asset-cache-img').forEach(img => {
+        const url = img.getAttribute('data-src');
+        if (!url) return;
+        db.transaction(ASSET_DB.store).objectStore(ASSET_DB.store).get(url).onsuccess = (e) => {
+            if (e.target.result) render(img, URL.createObjectURL(e.target.result));
+            else fetch(url).then(r => r.blob()).then(b => {
+                db.transaction(ASSET_DB.store,'readwrite').objectStore(ASSET_DB.store).put(b,url);
+                render(img, URL.createObjectURL(b));
+            });
+        };
+    });
+}
+function render(img, url) {
+    img.src = url; img.style.display = 'block';
+    if (img.nextElementSibling) img.nextElementSibling.style.display = 'none';
+}
+document.addEventListener('DOMContentLoaded', loadImgs);
+</script>
 {% endblock %}

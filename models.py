@@ -379,5 +379,5 @@ class LeaveRecord(db.Model):
     
     total_days = db.Column(db.Float)                       # 请假天数
     status = db.Column(db.String(20), default='请假中')    # 请假中、已销假、待审核
-    
+    attachments = db.Column(db.JSON, default=[])          # 附件列表，存储文件路径的 JSON 数组
     created_at = db.Column(db.DateTime, default=datetime.now)

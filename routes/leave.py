@@ -1,7 +1,7 @@
 # routes/leave.py
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from models import db, LeaveRecord, EmploymentCycle
-from utils import perm
+from utils import perm, save_uploaded_file
 from datetime import datetime
 
 leave_bp = Blueprint('leave', __name__, url_prefix='/leave')
@@ -23,7 +23,16 @@ def add_leave():
         # 2. 转换日期并校验
         start_date = datetime.strptime(start_str, '%Y-%m-%d').date()
         end_date = datetime.strptime(end_str, '%Y-%m-%d').date()
-        
+
+        # 3. 上传附件
+        file_paths = []
+        uploaded_files = request.files.getlist('files')
+        for file in uploaded_files:
+            if file and file.filename:
+                path = save_uploaded_file(file, module='leave')
+                if path:
+                    file_paths.append(path)
+
         if end_date < start_date:
             flash('错误：结束日期不能早于开始日期', 'danger')
             # 失败后返回，保留当前填写的 employees 数据供重新渲染
@@ -42,6 +51,7 @@ def add_leave():
             end_date=end_date,
             total_days=t_days,
             reason=request.form.get('reason'),
+            attachments=file_paths,
             status='请假中'
         )
         db.session.add(new_leave)
@@ -53,31 +63,37 @@ def add_leave():
     employees = EmploymentCycle.query.filter_by(status='在职').all()
     # 记得传入 today_str 供页面初始化默认日期
     current_date = datetime.now().strftime('%Y-%m-%d')
-    return render_template('leave/add.html', employees=employees, current_date=current_date)
+    return render_template('leave/add.html', employees=employees, form_default_date=current_date)
 
 @leave_bp.route('/edit/<int:id>', methods=['GET', 'POST'])
 @perm.require('leave.edit')
 def edit_leave(id):
     leave = LeaveRecord.query.get_or_404(id)
-    # 获取在职人员列表，用于下拉框（虽然编辑时通常不改人员，但为了模板统一需要传入）
     employees = EmploymentCycle.query.filter_by(status='在职').all()
     
     if request.method == 'POST':
         leave.leave_type = request.form.get('leave_type')
         leave.start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date()
         leave.end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date()
-        total_days_raw = request.form.get('total_days')
-        if total_days_raw:
-            leave.total_days = float(total_days_raw)
         leave.reason = request.form.get('reason')
-        # 如果你数据库里有总天数字段
-        # leave.total_days = request.form.get('total_days')
+        
+        # --- 编辑模式也需要处理文件上传 ---
+        new_files = request.files.getlist('files')
+        current_attachments = list(leave.attachments) if leave.attachments else []
+        
+        for file in new_files:
+            if file and file.filename:
+                path = save_uploaded_file(file, module='leave')
+                if path:
+                    current_attachments.append(path)
+        
+        leave.attachments = current_attachments # 更新附件列表
+        # -------------------------------
         
         db.session.commit()
         flash('记录更新成功', 'success')
         return redirect(url_for('leave.leave_list'))
 
-    # 渲染时传入 leave 对象，模板据此判断是“编辑”模式
     return render_template('leave/add.html', employees=employees, leave=leave)
 
 # 销假功能：更新状态和实际结束日期
@@ -104,5 +120,6 @@ def delete_leave(id):
 LEAVE_PERMISSIONS = [
     ('view', '查看请假', '查看全员请假记录'),
     ('add', '登记请假', '新增请假申请'),
-    ('edit', '审核销假', '修改记录或办理销假')
+    ('edit', '审核销假', '修改记录或办理销假'),
+    ('delete', '删除请假', '删除请假记录'),
 ]
