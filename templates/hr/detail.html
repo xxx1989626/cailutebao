@@ -207,7 +207,11 @@
                                         <div class="card-footer bg-white py-2">
                                             <p class="small text-muted mb-0 text-center">
                                                 共领用 {{ equipped_assets|length }} 项资产 ·
-                                                <strong class="text-danger">如有遗失或人为损坏，每项罚款200元</strong> · 向下滚动查看更多
+                                                <span class="warning-blink">
+                                                    <i class="bi bi-exclamation-triangle-fill text-danger me-1"></i>
+                                                    <strong class="text-danger">如有遗失或人为损坏，每项罚款 200 元</strong>
+                                                </span>
+                                                · <span class="opacity-75">向下滚动查看更多</span>
                                             </p>
                                         </div>
                                         {% else %}
@@ -237,6 +241,7 @@
                                             background: #bbb;
                                         }
                                     </style>
+                                    <hr class="mt-5 mb-0 border-dark border-2 opacity-100">
 
                                     <!-- 档案记录区域 -->
                                     <div class="d-flex justify-content-between align-items-center mt-5 border-bottom pb-2 mb-3">
@@ -450,26 +455,11 @@
                     </div>
                     {% endfor %}
                 </div>
-
-                <!-- 编辑模式 -->
-                {% if current_cycle %}
-                <div class="tab-pane fade" id="edit_tab">
-                    <form method="POST" action="{{ url_for('hr.edit_cycle', cycle_id=current_cycle.id) }}"
-                        enctype="multipart/form-data">
-                        {% set employee = current_cycle %}
-                        {% include "hr/_employee_form.html" with context %}
-                        <div class="text-center mt-5">
-                            <button type="submit" class="btn btn-primary btn-lg px-5">保存修改</button>
-                            <a href="{{ url_for('hr.hr_detail', id_card=id_card) }}"
-                                class="btn btn-secondary btn-lg px-5">取消</a>
-                        </div>
-                    </form>
-                </div>
-                {% endif %}
             </div>
         </div>
     </div>
 </div>
+
 <div class="modal fade" id="quickIssueModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -528,6 +518,7 @@
         </div>
     </div>
 </div>
+
 <script>
     // 控制数量框开关
     document.querySelectorAll('.asset-checkbox').forEach(chk => {

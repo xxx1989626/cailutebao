@@ -454,6 +454,7 @@ function submitShift() {
         date: document.getElementById('post_date').value,
         post_id: document.getElementById('post_id').value,
         shift_type: document.getElementById('is_night_toggle').checked ? '夜' : '白',
+        is_night: document.getElementById('is_night_toggle').checked,
         is_overtime: document.getElementById('is_overtime_toggle').checked
     };
     fetch("{{ url_for('scheduling.save_shift') }}", {

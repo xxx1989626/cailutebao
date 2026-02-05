@@ -3,12 +3,17 @@ from flask import Blueprint, render_template, redirect, url_for, request, flash
 from flask_login import login_required, current_user
 from models import Notification, User, db
 from utils import perm
-from datetime import datetime
+from datetime import datetime, timedelta
 
 notification_bp = Blueprint('notification', __name__, url_prefix='/notification')
 
 # 职位列表（与需求一致）
 POSITIONS = ["队长", "副队长", "领班", "队员"]
+
+def cleanup_old_notifications(days=30):
+    cutoff = datetime.now() - timedelta(days=days)
+    Notification.query.filter(Notification.created_at < cutoff).delete(synchronize_session=False)
+    db.session.commit()
 
 def send_operation_notice(title, content, operated_user_id):
     """
@@ -49,6 +54,7 @@ def send_operation_notice(title, content, operated_user_id):
 @notification_bp.route('/list')
 @login_required
 def notification_list():
+    cleanup_old_notifications(30)
     # 获取页码参数，默认为第 1 页，每页显示 10 条
     page = request.args.get('page', 1, type=int)
     per_page = 10
@@ -93,6 +99,7 @@ def read_all():
 @notification_bp.route('/unread_count')
 @login_required
 def get_unread_count():
+    cleanup_old_notifications(30)
     from models import Notification, EmploymentCycle
     # 1. 检查未读通知
     notice_count = Notification.query.filter_by(user_id=current_user.id, is_read=False).count()

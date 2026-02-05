@@ -8,7 +8,7 @@ def register_blueprints(app):
     from .asset import asset_bp
     from .fund import fund_bp
     from .permission import permission_bp
-    from .scheduling import scheduling_bp, SCHEDULING_PERMISSIONS
+    from .scheduling import scheduling_bp
     from .dorm import dorm_bp
     from .notification import notification_bp
     from .trip import trip_bp

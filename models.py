@@ -294,6 +294,9 @@ class ShiftSchedule(db.Model):
     # 关联 EmploymentCycle 而不是 User，因为排班是基于职位的
     employee_id = db.Column(db.Integer, db.ForeignKey('employment_cycles.id'), nullable=False)
     post_id = db.Column(db.Integer, db.ForeignKey('shift_posts.id'))
+    shift_type = db.Column(db.String(10))
+    is_overtime = db.Column(db.Boolean, default=False)
+    hours = db.Column(db.Float, default=12.0)
     
     start_time = db.Column(db.String(5), default="08:00")
     end_time = db.Column(db.String(5), default="20:00")
@@ -309,23 +312,6 @@ class ShiftTemplate(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     data = db.Column(db.JSON) # 存储排班规则的 JSON 数据
-
-# 这就是在数据库里新建一张叫“排班”的表
-class Scheduling(db.Model):
-    __tablename__ = 'schedulings'
-    id = db.Column(db.Integer, primary_key=True)
-    # 改为关联员工档案 ID
-    employee_id = db.Column(db.Integer, db.ForeignKey('employment_cycles.id'), nullable=False)
-    date = db.Column(db.Date, nullable=False)
-    # 增加岗位关联
-    post_id = db.Column(db.Integer, db.ForeignKey('shift_posts.id'))
-    shift_type = db.Column(db.String(10), default='白')
-    is_overtime = db.Column(db.Boolean, default=False)
-    hours = db.Column(db.Float, default=12.0)
-
-    employee = db.relationship('EmploymentCycle', backref='schedulings_ref')
-    post = db.relationship('ShiftPost', backref='schedulings_ref')
-
 # ==================== 通知相关模型 ====================
 class Notification(db.Model):
     __tablename__ = 'notifications'

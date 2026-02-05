@@ -226,7 +226,10 @@ class PermissionManager:
             @wraps(f)
             def decorated_function(*args, **kwargs):
                 if not self.can(permission_key):
-                    flash(f'权限不足，缺少: {permission_key}', 'danger')
+                    from models import Permission
+                    perm_obj = Permission.query.filter_by(key=permission_key).first()
+                    display_name = perm_obj.name if perm_obj else permission_key
+                    flash(f'权限不足，缺少: {display_name}', 'danger')
                     return redirect(url_for('main.index'))
                 return f(*args, **kwargs)
             return decorated_function

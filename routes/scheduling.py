@@ -1,7 +1,7 @@
-# routes/scheduling.py 全量替换代码
+# routes/scheduling.py 
 from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, send_file
 from flask_login import login_required
-from models import db, EmploymentCycle, ShiftPost, Scheduling
+from models import db, EmploymentCycle, ShiftPost, ShiftSchedule
 from utils import perm
 from datetime import datetime
 import pandas as pd
@@ -81,7 +81,7 @@ def schedule_list():
 @scheduling_bp.route('/api/get_shifts')
 @login_required
 def get_shifts():
-    schedules = Scheduling.query.all()
+    schedules = ShiftSchedule.query.all()
     events = []
     for s in schedules:
         emp = EmploymentCycle.query.get(s.employee_id)
@@ -109,9 +109,9 @@ def save_shift():
     data = request.json
     try:
         date_obj = datetime.strptime(data['date'], '%Y-%m-%d').date()
-        shift = Scheduling.query.filter_by(employee_id=int(data['user_id']), date=date_obj).first()
+        shift = ShiftSchedule.query.filter_by(employee_id=int(data['user_id']), date=date_obj).first()
         if not shift:
-            shift = Scheduling(employee_id=int(data['user_id']), date=date_obj)
+            shift = ShiftSchedule(employee_id=int(data['user_id']), date=date_obj)
         
         shift.post_id = int(data.get('post_id'))
         shift.shift_type = data.get('shift_type', '白')
@@ -130,7 +130,7 @@ def save_shift():
 def delete_shift(id):
     if not perm.can('scheduling.edit'):
         return jsonify({'success': False, 'message': '无权操作'})
-    shift = Scheduling.query.get_or_404(id)
+    shift = ShiftSchedule.query.get_or_404(id)
     try:
         db.session.delete(shift)
         db.session.commit()
@@ -147,7 +147,7 @@ def post_delete(id):
         flash("无权操作", "danger")
         return redirect(url_for('scheduling.schedule_list', tab='posts'))
     post = ShiftPost.query.get_or_404(id)
-    if Scheduling.query.filter_by(post_id=id).first():
+    if ShiftSchedule.query.filter_by(post_id=id).first():
         flash("该岗位已有排班记录，无法删除", "warning")
     else:
         db.session.delete(post)
@@ -167,7 +167,7 @@ def export_attendance(table_type):
 
     data_list = []
     for emp in emps:
-        shifts = Scheduling.query.filter(Scheduling.employee_id == emp.id, Scheduling.date.like(f"{target_month}%")).all()
+        shifts = ShiftSchedule.query.filter(ShiftSchedule.employee_id == emp.id, ShiftSchedule.date.like(f"{target_month}%")).all()
         if not shifts: continue 
 
         actual_h = sum(s.hours for s in shifts)
@@ -300,14 +300,14 @@ def import_schedule_data():
                     s_type = '夜' if '夜' in post_name else '白'
                     
                     # 检查是否已存在
-                    exists = Scheduling.query.filter_by(
+                    exists = ShiftSchedule.query.filter_by(
                         employee_id=emp.id, 
                         date=current_date, 
                         post_id=target_post.id
                     ).first()
                     
                     if not exists:
-                        new_s = Scheduling(
+                        new_s = ShiftSchedule(
                             employee_id=emp.id, 
                             date=current_date, 
                             post_id=target_post.id,
@@ -341,8 +341,8 @@ def clear_month():
         # 匹配该月的所有排班
         start_date = f"{year_month}-01"
         # 简单粗暴删除该月所有排班（如果你想更安全，可以按日期范围删除）
-        num_deleted = Scheduling.query.filter(
-            Scheduling.date.like(f"{year_month}%")
+        num_deleted = ShiftSchedule.query.filter(
+            ShiftSchedule.date.like(f"{year_month}%")
         ).delete(synchronize_session=False)
         
         db.session.commit()
@@ -356,7 +356,7 @@ def clear_month():
 def get_daily_duty():
     from datetime import date, timedelta
     from sqlalchemy import case
-    from models import Scheduling, EmploymentCycle, ShiftPost, db
+    from models import ShiftSchedule, EmploymentCycle, ShiftPost, db
 
     today = date.today()
     tomorrow = today + timedelta(days=1)
@@ -364,10 +364,10 @@ def get_daily_duty():
     def get_duty_by_date(target_date):
         try:
             priority_case = case((ShiftPost.name == '值班领导', 1), (ShiftPost.name == '值班长', 2), (ShiftPost.name == '备勤领班', 3),(ShiftPost.name == '机动-白班', 4),(ShiftPost.name == '机动-夜班', 5),else_=6)
-            shifts = db.session.query(Scheduling, EmploymentCycle, ShiftPost)\
-                .join(EmploymentCycle, Scheduling.employee_id == EmploymentCycle.id)\
-                .join(ShiftPost, Scheduling.post_id == ShiftPost.id)\
-                .filter(Scheduling.date == target_date)\
+            shifts = db.session.query(ShiftSchedule, EmploymentCycle, ShiftPost)\
+                .join(EmploymentCycle, ShiftSchedule.employee_id == EmploymentCycle.id)\
+                .join(ShiftPost, ShiftSchedule.post_id == ShiftPost.id)\
+                .filter(ShiftSchedule.date == target_date)\
                 .order_by(priority_case, ShiftPost.id).all()
             
             return [{
