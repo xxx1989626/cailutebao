@@ -14,6 +14,7 @@
                 
 
 <form method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="delete_attachments" id="deleteAttachmentsInput" value="">
     <div class="mb-3">
         <label class="form-label">请假人员</label>
         <select name="user_id" class="form-select" required {% if leave %}disabled{% endif %}>
@@ -66,7 +67,22 @@
             <p class="mb-0">将文件拖拽至此处，或点击上传</p>
             <input type="file" name="files" id="fileInput" class="form-control d-none" multiple accept="image/*,.pdf">
         </div>
-        <div id="imagePreview" class="mt-2 d-flex flex-wrap gap-2"></div>
+        <div id="imagePreview" class="mt-2 d-flex flex-wrap gap-2">
+    {% if leave and leave.attachments %}
+        {% for path in leave.attachments %}
+        <div class="thumb-remove-wrapper position-relative" data-path="{{ path }}" style="cursor: pointer;" title="点击删除">
+            {% if path.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp')) %}
+                <img src="/{{ path }}" class="img-thumbnail" style="width: 100px; height: 100px; object-fit: cover;">
+            {% else %}
+                <div class="alert alert-secondary p-2 m-0"><i class="bi bi-file-pdf"></i> PDF文件</div>
+            {% endif %}
+            <div class="remove-overlay">
+                <i class="bi bi-x-circle-fill text-danger"></i>
+            </div>
+        </div>
+        {% endfor %}
+    {% endif %}
+</div>
         <small class="text-muted">文件预览。</small>
     </div>
     
@@ -123,31 +139,68 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 <script>
-// 图片预览逻辑
+// 存储待删除的现有附件路径
+let deletedFiles = [];
+
+function renderPreview() {
+    const previewContainer = document.getElementById('imagePreview');
+    // 渲染“现有附件”（仅在编辑模式下有效）
+    const existingAttachments = document.querySelectorAll('.existing-item');
+    
+    // 这里我们直接给现有的图片/PDF添加点击删除功能
+    document.querySelectorAll('.thumb-remove-wrapper').forEach(wrapper => {
+        wrapper.onclick = function() {
+            const path = this.getAttribute('data-path');
+            if (path) {
+                deletedFiles.push(path);
+                document.getElementById('deleteAttachmentsInput').value = JSON.stringify(deletedFiles);
+            }
+            this.remove(); // 从界面移除
+        };
+    });
+}
+// 修改原有的文件选择预览逻辑，增加“点击移除”新选文件的功能
 document.getElementById('fileInput').addEventListener('change', function(e) {
     const previewContainer = document.getElementById('imagePreview');
-    previewContainer.innerHTML = ''; // 清空旧预览
+    // 注意：如果是追加上传，这里不一定清空，但通常 input file 改变是全量替换的
+    previewContainer.querySelectorAll('.new-preview').forEach(el => el.remove()); 
 
     for (const file of e.target.files) {
-        if (file.type.startsWith('image/')) {
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                const imgWrapper = document.createElement('div');
-                imgWrapper.style.position = 'relative';
-                imgWrapper.innerHTML = `
-                    <img src="${event.target.result}" class="img-thumbnail" style="width: 100px; height: 100px; object-fit: cover;">
-                `;
-                previewContainer.appendChild(imgWrapper);
-            }
-            reader.readAsDataURL(file);
-        } else if (file.type === 'application/pdf') {
-            const pdfIcon = document.createElement('div');
-            pdfIcon.className = 'alert alert-secondary p-2';
-            pdfIcon.innerHTML = `<i class="bi bi-file-pdf"></i> PDF文件`;
-            previewContainer.appendChild(pdfIcon);
+        const reader = new FileReader();
+        const isImg = file.type.startsWith('image/');
+        
+        reader.onload = function(event) {
+            const div = document.createElement('div');
+            div.className = 'new-preview position-relative';
+            div.style.cursor = 'pointer';
+            div.title = '点击移除';
+            
+            let content = isImg 
+                ? `<img src="${event.target.result}" class="img-thumbnail" style="width: 100px; height: 100px; object-fit: cover;">`
+                : `<div class="alert alert-secondary p-2 m-0"><i class="bi bi-file-pdf"></i> PDF</div>`;
+            
+            // 悬浮删除小图标样式
+            div.innerHTML = `
+                ${content}
+                <div class="remove-overlay">
+                    <i class="bi bi-x-circle-fill text-danger"></i>
+                </div>
+            `;
+            
+            div.onclick = () => {
+                // 注意：由于浏览器安全限制，无法从 input.files 中删除单个文件
+                // 建议提示用户重新选择，或者在后端处理。这里简单实现从界面移除预览。
+                div.remove();
+            };
+            previewContainer.appendChild(div);
         }
+        if (isImg) reader.readAsDataURL(file);
+        else reader.onload({target: {result: ''}}); // PDF不需要readData
     }
 });
+
+// 在页面加载时初始化现有附件的删除事件
+document.addEventListener('DOMContentLoaded', renderPreview);
 // 拖拽上传逻辑
 document.addEventListener('DOMContentLoaded', function() {
     const dropZone = document.getElementById('dropZone');
@@ -200,5 +253,26 @@ document.addEventListener('DOMContentLoaded', function() {
     .bi-cloud-arrow-up {
         opacity: 0.6;
     }
+    .remove-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+    border-radius: 0.25rem;
+}
+.thumb-remove-wrapper:hover .remove-overlay, 
+.new-preview:hover .remove-overlay {
+    opacity: 1;
+}
+.remove-overlay i {
+    font-size: 1.5rem;
+}
 </style>
 {% endblock %}

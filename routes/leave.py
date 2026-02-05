@@ -1,10 +1,58 @@
 # routes/leave.py
-from flask import Blueprint, render_template, request, redirect, url_for, flash
-from models import db, LeaveRecord, EmploymentCycle
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app
+from models import db, LeaveRecord, EmploymentCycle, OperationLog, Notification, User
 from utils import perm, save_uploaded_file
-from datetime import datetime
+from datetime import datetime, date
+import json
 
 leave_bp = Blueprint('leave', __name__, url_prefix='/leave')
+
+# 辅助函数：记录审计并通知管理员
+def record_event(action_type, leave, description):
+    # 1. 记录审计日志
+    new_log = OperationLog(
+        user_id=session.get('user_id'),
+        action_type=action_type,
+        target_type='LeaveRecord',
+        target_id=leave.id,
+        description=description,
+        ip_address=request.remote_addr
+    )
+    db.session.add(new_log)
+    
+    # 2. 通知所有管理员 (假设 role 为 admin)
+    admins = User.query.filter_by(role='admin').all()
+    for admin in admins:
+        notif = Notification(
+            user_id=admin.id,
+            title=f"请假变动: {action_type}",
+            content=description,
+            related_type='leave',
+            related_id=leave.id
+        )
+        db.session.add(notif)
+
+def notify_expiring_leaves():
+    """该函数应由定时任务调度，在每天 20:00 运行"""
+    with current_app.app_context():
+        today = date.today()
+        # 查找今天到期且还在请假中的记录
+        expiring = LeaveRecord.query.filter_by(end_date=today, status='请假中').all()
+        
+        if expiring:
+            admins = User.query.filter_by(role='admin').all()
+            for leave in expiring:
+                msg = f"【到期提醒】{leave.user.name} 的 {leave.leave_type} 预计今日到期，请核实是否销假。"
+                for admin in admins:
+                    n = Notification(
+                        user_id=admin.id,
+                        title="请假到期预警",
+                        content=msg,
+                        related_type='leave',
+                        related_id=leave.id
+                    )
+                    db.session.add(n)
+            db.session.commit()
 
 @leave_bp.route('/list')
 @perm.require('leave.view')
@@ -55,6 +103,11 @@ def add_leave():
             status='请假中'
         )
         db.session.add(new_leave)
+
+        db.session.flush()
+        desc = f"为 {new_leave.user.name} 登记了 {new_leave.leave_type}，周期：{new_leave.start_date} 至 {new_leave.end_date}"
+        record_event("新增请假", new_leave, desc)
+
         db.session.commit()
         flash('请假登记成功', 'success')
         return redirect(url_for('leave.leave_list'))
@@ -72,24 +125,46 @@ def edit_leave(id):
     employees = EmploymentCycle.query.filter_by(status='在职').all()
     
     if request.method == 'POST':
+        old_type = leave.leave_type
+        old_end = leave.end_date
         leave.leave_type = request.form.get('leave_type')
         leave.start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date()
         leave.end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date()
         leave.reason = request.form.get('reason')
         
-        # --- 编辑模式也需要处理文件上传 ---
-        new_files = request.files.getlist('files')
+        # --- 处理附件逻辑 ---
         current_attachments = list(leave.attachments) if leave.attachments else []
+        file_change_note = ""
         
+        # 1. 处理删除：从现有列表中移除前端标记删除的路径
+        delete_data = request.form.get('delete_attachments')
+        if delete_data:
+            paths_to_delete = json.loads(delete_data)
+            if paths_to_delete:
+                current_attachments = [p for p in current_attachments if p not in paths_to_delete]
+                file_change_note += f" 删除了{len(paths_to_delete)}个附件;"
+            # 可选：此处可以调用 os.remove(path) 物理删除服务器文件
+        
+        # 2. 处理新增上传
+        new_files = request.files.getlist('files')
+        new_count = 0
         for file in new_files:
             if file and file.filename:
                 path = save_uploaded_file(file, module='leave')
                 if path:
                     current_attachments.append(path)
+                    new_count += 1
+        if new_count > 0:
+            file_change_note += f" 新增了{new_count}个附件;"
         
-        leave.attachments = current_attachments # 更新附件列表
-        # -------------------------------
-        
+        leave.attachments = current_attachments 
+        desc = f"修改了 {leave.user.name} 的请假记录。"
+        if old_type != leave.leave_type:
+            desc += f" 类型从 {old_type} 改为 {leave.leave_type};"
+        if old_end != leave.end_date:
+            desc += f" 结束日期从 {old_end} 改为 {leave.end_date};"
+        desc += file_change_note
+        record_event("修改请假", leave, desc)
         db.session.commit()
         flash('记录更新成功', 'success')
         return redirect(url_for('leave.leave_list'))
@@ -102,7 +177,9 @@ def edit_leave(id):
 def finish_leave(id):
     leave = LeaveRecord.query.get_or_404(id)
     leave.status = '已销假'
-    leave.actual_end_date = datetime.now().date()
+    leave.actual_end_date = date.today()
+    desc = f"{leave.user.name} 已办理销假，实际结束日期：{leave.actual_end_date}"
+    record_event("办理销假", leave, desc)
     db.session.commit()
     flash(f'{leave.user.name} 的请假已登记销假。', 'success')
     return redirect(url_for('leave.leave_list'))
