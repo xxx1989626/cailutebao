@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">确认销假：{{ leave.user.name }}</h5>
+        </div>
+        <div class="card-body">
+            <p>请假类型：<strong>{{ leave.leave_type }}</strong></p>
+            <p>原定周期：{{ leave.start_date }} 至 {{ leave.end_date }}</p>
+            
+            <form method="POST">
+                <div class="form-group">
+                    <label>实际销假（归队）日期：</label>
+                    <input type="date" name="actual_end_date" class="form-control" 
+                           value="{{ leave.end_date }}" required>
+                    <small class="form-text text-muted">默认为原定结束日期，补录时请手动修正。</small>
+                </div>
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-success">确认销假</button>
+                    <a href="{{ url_for('leave.leave_list') }}" class="btn btn-secondary">取消</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,71 @@
+/* ==================== 全系统统一 UI 皮肤 ==================== */
+
+/* 1. 顶部选项卡 (hr-tabs) */
+.hr-tabs {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 1.5rem;
+    border-bottom: 2px solid #f0f0f0;
+}
+.hr-tabs a {
+    text-decoration: none;
+    color: #6c757d;
+    padding: 10px 20px;
+    border-radius: 8px 8px 0 0;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+.hr-tabs a:hover {
+    background-color: #f8f9fa;
+    color: #0d6efd;
+}
+.hr-tabs a.active {
+    background-color: #fff;
+    color: #0d6efd;
+    border-bottom: 3px solid #0d6efd;
+    margin-bottom: -2px; /* 压住底线 */
+}
+
+/* 2. 卡片页眉增强 */
+.card-header.bg-primary { background: linear-gradient(45deg, #0d6efd, #0dbaf0) !important; }
+.card-header.bg-success { background: linear-gradient(45deg, #198754, #20c997) !important; }
+.card-header.bg-dark { background: linear-gradient(45deg, #212529, #495057) !important; }
+
+/* 3. 紧凑型按钮组 (白底投影风格) */
+.btn-group-action .btn {
+    background: #fff;
+    border: 1px solid #dee2e6;
+    color: #495057;
+    padding: 0.25rem 0.6rem;
+    transition: 0.2s;
+}
+.btn-group-action .btn:hover {
+    background: #f8f9fa;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* 4. 表格细节微调 */
+.table-hover-custom tbody tr:hover {
+    background-color: rgba(13, 110, 253, 0.04) !important;
+}
+.table thead th {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6c757d;
+}
+
+/* 5. 附件缩略图悬停放大 */
+.thumb-link {
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    border: 1px solid #dee2e6;
+    display: inline-block;
+    vertical-align: middle;
+}
+.thumb-link:hover {
+    transform: scale(2.8);
+    z-index: 1050;
+    border-color: #0d6efd;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2) !important;
+}
