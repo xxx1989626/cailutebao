@@ -1,71 +1,144 @@
-/* ==================== 全系统统一 UI 皮肤 ==================== */
 
-/* 1. 顶部选项卡 (hr-tabs) */
+/* --- 统一选项卡样式 --- */
 .hr-tabs {
     display: flex;
     gap: 5px;
     margin-bottom: 1.5rem;
-    border-bottom: 2px solid #f0f0f0;
+    border-bottom: 2px solid #eee;
 }
 .hr-tabs a {
     text-decoration: none;
-    color: #6c757d;
+    color: #666;
     padding: 10px 20px;
     border-radius: 8px 8px 0 0;
     font-weight: 500;
-    transition: all 0.3s ease;
-}
-.hr-tabs a:hover {
-    background-color: #f8f9fa;
-    color: #0d6efd;
+    transition: 0.3s;
 }
 .hr-tabs a.active {
-    background-color: #fff;
+    background: #fff;
     color: #0d6efd;
     border-bottom: 3px solid #0d6efd;
-    margin-bottom: -2px; /* 压住底线 */
+    margin-bottom: -2px;
 }
 
-/* 2. 卡片页眉增强 */
-.card-header.bg-primary { background: linear-gradient(45deg, #0d6efd, #0dbaf0) !important; }
-.card-header.bg-success { background: linear-gradient(45deg, #198754, #20c997) !important; }
-.card-header.bg-dark { background: linear-gradient(45deg, #212529, #495057) !important; }
+/* --- 卡片与按钮组美化 --- */
+.card-custom {
+    border: none;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
 
-/* 3. 紧凑型按钮组 (白底投影风格) */
-.btn-group-action .btn {
+.btn-group-custom .btn {
     background: #fff;
     border: 1px solid #dee2e6;
-    color: #495057;
-    padding: 0.25rem 0.6rem;
-    transition: 0.2s;
+    color: #444;
 }
-.btn-group-action .btn:hover {
+.btn-group-custom .btn:hover {
     background: #f8f9fa;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    color: #000;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
-/* 4. 表格细节微调 */
-.table-hover-custom tbody tr:hover {
-    background-color: rgba(13, 110, 253, 0.04) !important;
-}
-.table thead th {
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: #6c757d;
-}
-
-/* 5. 附件缩略图悬停放大 */
+/* --- 附件缩略图悬停 --- */
 .thumb-link {
-    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: transform 0.2s;
     border: 1px solid #dee2e6;
     display: inline-block;
-    vertical-align: middle;
 }
 .thumb-link:hover {
-    transform: scale(2.8);
-    z-index: 1050;
+    transform: scale(2.5);
+    z-index: 100;
     border-color: #0d6efd;
-    box-shadow: 0 8px 16px rgba(0,0,0,0.2) !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
+}
+/* --- 统一出差列表样式 --- */
+.card-trip {
+    border: none;
+    border-radius: 12px;
+}
+
+/* 按钮组内文字与图标间距 */
+.btn-group-custom .btn i {
+    margin-right: 4px;
+}
+
+/* 状态标签微调 */
+.badge-status-working {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
+}
+
+.badge-status-done {
+    background-color: #f8f9fa;
+    color: #6c757d;
+    border: 1px solid #dee2e6;
+}
+/* 岗位颜色预览小圆点 */
+.color-indicator {
+    width: 20px;
+    height: 20px;
+    display: inline-block;
+    border-radius: 4px;
+    vertical-align: middle;
+    border: 1px solid rgba(0,0,0,0.1);
+}
+/* 顶部工具栏按钮美化 */
+.action-bar .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px; /* 图标和文字的间距 */
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+/* 导出按钮组专用颜色 */
+.btn-export-a { background-color: #0d6efd; color: white; border: none; }
+.btn-export-b { background-color: #198754; color: white; border: none; }
+
+/* 极速模式开关提示增强 */
+.fast-mode-active #calendar {
+    border: 2px solid #ffc107 !important;
+    border-radius: 8px;
+}
+/* 优化方框内的勾选框布局 */
+.form-check.border {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px; /* 选框和文字的间距 */
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+/* 强制重置 form-check 的默认偏移 */
+.form-check.border {
+    padding-left: 0 !important; /* 必须重置这个，否则勾选框永远偏右 */
+    min-height: auto !important;
+}
+
+.form-check.border .form-check-input {
+    float: none !important;      /* 强制取消浮动 */
+    margin: 0 !important;        /* 取消外边距 */
+    position: static !important; /* 确保它遵循 Flex 布局 */
+}
+
+/* 选中状态的边框加粗，让反馈更明显 */
+.form-check.border:has(.form-check-input:checked) {
+    background-color: #e7f1ff !important;
+    border: 2px solid #0d6efd !important;
+    transition: all 0.1s ease-in;
+}
+
+/* 让侧边栏的人员状态标签更精致 */
+.emp-tag .badge {
+    padding: 3px 6px;
+    border-radius: 4px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+}
+
+/* 修正图标与文字在 badge 里的垂直对齐 */
+.badge i {
+    line-height: 1;
+    font-size: 0.75rem;
 }

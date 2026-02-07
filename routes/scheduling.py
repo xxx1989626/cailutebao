@@ -18,16 +18,48 @@ SCHEDULING_PERMISSIONS = [
     ('post', '岗位管理', '增删改查排班岗位')
 ]
 
-# --- 功能：显示排班日历主页与岗位管理页签 ---
-@scheduling_bp.route('/list', methods=['GET', 'POST'])
+# --- 路由 1：纯粹的排班日历主页 ---
+@scheduling_bp.route('/list')
 @login_required
 def schedule_list():
     if not perm.can('scheduling.view'):
         flash("权限不足", "danger")
         return redirect(url_for('main.index'))
     
+    # 现在的逻辑很纯粹：只管排班需要的数据
+    employees = EmploymentCycle.query.filter_by(status='在职').all()
+    posts = ShiftPost.query.all()
+    today = datetime.now().date()
+    
+    # 获取出差人员
+    active_trips = BusinessTrip.query.filter(
+        BusinessTrip.status == '出差中',
+        ((BusinessTrip.end_date >= today) | (BusinessTrip.end_date == None))
+    ).all()
+    on_trip_ids = {p.id for trip in active_trips for p in trip.participants}
+
+    # 获取请假人员
+    active_leaves = LeaveRecord.query.filter(
+        LeaveRecord.status == '请假中',
+        LeaveRecord.start_date <= today, LeaveRecord.end_date >= today
+    ).all()
+    on_leave_ids = {leave.user_id for leave in active_leaves}
+
+    return render_template('scheduling/list.html', 
+                           employees=employees, 
+                           posts=posts, 
+                           on_trip_ids=on_trip_ids,
+                           on_leave_ids=on_leave_ids)
+
+# --- 路由 2：独立的岗位管理页面 ---
+@scheduling_bp.route('/posts', methods=['GET', 'POST'])
+@login_required
+def post_list():
+    if not perm.can('scheduling.post'):
+        flash("权限不足", "danger")
+        return redirect(url_for('scheduling.schedule_list'))
+    
     if request.method == 'POST':
-        # ... 保持你原有的岗位保存逻辑不变 ...
         name = request.form.get('name')
         color = request.form.get('color', '#007bff')
         start = request.form.get('default_start', '08:30')
@@ -37,45 +69,11 @@ def schedule_list():
             db.session.add(new_post)
             db.session.commit()
             flash(f"岗位 {name} 添加成功", "success")
-        return redirect(url_for('scheduling.schedule_list', tab='posts'))
+        return redirect(url_for('scheduling.post_list')) # 这里的跳转改了
 
-    active_tab = request.args.get('tab', 'calendar')
-    employees = EmploymentCycle.query.filter_by(status='在职').all()
     posts = ShiftPost.query.all()
-
-    # --- 新增逻辑：获取当前出差人员 ID 集合 ---
-    today = datetime.now().date()
-    # 查找：状态为出差中，或者结束日期未到，或者尚未归队(None)的记录
-    active_trips = BusinessTrip.query.filter(
-        BusinessTrip.status == '出差中',  # 只要状态不是“出差中”，就不在侧边栏显示状态
-        (
-            (BusinessTrip.end_date >= today) | 
-            (BusinessTrip.end_date == None)
-        )
-    ).all()
-
-    on_trip_ids = set()
-    for trip in active_trips:
-        for p in trip.participants:
-            on_trip_ids.add(p.id)
-    # 查找：状态为“请假中”的所有记录        
-    active_leaves = LeaveRecord.query.filter(
-    LeaveRecord.status == '请假中',
-    LeaveRecord.start_date <= today,
-    LeaveRecord.end_date >= today
-    ).all()
-
-    on_leave_ids = set()
-    for leave in active_leaves:
-        on_leave_ids.add(leave.user_id)
-    # ---------------------------------------
-
-    return render_template('scheduling/list.html', 
-                           employees=employees, 
-                           posts=posts, 
-                           active_tab=active_tab,
-                           on_trip_ids=on_trip_ids,
-                           on_leave_ids=on_leave_ids) # 将 ID 集合传给前端
+    # 渲染你专门的 posts.html 模板
+    return render_template('scheduling/posts.html', posts=posts)
 
 # --- 功能：为 FullCalendar 插件提供排班数据接口 ---
 @scheduling_bp.route('/api/get_shifts')

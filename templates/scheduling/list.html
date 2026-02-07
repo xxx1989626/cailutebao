@@ -3,98 +3,107 @@
 
 {% block head %}
 <style>
-    /* 侧边栏滚动 */
+    /* 全局滚动条美化 */
+    .sticky-sidebar::-webkit-scrollbar { width: 6px; }
+    .sticky-sidebar::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
+
+    /* 侧边栏样式增强 */
     .sticky-sidebar {
         position: sticky;
         top: 20px;
         height: calc(100vh - 120px);
         overflow-y: auto !important;
-        padding: 15px;
-        background: #f8f9fa;
-        border: 1px solid #dee2e6;
-        border-radius: 8px;
+        padding: 1.2rem;
+        background: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        border: 1px solid #e9ecef;
     }
-    /* 简洁标签页 */
-    .hr-tabs { border-bottom: 2px solid #eee; margin-bottom: 20px; display: flex; gap: 30px; }
+
+    /* 顶部 Tabs 导航美化 */
+    .hr-tabs { border-bottom: 1px solid #dee2e6; margin-bottom: 25px; display: flex; gap: 30px; }
     .hr-tabs a { 
-        text-decoration: none; color: #666; padding: 10px 5px; 
-        font-weight: 500; position: relative;
+        text-decoration: none; color: #6c757d; padding: 12px 5px; 
+        font-weight: 500; position: relative; transition: all 0.3s;
     }
-    .hr-tabs a.active { color: #007bff; }
+    .hr-tabs a:hover { color: #007bff; }
+    .hr-tabs a.active { color: #007bff; font-weight: 600; }
     .hr-tabs a.active::after {
-        content: ""; position: absolute; bottom: -2px; left: 0; 
-        width: 100%; height: 2px; background: #007bff;
+        content: ""; position: absolute; bottom: -1px; left: 0; 
+        width: 100%; height: 3px; background: #007bff; border-radius: 3px;
     }
 
-    /* 极速模式样式 */
-    .fast-mode-active .fc-daygrid-day:hover { background-color: #f0fff4 !important; cursor: pointer; }
-    .copy-mode-active .fc-daygrid-day:hover { background-color: #fffaf0 !important; cursor: copy !important; }
-    
+    /* 极速模式 & 状态样式 */
     .mode-indicator {
-        position: fixed; top: 15px; left: 50%; transform: translateX(-50%);
-        z-index: 2000; display: none; padding: 8px 25px;
-        border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+        z-index: 2000; display: none; padding: 10px 30px;
+        border-radius: 50px; background: rgba(255, 193, 7, 0.95);
+        backdrop-filter: blur(5px); box-shadow: 0 8px 32px rgba(0,0,0,0.15);
     }
     
-    .emp-tag { padding: 8px; margin-bottom: 5px; background: white; border: 1px solid #ddd; border-radius: 4px; cursor: grab; transition: all 0.2s; }
-    .emp-tag:hover { border-color: #007bff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-
-    /* 适配双层表头导入后的日历显示 */
-    .fc-event { border: none !important; padding: 2px 4px !important; font-size: 0.85em !important; }
-    .shift-night { border-left: 3px solid #1a202c !important; } /* 夜班标记 */
-
-    /* Initialize color boxes */
-    .color-box {
-        width: 24px;
-        height: 24px;
-        border-radius: 4px;
-        background-color: inherit;
+    .emp-tag { 
+        padding: 10px 12px; margin-bottom: 8px; background: #fff; 
+        border: 1px solid #eee; border-radius: 8px; cursor: grab; 
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        user-select: none;
     }
+    .emp-tag:hover { 
+        transform: translateY(-2px); border-color: #007bff; 
+        box-shadow: 0 4px 8px rgba(0,123,255,0.15); 
+    }
+
+    /* 状态颜色标记 */
+    .away-status { background-color: #fffef0 !important; border: 1.5px dashed #ffc107 !important; }
+    .leave-status { background-color: #fff5f5 !important; border: 1.5px dotted #dc3545 !important; }
+
+    /* 按钮组质感 */
+    .btn-export-a { background: #e7f1ff; color: #0056b3; border: 1px solid #b6d4fe; }
+    .btn-export-a:hover { background: #0d6efd; color: white; }
+    .btn-export-b { background: #f8f9fa; color: #333; border: 1px solid #ddd; }
+    .btn-export-b:hover { background: #333; color: white; }
+
+    /* 日历事件微调 */
+    .fc-event { border-radius: 4px !important; margin: 1px 0 !important; cursor: pointer; }
+    .fc-day-today { background: #f8f9ff !important; }
 </style>
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('.color-box').forEach(el => {
-            el.style.backgroundColor = el.getAttribute('data-color');
-        });
-    });
-</script>
 {% endblock %}
 
 {% block content %}
 <div class="container-fluid mt-2">
     <div class="hr-tabs">
-        <a href="{{ url_for('scheduling.schedule_list', tab='calendar') }}" class="{% if active_tab == 'calendar' %}active{% endif %}">📅 排班视图</a>
-        <a href="{{ url_for('scheduling.schedule_list', tab='posts') }}" class="{% if active_tab == 'posts' %}active{% endif %}">🛠️ 岗位设置</a>
-        <a href="{{ url_for('trip.trip_list') }}" class="active">💼 出差设置</a>
-        <a href="{{ url_for('leave.leave_list') }}" class="{% if active_tab == 'leave' %}active{% endif %}">📝 请假管理</a>
+        <a href="{{ url_for('scheduling.schedule_list') }}" class="active">📅 排班视图</a>
+        <a href="{{ url_for('scheduling.post_list') }}">🛠️ 岗位设置</a>
+        <a href="{{ url_for('trip.trip_list') }}">💼 出差设置</a>
+        <a href="{{ url_for('leave.leave_list') }}">📝 请假管理</a>
     </div>
 
-    {% if active_tab == 'calendar' %}
-    <div id="modeIndicator" class="mode-indicator bg-warning text-dark fw-bold">
-        <span id="modeText"></span>
+    <div id="modeIndicator" class="mode-indicator text-dark fw-bold">
+        <i class="bi bi-lightning-fill"></i> <span id="modeText"></span>
     </div>
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-3">
         <div class="d-flex align-items-center gap-3">
-            <div class="form-check form-switch p-2 bg-light rounded border px-3">
-                <input class="form-check-input" type="checkbox" id="fastModeToggle">
-                <label class="form-check-label small fw-bold" for="fastModeToggle">🚀 极速盖章模式</label>
-            </div>
-            <span class="text-muted small d-none d-md-inline">提示：右键点击已有排班可“取样”，点击空白日期即“盖章”</span>
+            <div class="form-check form-switch p-2 bg-white rounded border shadow-sm px-3 ps-0 d-flex align-items-center justify-content-center">
+    <input class="form-check-input ms-0" type="checkbox" id="fastModeToggle" style="cursor: pointer;">
+    <label class="form-check-label small fw-bold ms-2 mb-0" for="fastModeToggle" style="cursor: pointer;">🚀 极速盖章模式</label>
+</div>
+            <span class="text-muted small d-none d-lg-inline">
+                <i class="bi bi-info-circle"></i> 右键“取样”已有班次，点击空白日期直接“盖章”
+            </span>
         </div>
         
         <div class="d-flex gap-2">
-            <button class="btn btn-outline-primary btn-sm px-3 shadow-sm" onclick="document.getElementById('excelImportInput').click()">
-                <i class="bi bi-file-earmark-excel"></i> 导入本月排班
+            <button class="btn btn-sm btn-outline-primary" onclick="document.getElementById('excelImportInput').click()">
+                <i class="bi bi-file-earmark-arrow-up"></i> 导入排班
             </button>
-            <button class="btn btn-outline-danger" onclick="clearCurrentMonth()">
-    <i class="bi bi-trash"></i> 清空本月排班
-</button>
+            <button class="btn btn-sm btn-outline-danger" onclick="clearCurrentMonth()">
+                <i class="bi bi-trash3"></i> 清空本月
+            </button>
             <input type="file" id="excelImportInput" hidden onchange="importExcelSchedule(this)">
 
-            <div class="btn-group shadow-sm">
-                <a href="{{ url_for('scheduling.export_attendance', table_type='A') }}" class="btn btn-primary btn-sm px-3">导出 A表</a>
-                <a href="{{ url_for('scheduling.export_attendance', table_type='B') }}" class="btn btn-success btn-sm px-3">导出 B表</a>
+            <div class="btn-group btn-group-sm">
+                <a href="{{ url_for('scheduling.export_attendance', table_type='A') }}" class="btn btn-export-a">导出 A表</a>
+                <a href="{{ url_for('scheduling.export_attendance', table_type='B') }}" class="btn btn-export-b">导出 B表</a>
             </div>
         </div>
     </div>
@@ -102,146 +111,76 @@
     <div class="row g-3">
         <div class="col-md-2">
             <div class="sticky-sidebar">
-                <div class="small text-muted mb-2 fw-bold">待排人员 (拖拽入日历)</div>
+                <div class="small text-secondary mb-3 fw-bold border-bottom pb-2">
+                    <i class="bi bi-people"></i> 待排人员
+                </div>
                 <div id="external-events">
-    {% for emp in employees %}
-        {% set is_away = emp.id in on_trip_ids %}
-        {% set is_on_leave = emp.id in on_leave_ids %} {# 判断是否请假 #}
-        <div class="emp-tag fc-event-draggable {% if is_away %}away-status{% endif %}" 
-             data-user-id="{{ emp.id }}" 
-             data-user-name="{{ emp.name }}">
-            
-            <div class="d-flex justify-content-between align-items-center">
-                <strong>{{ emp.name }}</strong>
-                {% if is_away %}
-                    <span class="badge bg-warning text-dark border border-dark-subtle" style="font-size: 0.65rem;">
-                        <i class="bi bi-airplane-fill"></i> 出差中
-                    </span>
-                {% endif %}
-                {% if is_on_leave %}
-                    <span class="badge bg-secondary" style="font-size: 0.65rem;">
-                        <i class="bi bi-clock-fill"></i> 请假中
-                    </span>
-                {% endif %}
-            </div>
-        </div>
-    {% endfor %}
-</div>
-
-<style>
-    /* 出差人员特殊背景：淡橙色虚线边框 */
-    .away-status {
-        background-color: #fffaf0 !important;
-        border: 2px dashed #ffc107 !important;
-        opacity: 0.8;
-    }
-
-    /* 请假人员特殊背景：淡粉色点状边框 */
-    .leave-status {
-        background-color: #fff5f5 !important;
-        border: 2px dotted #dc3545 !important;
-        opacity: 0.7; /* 请假权重通常比出差更高，颜色更显眼一点 */
-    }
+                    {% for emp in employees %}
+                        {% set is_away = emp.id in on_trip_ids %}
+                        {% set is_on_leave = emp.id in on_leave_ids %}
+                        <div class="emp-tag fc-event-draggable {% if is_away %}away-status{% endif %} {% if is_on_leave %}leave-status{% endif %}" 
+                             data-user-id="{{ emp.id }}" 
+                             data-user-name="{{ emp.name }}">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <strong>{{ emp.name }}</strong>
+                                <div class="d-flex gap-1 flex-wrap"> {% if is_away %}
+        <span class="badge bg-warning text-dark d-inline-flex align-items-center" style="font-size: 0.65rem;" title="出差中">
+            <i class="bi bi-airplane me-1"></i>出差中
+        </span>
+    {% endif %}
     
-    /* 如果一个人既请假又出差（极端情况），叠加样式 */
-    .away-status.leave-status {
-        background: linear-gradient(45deg, #fffaf0, #fff5f5) !important;
-    }
-</style>
-            </div>
-        </div>
-        <div class="col-md-10">
-            <div id="calendar" class="shadow-sm border bg-white p-3"></div>
-        </div>
-    </div>
-
-    {% else %}
-    <div class="alert alert-info py-2 small">
-        <i class="bi bi-info-circle"></i> 系统会自动根据 Excel 表头关键字（如“守台”、“夜班”、“图像”）匹配这里的岗位。
-    </div>
-        <div class="d-flex justify-content-between align-items-center mb-3">
-        <h6 class="mb-0 fw-bold text-muted">岗位列表与配置</h6>
-        <div class="d-flex gap-2">
-            <button class="btn btn-outline-secondary btn-sm px-3" onclick="document.getElementById('postImportInput').click()">
-                <i class="bi bi-file-earmark-arrow-up"></i> 导入岗位设置
-            </button>
-            <a href="{{ url_for('scheduling.export_posts') }}" class="btn btn-outline-secondary btn-sm px-3">
-                <i class="bi bi-file-earmark-arrow-down"></i> 导出岗位设置
-            </a>
-            <input type="file" id="postImportInput" hidden onchange="importPosts(this)">
-        </div>
-    </div>
-
-    <div class="row">
-        <div class="col-md-4">
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-white fw-bold border-0 pt-3">新增/修改岗位</div>
-                <div class="card-body">
-                    <form action="{{ url_for('scheduling.schedule_list') }}" method="POST">
-                        <div class="mb-3">
-                            <label class="small text-muted">岗位名称 (建议与Excel表头一致)</label>
-                            <input type="text" name="name" class="form-control" required placeholder="如：守台-白班">
-                        </div>
-                        <div class="row mb-3">
-                            <div class="col">
-                                <label class="small text-muted">上班</label>
-                                <input type="time" name="default_start" class="form-control" value="08:00" title="上班时间">
-                            </div>
-                            <div class="col">
-                                <label class="small text-muted">下班</label>
-                                <input type="time" name="default_end" class="form-control" value="20:00" title="下班时间">
+    {% if is_on_leave %}
+        <span class="badge bg-danger d-inline-flex align-items-center" style="font-size: 0.65rem;" title="请假中">
+            <i class="bi bi-calendar-x me-1"></i>请假中
+        </span>
+    {% endif %}
+</div>
                             </div>
                         </div>
-                        <div class="mb-4">
-                            <label class="small text-muted">日历显示颜色</label>
-                            <input type="color" name="color" class="form-control form-control-color w-100" value="#4299e1" title="选择岗位在日历中的显示颜色">
-                        </div>
-                        <button type="submit" class="btn btn-primary w-100 py-2">确认并保存</button>
-                    </form>
+                    {% endfor %}
                 </div>
             </div>
         </div>
-        <div class="col-md-8">
-            <div class="card shadow-sm border-0">
-                <table class="table align-middle mb-0">
-                    <thead class="table-light">
-                        <tr><th>颜色</th><th>岗位名称</th><th>标准工时</th><th class="text-end">操作</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for p in posts %}
-                        <tr>
-                            <td><div class="color-box" data-color="{{ p.color }}"></div></td>
-                            <td class="fw-bold">{{ p.name }}</td>
-                            <td class="text-muted">{{ p.default_start }} - {{ p.default_end }}</td>
-                            <td class="text-end"><a href="{{ url_for('scheduling.post_delete', id=p.id) }}" class="btn btn-link btn-sm text-danger" onclick="return confirm('确定删除该岗位吗？')">删除</a></td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+
+        <div class="col-md-10">
+            <div id="calendar" class="shadow-sm border bg-white p-3 rounded-3"></div>
         </div>
     </div>
-    {% endif %}
 </div>
 
-<div class="modal fade" id="shiftModal">
+<div class="modal fade" id="shiftModal" tabindex="-1">
     <div class="modal-dialog modal-sm modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4">
             <div class="modal-body p-4">
-                <h6 class="fw-bold mb-3 text-center" id="display_info"></h6>
+                <div class="text-center mb-3">
+                    <div class="text-primary small fw-bold text-uppercase mb-1">正在排班</div>
+                    <h5 class="fw-bold" id="display_info"></h5>
+                </div>
                 <form id="shiftForm">
-                    <input type="hidden" id="post_user_id"><input type="hidden" id="post_date">
+                    <input type="hidden" id="post_user_id">
+                    <input type="hidden" id="post_date">
                     <div class="mb-3">
-                        <label class="small text-muted">选择岗位</label>
-                        <select id="post_id" class="form-select" title="选择岗位">
+                        <label class="small text-muted mb-1">岗位分配</label>
+                        <select id="post_id" class="form-select border-2">
                             {% for p in posts %}<option value="{{p.id}}">{{p.name}}</option>{% endfor %}
                         </select>
-                    </div>
-                    <div class="d-flex justify-content-center gap-4 mb-4">
-                        <div class="form-check"><input class="form-check-input" type="checkbox" id="is_night_toggle" title="标记为夜班"><label class="form-check-label" for="is_night_toggle">夜班</label></div>
-                        <div class="form-check"><input class="form-check-input" type="checkbox" id="is_overtime_toggle" title="标记为加班"><label class="form-check-label" for="is_overtime_toggle">加班</label></div>
-                    </div>
-                    <button type="button" class="btn btn-primary w-100 py-2" onclick="submitShift()">确认排班</button>
+<div class="row g-2 mb-4">
+    <div class="col-6">
+        <div class="form-check border rounded p-2 ps-0 d-flex align-items-center justify-content-center w-100" style="cursor: pointer;">
+            <input class="form-check-input" type="checkbox" id="is_night_toggle">
+            <label class="form-check-label ms-2 mb-0" for="is_night_toggle" style="cursor: pointer;">夜班</label>
+        </div>
+    </div>
+    <div class="col-6">
+        <div class="form-check border rounded p-2 ps-0 d-flex align-items-center justify-content-center w-100" style="cursor: pointer;">
+            <input class="form-check-input" type="checkbox" id="is_overtime_toggle">
+            <label class="form-check-label ms-2 mb-0" for="is_overtime_toggle" style="cursor: pointer;">加班</label>
+        </div>
+    </div>
+</div>
+                    <button type="button" class="btn btn-primary w-100 py-2 fw-bold" onclick="submitShift()">
+                        确认提交
+                    </button>
                 </form>
             </div>
         </div>

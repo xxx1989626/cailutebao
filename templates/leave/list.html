@@ -1,76 +1,74 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="hr-tabs">
-        <a href="{{ url_for('scheduling.schedule_list', tab='calendar') }}" class="{% if active_tab == 'calendar' %}active{% endif %}">📅 排班视图</a>
-        <a href="{{ url_for('scheduling.schedule_list', tab='posts') }}" class="{% if active_tab == 'posts' %}active{% endif %}">🛠️ 岗位设置</a>
-        <a href="{{ url_for('trip.trip_list') }}" class="active">💼 出差设置</a>
-        <a href="{{ url_for('leave.leave_list') }}" class="{% if active_tab == 'leave' %}active{% endif %}">📝 请假管理</a>
+<div class="container mt-4">
+    <div class="hr-tabs">
+        <a href="{{ url_for('scheduling.schedule_list') }}" class="{% if active_tab == 'calendar' %}active{% endif %}">📅 排班视图</a>
+        <a href="{{ url_for('scheduling.post_list') }}" class="{% if active_tab == 'posts' %}active{% endif %}">🛠️ 岗位设置</a>
+        <a href="{{ url_for('trip.trip_list') }}">💼 出差设置</a>
+        <a href="{{ url_for('leave.leave_list') }}" class="active">📝 请假管理</a>
     </div>
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h3><i class="bi bi-calendar-event"></i> 请假记录</h3>
-    <a href="{{ url_for('leave.add_leave') }}" class="btn btn-primary">
-        <i class="bi bi-plus-lg"></i> 登记请假
-    </a>
-</div>
 
-<div class="card shadow-sm">
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle">
-                <thead class="table-light">
-                    <tr>
-                        <th>姓名</th>
-                        <th>请假类型</th>
-                        <th>开始时间</th>
-                        <th>预计结束</th>
-                        <th>实际销假</th>
-                        <th>请假天数</th>
-                        <th>状态</th>
-                        <th>附件</th>
-                        <th>操作</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for leave in leaves %}
-                    <tr>
-                        <td><strong>{{ leave.user.name }}</strong></td>
-                        <td><span class="badge bg-info text-dark">{{ leave.leave_type }}</span></td>
-                        <td>{{ leave.start_date }}</td>
-                        <td>{{ leave.end_date }}</td>
-                        <td>{{ leave.actual_end_date or '-' }}</td>
-                        <td>{{ leave.total_days }}</td>
-                        <td>
-                            {% if leave.status == '请假中' %}
-                                <span class="badge bg-warning text-dark">请假中</span>
-                            {% else %}
-                                <span class="badge bg-secondary">已销假</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if leave.attachments %}
-                            <div class="d-flex flex-wrap gap-1">
-                                {% for path in leave.attachments %}
-                                <a href="/{{ path }}" target="_blank" class="thumb-link d-inline-block rounded overflow-hidden shadow-sm" style="width: 32px; height: 32px;">
-                                    {# 判断是否为图片，如果是则显示缩略图，否则显示 PDF 图标 #}
-                                    {% if path.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp')) %}
-                                    <img src="/{{ path }}" style="width: 100%; height: 100%; object-fit: cover;" alt="缩略图"
-                                        onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                                    <i class="bi bi-file-earmark-image text-muted"
-                                        style="display: none; font-size: 14px; margin-left: 8px;"></i>
-                                    {% else %}
-                                    <div class="bg-light d-flex align-items-center justify-content-center h-100">
-                                        <i class="bi bi-file-pdf text-danger" style="font-size: 16px;"></i>
-                                    </div>
-                                    {% endif %}
-                                </a>
-                                {% endfor %}
-                            </div>
-                            {% else %}
-                            <span class="text-muted" style="font-size: 0.85rem;">无</span>
-                            {% endif %}
-                        </td>
-                        <td>
+    <div class="card card-custom">
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center py-3">
+            <h4 class="mb-0"><i class="bi bi-calendar-check me-2"></i>请假记录管理</h4>
+            <a href="{{ url_for('leave.add_leave') }}" class="btn btn-light fw-bold shadow-sm">
+                <i class="bi bi-plus-lg text-success"></i> 登记请假记录
+            </a>
+        </div>
+        
+        <div class="card-body p-0"> <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light text-secondary small">
+                        <tr>
+                            <th class="ps-3">姓名</th>
+                            <th>请假类型</th>
+                            <th>开始时间</th>
+                            <th>预计结束</th>
+                            <th>实际销假</th>
+                            <th>天数</th>
+                            <th>状态</th>
+                            <th>附件</th>
+                            <th class="text-center pe-3">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for leave in leaves %}
+                        <tr>
+                            <td class="ps-3"><strong>{{ leave.user.name }}</strong></td>
+                            <td><span class="badge bg-info bg-opacity-10 text-info border border-info-subtle">{{ leave.leave_type }}</span></td>
+                            <td>{{ leave.start_date }}</td>
+                            <td>{{ leave.end_date }}</td>
+                            <td>{{ leave.actual_end_date or '-' }}</td>
+                            <td class="fw-bold">{{ leave.total_days }}</td>
+                            <td>
+                                {% if leave.status == '请假中' %}
+                                    <span class="badge rounded-pill bg-warning text-dark"><i class="bi bi-clock-history me-1"></i>请假中</span>
+                                {% else %}
+                                    <span class="badge rounded-pill bg-light text-secondary border">已销假</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if leave.attachments %}
+                                <div class="d-flex flex-wrap gap-1">
+                                    {% for path in leave.attachments %}
+                                    <a href="/{{ path }}" target="_blank" class="thumb-link rounded overflow-hidden" style="width: 32px; height: 32px;">
+                                        {% if path.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp')) %}
+                                        <img src="/{{ path }}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                        <i class="bi bi-file-earmark-image text-muted" style="display: none; font-size: 14px; line-height: 32px; text-align: center;"></i>
+                                        {% else %}
+                                        <div class="bg-light d-flex align-items-center justify-content-center h-100">
+                                            <i class="bi bi-file-pdf text-danger" style="font-size: 16px;"></i>
+                                        </div>
+                                        {% endif %}
+                                    </a>
+                                    {% endfor %}
+                                </div>
+                                {% else %}
+                                <span class="text-muted small">无</span>
+                                {% endif %}
+                            </td>
+                            <td>
                             <div class="btn-group btn-group-sm">
                                 <button class="btn btn-sm btn-outline-info"
                                     onclick="copyLeaveMsg('{{ leave.user.name }}', '{{ leave.leave_type }}', '{{ leave.reason }}', '{{ leave.start_date }}', '{{ leave.end_date }}', '{{ leave.total_days }}', '蔡路派出所')">
@@ -92,34 +90,21 @@
                                 {% endif %}
                             </div>
                         </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-/**
- * 自动生成并复制标准报备格式
- */
+// 严格保留原有的 copyLeaveMsg 逻辑
 function copyLeaveMsg(name, type, reason, startDate, endDate, totalDays, post) {
     const today = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
-    const title = "";
+    const text = `上报日期：${today}\n驻　　点：${post || '蔡路派出所'}\n请 假 人：${name}\n请假类型：${type}\n请假时长：${totalDays}天\n请假周期：${startDate} 至 ${endDate}\n事　　由：${reason}`;
     
-    // 按照你要求的格式拼接字符串
-    const text = `${title}
-上报日期：${today}
-驻　　点：${post || '蔡路派出所'}
-请 假 人：${name}
-请假类型：${type}
-请假时长：${totalDays}天
-请假周期：${startDate} 至 ${endDate}
-事　　由：${reason}
-`;
-
-    // 复制逻辑
     if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(text).then(() => alert("✅ 标准报备格式已复制到剪贴板！"));
     } else {
@@ -127,28 +112,10 @@ function copyLeaveMsg(name, type, reason, startDate, endDate, totalDays, post) {
         textArea.value = text;
         document.body.appendChild(textArea);
         textArea.select();
-        try {
-            document.execCommand('copy');
-            alert("✅ 标准报备格式已复制！");
-        } catch (err) {
-            console.error('无法复制', err);
-        }
+        document.execCommand('copy');
+        alert("✅ 标准报备格式已复制！");
         document.body.removeChild(textArea);
     }
 }
 </script>
-<style>
-    /* 缩略图基础样式 */
-    .thumb-link {
-        transition: transform 0.2s;
-        border: 1px solid #dee2e6;
-    }
-    /* 鼠标悬停时轻微放大并置顶显示 */
-    .thumb-link:hover {
-        transform: scale(2.5); /* 放大2.5倍 */
-        z-index: 100;
-        border-color: #0d6efd;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2) !important;
-    }
-</style>
 {% endblock %}

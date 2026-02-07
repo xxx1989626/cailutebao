@@ -1,50 +1,106 @@
 {% extends "base.html" %}
+
 {% block content %}
 <div class="container mt-4">
+    <div class="hr-tabs mb-4">
+    <a href="{{ url_for('scheduling.schedule_list') }}" 
+       class="{% if request.endpoint == 'scheduling.schedule_list' %}active{% endif %}">📅 排班视图</a>
+    
+    <a href="{{ url_for('scheduling.post_list') }}" 
+       class="{% if request.endpoint == 'scheduling.post_list' %}active{% endif %}">🛠️ 岗位设置</a>
+    
+    <a href="{{ url_for('trip.trip_list') }}">💼 出差设置</a>
+    <a href="{{ url_for('leave.leave_list') }}">📝 请假管理</a>
+</div>
+
     <div class="row">
         <div class="col-md-4">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">新增岗位</div>
+            <div class="card shadow border-0">
+                <div class="card-header bg-primary text-white py-3">
+                    <h5 class="mb-0"><i class="bi bi-plus-circle me-2"></i>新增岗位</h5>
+                </div>
                 <div class="card-body">
                     <form method="POST">
                         <div class="mb-3">
-                            <label class="form-label">岗位名称</label>
-                            <input type="text" name="name" class="form-control" placeholder="如：白班" required>
+                            <label class="form-label fw-bold text-secondary">岗位名称</label>
+                            <input type="text" name="name" class="form-control" placeholder="如：白班 / 夜班" required>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col">
+                                <label class="small text-muted">上班</label>
+                                <input type="time" name="default_start" class="form-control" value="08:00" title="上班时间">
+                            </div>
+                            <div class="col">
+                                <label class="small text-muted">下班</label>
+                                <input type="time" name="default_end" class="form-control" value="20:00" title="下班时间">
+                            </div>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">显示颜色</label>
-                            <input type="color" name="color" class="form-control form-control-color" value="#007bff">
+                            <label class="form-label fw-bold text-secondary">显示颜色</label>
+                            <div class="d-flex align-items-center gap-3">
+                                <input type="color" name="color" class="form-control form-control-color shadow-sm" value="#007bff" style="width: 60px;">
+                                <small class="text-muted">此颜色将显示在排班日历中</small>
+                            </div>
                         </div>
-                        <button type="submit" class="btn btn-primary w-100">保存岗位</button>
+                        <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm">
+                            <i class="bi bi-save me-1"></i> 保存岗位
+                        </button>
                     </form>
                 </div>
             </div>
         </div>
+
         <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-header bg-dark text-white">现有岗位列表</div>
-                <table class="table table-hover mb-0">
-                    <thead>
-                        <tr>
-                            <th>颜色预览</th>
-                            <th>岗位名称</th>
-                            <th>操作</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for post in posts %}
-                        <tr>
-                            <td><span class="badge" style="background-color: {{ post.color }};">&nbsp;&nbsp;&nbsp;</span></td>
-                            <td>{{ post.name }}</td>
-                            <td>
-                                <a href="{{ url_for('scheduling.post_delete', id=post.id) }}" 
-                                   class="btn btn-sm btn-outline-danger" 
-                                   onclick="return confirm('确定删除吗？')">删除</a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div class="card shadow border-0">
+                <div class="card-header bg-dark text-white py-3">
+                    <h5 class="mb-0"><i class="bi bi-list-stars me-2"></i>现有岗位列表</h5>
+                    <button class="btn btn-outline-secondary btn-sm px-3" onclick="document.getElementById('postImportInput').click()">
+                <i class="bi bi-file-earmark-arrow-up"></i> 导入岗位设置
+            </button>
+            <a href="{{ url_for('scheduling.export_posts') }}" class="btn btn-outline-secondary btn-sm px-3">
+                <i class="bi bi-file-earmark-arrow-down"></i> 导出岗位设置
+            </a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr class="small text-secondary">
+                                    <th class="ps-4" width="120">颜色预览</th>
+                                    <th>岗位名称</th>
+                                    <th>标准工时</th>
+                                    <th class="text-center pe-4" width="150">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for post in posts %}
+                                <tr>
+                                    <td><span class="badge" style="background-color: {{ post.color }};">&nbsp;&nbsp;&nbsp;</span></td>
+                                    <td><strong class="text-dark">{{ post.name }}</strong></td>
+                                    <td class="text-muted">{{ post.default_start }} - {{ post.default_end }}</td>
+                                    <td class="text-center pe-4">
+                                        <div class="btn-group btn-group-sm btn-group-custom shadow-sm">
+                                            <a href="{{ url_for('scheduling.post_delete', id=post.id) }}" 
+                                               class="btn text-danger" 
+                                               title="永久删除此岗位"
+                                               onclick="return confirm('确定删除【{{ post.name }}】岗位吗？此操作不可撤销！')">
+                                                <i class="bi bi-trash"></i> 删除岗位
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="3" class="text-center py-5 text-muted">
+                                        <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+                                        暂未设置任何岗位
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
