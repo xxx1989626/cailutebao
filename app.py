@@ -4,10 +4,11 @@ from flask import Flask,jsonify,request,send_from_directory
 from flask_login import LoginManager, current_user
 from utils import today_str,perm,format_date,format_datetime,validate_id_card,get_gender_from_id_card, get_birthday_from_id_card,get_unreturned_assets, register_module_permissions
 from config import Config,SECRET_KEY, DATABASE_PATH, UPLOAD_FOLDER,SALARY_MODES, POSITIONS, POSTS
-from models import db, Asset, User, Permission
+from models import db, Asset, User, Permission, ChatMessage
 from routes import register_blueprints
 import json, os
 from sqlalchemy import func
+from flask_socketio import SocketIO, emit
 app = Flask(__name__)
 app.config.update(
     SECRET_KEY=SECRET_KEY,
@@ -20,6 +21,7 @@ app.config.update(
 db.init_app(app)
 register_blueprints(app)
 migrate = Migrate(app, db, render_as_batch=True)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Flask-Login 初始化
 login_manager = LoginManager()
@@ -28,6 +30,40 @@ login_manager.login_message = '请先登录系统'
 login_manager.login_message_category = 'warning'
 login_manager.init_app(app)
 
+
+online_users = {} # 维护在线状态
+# --- Socket 实时通信逻辑 ---
+@socketio.on('send_msg')
+def handle_msg(data):
+    if not current_user.is_authenticated: return
+    
+    recipient_id = data.get('recipient_id')
+    if recipient_id != 'group':
+        if current_user.role != 'admin' and not perm.can('chat.send_private'):
+            return False
+    content = data.get('content')
+    is_group = recipient_id == 'group'
+    
+    # 1. 存入数据库
+    msg_obj = ChatMessage(
+        sender_id=current_user.id,
+        recipient_id=None if is_group else int(recipient_id),
+        content=content,
+        is_group=is_group
+    )
+    db.session.add(msg_obj)
+    db.session.commit()
+
+    # 2. 推送
+    payload = {
+        'sender_id': current_user.id,
+        'sender_name': current_user.name,
+        'content': data.get('content'),
+        'timestamp': datetime.now().strftime('%H:%M'),
+        'full_date': datetime.now().strftime('%Y-%m-%d'),
+        'is_group': data.get('recipient_id') == 'group'
+    }
+    emit('receive_msg', payload, broadcast=True) # 简单起见全部广播，前端通过逻辑过滤
 
 @app.context_processor
 def inject_keys():
@@ -329,6 +365,7 @@ if __name__ == '__main__':
             from routes.dorm import DORM_PERMISSIONS
             from routes.trip import TRIP_PERMISSIONS
             from routes.leave import LEAVE_PERMISSIONS
+            from routes.chat import CHAT_PERMISSIONS
             
             register_module_permissions('hr', HR_PERMISSIONS)
             register_module_permissions('asset', ASSET_PERMISSIONS)
@@ -337,6 +374,7 @@ if __name__ == '__main__':
             register_module_permissions('dorm', DORM_PERMISSIONS)
             register_module_permissions('trip', TRIP_PERMISSIONS)
             register_module_permissions('leave', LEAVE_PERMISSIONS)
+            register_module_permissions('chat', CHAT_PERMISSIONS)
         except ImportError:
             pass  # 模块未定义权限列表，跳过
         
@@ -356,4 +394,4 @@ if __name__ == '__main__':
         print("数据库初始化完成，定时备份服务已启动")
     
     # 启动服务器
-    app.run(host='0.0.0.0', port=8000, debug=True)
+    socketio.run(app, host='0.0.0.0', port=8000, debug=True)

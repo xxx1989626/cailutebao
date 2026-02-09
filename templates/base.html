@@ -149,7 +149,37 @@
             </div>
         </div>
     </nav>
-
+    
+    <div id="chat-fab"
+        style="position:fixed; bottom:25px; right:25px; width:55px; height:55px; background:#0d6efd; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:9999; box-shadow:0 4px 15px rgba(0,0,0,0.3);">
+        <i class="bi bi-chat-dots-fill fs-4"></i>
+    </div>
+    
+    <div id="chat-window"
+        style="display:none; position:fixed; bottom:90px; right:25px; width:400px; height:550px; background:white; border-radius:12px; z-index:9999; flex-direction:column; border:1px solid #dee2e6; box-shadow: 0 10px 30px rgba(0,0,0,0.2); overflow:hidden;">
+        <div class="bg-primary text-white p-3 d-flex justify-content-between align-items-center">
+            <strong id="chat-title">蔡路特保队</strong>
+            <button type="button" class="btn-close btn-close-white" id="chat-close-btn"></button>
+        </div>
+        <div style="flex:1; display:flex; overflow:hidden;">
+            <div id="chat-user-list" class="bg-light border-end" style="width:150px; overflow-y:auto;">
+                <div class="list-group list-group-flush">
+                    <a href="javascript:void(0);" class="list-group-item list-group-item-action active"
+                        data-uid="group">队内群聊</a>
+                </div>
+            </div>
+            <div style="flex:1; display:flex; flex-direction:column;">
+                <div id="msg-container" style="flex:1; padding:15px; overflow-y:auto; background:#f8f9fa;"></div>
+                <div class="p-2 border-top">
+                    <div class="input-group">
+                        <input type="text" id="chat-input" class="form-control form-control-sm" placeholder="输入消息...">
+                        <button class="btn btn-primary btn-sm" id="chat-send-btn">发送</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <div class="container mt-4">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -170,7 +200,10 @@
         </div>
     </footer>
 
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
     {% block scripts %}{% endblock %}
 
     <audio id="globalNoticeAudio" preload="auto">
@@ -178,62 +211,196 @@
     </audio>
 
     <script>
-    let globalAlarmInterval = null;
-    window.originalTitle = document.title;
-    let isChecking = false; // 状态锁，防止并发请求
+        $(document).ready(function () {
+            // --- A. 原有的全局通知逻辑 ---
+            let globalAlarmInterval = null;
+            window.originalTitle = document.title;
+            let isChecking = false;
 
-    function doGlobalCheck() {
-        if (isChecking) return; // 如果上一个请求还没回来，不发新的
-        isChecking = true;
+            function doGlobalCheck() {
+                if (isChecking) return;
+                isChecking = true;
+                fetch("/notification/unread_count")
+                    .then(response => response.json())
+                    .then(data => {
+                        isChecking = false;
+                        const count = data.unread_count;
+                        const audio = document.getElementById('globalNoticeAudio');
+                        if (count > 0) {
+                            document.title = `(新消息 ${count}) ` + window.originalTitle;
+                            if (!globalAlarmInterval) {
+                                globalAlarmInterval = setInterval(() => {
+                                    audio.play().catch(e => { });
+                                }, 2000);
+                            }
+                        } else {
+                            if (globalAlarmInterval) {
+                                clearInterval(globalAlarmInterval);
+                                globalAlarmInterval = null;
+                            }
+                            document.title = window.originalTitle;
+                        }
+                    })
+                    .catch(err => { isChecking = false; });
+            }
+            setInterval(doGlobalCheck, 5000);
+            doGlobalCheck();
 
-        fetch("/notification/unread_count")
-            .then(response => response.json())
-            .then(data => {
-                isChecking = false; // 请求结束，释放锁
-                const count = data.unread_count;
+            // 点击解锁音频权限
+            $(document).one('click', function () {
                 const audio = document.getElementById('globalNoticeAudio');
-
-                if (count > 0) {
-                    // 1. 更新标题
-                    document.title = `(新消息 ${count}) ` + window.originalTitle;
-                    
-                    // 2. 启动/维持报警音
-                    if (!globalAlarmInterval) {
-                        console.log("全局监控：发现新消息");
-                        globalAlarmInterval = setInterval(() => {
-                            audio.play().catch(e => { /* 忽略静音拦截错误 */ });
-                        }, 2000); 
-                    }
-                } else {
-                    // 3. 停止报警，恢复标题
-                    if (globalAlarmInterval) {
-                        clearInterval(globalAlarmInterval);
-                        globalAlarmInterval = null;
-                    }
-                    document.title = window.originalTitle;
-                }
-            })
-            .catch(err => {
-                isChecking = false;
-                console.log("通知接口请求失败");
+                audio.play().then(() => { audio.pause(); }).catch(e => { });
             });
-    }
 
-    // 逻辑优化：每 5 秒检查一次，其实对于“队务管理”来说，5秒已经非常及时了
-    // 相比于 3秒，5秒能减少服务器 40% 的压力
-    setInterval(doGlobalCheck, 5000);
+            // --- B. 聊天系统集成逻辑 ---
+            const socket = io();
+            let currentTarget = 'group';
 
-    // 初始执行
-    doGlobalCheck();
+            // 1. 打开/关闭窗口 (使用 jQuery 绑定确保稳定性)
+            $('#chat-fab').on('click', function () {
+                const win = $('#chat-window');
+                if (win.is(':hidden')) {
+                    win.css('display', 'flex'); // flex 布局
+                    loadUsers();
+                } else {
+                    win.hide();
+                }
+            });
 
-    // 只有在点击时尝试播放一下静音音频，以此解锁浏览器的自动播放限制
-    document.addEventListener('click', () => {
-        const audio = document.getElementById('globalNoticeAudio');
-        audio.play().then(() => {
-            audio.pause(); // 只是为了骗过浏览器权限，不需要真的响
-            console.log("音频权限已激活");
-        }).catch(e => {});
-    }, { once: true });
-</script>
+            $('#chat-close-btn').on('click', function () {
+                $('#chat-window').hide();
+            });
+
+            let unreadCounts = {};
+
+            // 2. 加载用户名单
+            function loadUsers() {
+                $.get('/api/chat/users', function (data) {
+                    const $list = $('#chat-user-list .list-group');
+                    // 清除除了“全体”之外的所有选项
+                    $list.find('a[data-uid!="group"]').remove();
+
+                    if (data && data.length > 0) {
+                        // 有权限：渲染私聊名单
+                        data.forEach(u => {
+                            const count = unreadCounts[u.id] || 0;
+                            const badgeHtml = `<span class="badge bg-danger rounded-pill float-end ${count > 0 ? '' : 'd-none'}" id="badge-${u.id}">${count}</span>`;
+                            $list.append(`<a href="javascript:void(0);" class="list-group-item list-group-item-action" data-uid="${u.id}">${u.name}${badgeHtml}</a>`);
+                        });
+                        $('#chat-user-list').show(); // 显示侧边栏
+                    } else {
+                        // 无权限：隐藏侧边栏，强制选中“全体”
+                        $('#chat-user-list').hide();
+                        currentTarget = 'group';
+                        $('#chat-title').text('全体群聊');
+                        // 触发一次点击，加载群聊历史
+                        $('a[data-uid="group"]').addClass('active');
+                    }
+                });
+            }
+
+            // 3. 切换聊天对象
+            $(document).on('click', '#chat-user-list .list-group-item', function (e) {
+                e.preventDefault();
+                $('#chat-user-list .list-group-item').removeClass('active');
+                $(this).addClass('active');
+
+                currentTarget = $(this).data('uid');
+                const $clone = $(this).clone();
+                $clone.find('.badge').remove(); 
+                const pureName = $clone.text().trim();
+                $('#chat-title').text(currentTarget === 'group' ? '全体群聊' : '与 ' + pureName + ' 私聊');
+
+                $('#msg-container').empty();
+                $.get('/api/chat/history/' + currentTarget, function (msgs) {
+                    msgs.forEach(renderMsg);
+                });
+            });
+
+            // 4. 发送消息函数
+            function send() {
+                const text = $('#chat-input').val().trim();
+                if (text) {
+                    socket.emit('send_msg', { recipient_id: currentTarget, content: text });
+                    $('#chat-input').val('');
+                }
+            }
+
+            $('#chat-send-btn').on('click', send);
+            $('#chat-input').on('keypress', function (e) { if (e.which == 13) send(); });
+
+            let lastDate = null;
+
+            // 5. 渲染消息到界面
+            function renderMsg(data) {
+                const isMe = data.sender_id == "{{ current_user.id }}";
+                const msgDate = data.full_date; // 后端需要传这个字段
+
+                let dateHtml = '';
+                if (msgDate !== lastDate) {
+                    dateHtml = `<div class="text-center my-3"><span class="badge bg-secondary-subtle text-dark" style="font-size: 0.7rem;">${msgDate}</span></div>`;
+                    lastDate = msgDate;
+                }
+
+                const html = `
+            ${dateHtml}
+            <div class="mb-3 ${isMe ? 'text-end' : 'text-start'}">
+                <div style="font-size:0.7rem; color:#888;">${data.sender_name} ${data.timestamp}</div>
+                <div class="p-2 rounded shadow-sm d-inline-block ${isMe ? 'bg-primary text-white' : 'bg-white border'}" style="max-width:85%; word-break:break-all;">
+                    ${data.content}
+                </div>
+            </div>`;
+                $('#msg-container').append(html);
+                $('#msg-container').scrollTop($('#msg-container')[0].scrollHeight);
+            }
+
+            // 6. 接收 Socket 实时消息
+            socket.on('receive_msg', function (data) {
+                const isMe = data.sender_id == "{{ current_user.id }}";
+                const msgSource = data.is_group ? 'group' : data.sender_id;
+
+                if (!isMe) {
+                    if (!data.is_group && $(`#badge-${msgSource}`).length === 0) {
+                        loadUsers();
+                        }
+                    // 如果当前没在看这个人的聊天窗，或者是窗口关着的，就加红点
+                    if ($('#chat-window').is(':hidden') || currentTarget != msgSource) {
+                        unreadCounts[msgSource] = (unreadCounts[msgSource] || 0) + 1;
+                        setTimeout(() => {
+                            const $badge = $(`#badge-${msgSource}`);
+                            $badge.text(unreadCounts[msgSource]).removeClass('d-none');
+                            }, 500);
+                        // 全局提醒：悬浮球变红
+                        $('#chat-fab').addClass('warning-blink').css('background-color', '#dc3545');
+                    }
+
+                    // 播放声音
+                    const audio = document.getElementById('globalNoticeAudio');
+                    if (audio) audio.play().catch(e => { });
+                }
+
+                // 只有在当前选中的窗口才渲染消息
+                if (data.is_group && currentTarget === 'group') {
+                    renderMsg(data);
+                } else if (!data.is_group && (data.sender_id == currentTarget || isMe)) {
+                    renderMsg(data);
+                }
+            });
+
+            // 当用户点击悬浮球打开聊天窗时，清除提醒状态
+            $(document).on('click', '#chat-user-list .list-group-item', function () {
+                const uid = $(this).data('uid');
+                unreadCounts[uid] = 0;
+                $(`#badge-${uid}`).addClass('d-none').text('0');
+
+                // 检查是否还有其他红点，没有就恢复悬浮球颜色
+                if (Object.values(unreadCounts).every(v => v === 0)) {
+                    $('#chat-fab').removeClass('warning-blink').css('background-color', '#0d6efd');
+                }
+
+                // 切换窗口时重置日期追踪
+                lastDate = null;
+            });
+        });
+    </script>
 </body>
-</html>

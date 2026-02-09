@@ -27,3 +27,5 @@ merged_project_code.txt
 
 # --- 脚本文件 (如果你确认不需要追踪它) ---
 merge_code.py
+merged_backend_code.txt
+merged_frontend_code.txt
