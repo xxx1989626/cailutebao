@@ -212,11 +212,15 @@ function initCalendar() {
 
     calendar = new FullCalendar.Calendar(calendarEl, {
         locale: 'zh-cn',
-        headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth' },
+        headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,dayGridWeek,dayGridDay' },
         initialView: 'dayGridMonth',
         editable: true,
         droppable: true,
-        dayMaxEvents: 6, 
+        views: {
+        dayGridMonth: {dayMaxEvents: 6,},
+        dayGridWeek: {dayMaxEvents: false,},
+        dayGridDay: {dayMaxEvents: false,},
+        },
         // 拖拽释放
         drop: function(info) {
             handleDrop(info.draggedEl.getAttribute('data-user-id'), info.draggedEl.getAttribute('data-user-name'), info.dateStr);

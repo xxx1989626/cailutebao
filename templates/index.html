@@ -248,9 +248,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const today = new Date();
     const tomorrow = new Date();
     tomorrow.setDate(today.getDate() + 1);
+
+    function formatDateToChinese(date) {
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    return `${year}年${month}月${day}日`;
+}
     
-    document.getElementById('today_label').innerText = today.toLocaleDateString();
-    document.getElementById('tomorrow_label').innerText = tomorrow.toLocaleDateString();
+    document.getElementById('today_label').innerText = formatDateToChinese(today);
+    document.getElementById('tomorrow_label').innerText = formatDateToChinese(tomorrow);
 
     // 2. 异步获取值班数据
     fetch("{{ url_for('scheduling.get_daily_duty') }}")
