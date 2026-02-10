@@ -51,29 +51,6 @@ def schedule_list():
                            on_trip_ids=on_trip_ids,
                            on_leave_ids=on_leave_ids)
 
-# --- 路由 2：独立的岗位管理页面 ---
-@scheduling_bp.route('/posts', methods=['GET', 'POST'])
-@login_required
-def post_list():
-    if not perm.can('scheduling.post'):
-        flash("权限不足", "danger")
-        return redirect(url_for('scheduling.schedule_list'))
-    
-    if request.method == 'POST':
-        name = request.form.get('name')
-        color = request.form.get('color', '#007bff')
-        start = request.form.get('default_start', '08:30')
-        end = request.form.get('default_end', '17:30')
-        if name:
-            new_post = ShiftPost(name=name, color=color, default_start=start, default_end=end)
-            db.session.add(new_post)
-            db.session.commit()
-            flash(f"岗位 {name} 添加成功", "success")
-        return redirect(url_for('scheduling.post_list')) # 这里的跳转改了
-
-    posts = ShiftPost.query.all()
-    # 渲染你专门的 posts.html 模板
-    return render_template('scheduling/posts.html', posts=posts)
 
 # --- 功能：为 FullCalendar 插件提供排班数据接口 ---
 @scheduling_bp.route('/api/get_shifts')
@@ -137,21 +114,6 @@ def delete_shift(id):
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)})
 
-# --- 功能：删除岗位配置（检查关联性） ---
-@scheduling_bp.route('/posts/delete/<int:id>')
-@login_required
-def post_delete(id):
-    if not perm.can('scheduling.post'):
-        flash("无权操作", "danger")
-        return redirect(url_for('scheduling.schedule_list', tab='posts'))
-    post = ShiftPost.query.get_or_404(id)
-    if ShiftSchedule.query.filter_by(post_id=id).first():
-        flash("该岗位已有排班记录，无法删除", "warning")
-    else:
-        db.session.delete(post)
-        db.session.commit()
-        flash("岗位已删除", "success")
-    return redirect(url_for('scheduling.schedule_list', tab='posts'))
 
 # --- 功能：导出考勤统计表（支持 A/B 表及 174 小时保底） ---
 @scheduling_bp.route('/export/<string:table_type>')
@@ -193,45 +155,6 @@ def export_attendance(table_type):
         df.to_excel(writer, index=False)
     output.seek(0)
     return send_file(output, download_name=f"{table_type}表_{target_month}.xlsx", as_attachment=True)
-
-# --- 功能：导出当前所有岗位配置清单 ---
-@scheduling_bp.route('/posts/export')
-@login_required
-def export_posts():
-    posts = ShiftPost.query.all()
-    data = [{
-        "岗位名称": p.name, 
-        "代表颜色": p.color,
-        "默认开始时间": p.default_start,
-        "默认结束时间": p.default_end
-    } for p in posts]
-    df = pd.DataFrame(data)
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False)
-    output.seek(0)
-    return send_file(output, download_name="岗位配置详细导出.xlsx", as_attachment=True)
-# --- 功能：导入当前所有岗位配置清单 ---
-@scheduling_bp.route('/posts/import_config', methods=['POST'])
-@login_required
-def import_post_configs():
-    file = request.files.get('file')
-    if not file: return jsonify({'success': False, 'message': '未选择文件'})
-    try:
-        df = pd.read_excel(file)
-        for _, row in df.iterrows():
-            name = str(row['岗位名称'])
-            color = str(row.get('代表颜色', '#0d6efd'))
-            start = str(row.get('默认开始时间', '08:30'))
-            end = str(row.get('默认结束时间', '17:30'))
-            if not ShiftPost.query.filter_by(name=name).first():
-                new_post = ShiftPost(name=name, color=color, default_start=start, default_end=end)
-                db.session.add(new_post)
-        db.session.commit()
-        return jsonify({'success': True, 'message': '岗位导入成功'})
-    except Exception as e:
-        return jsonify({'success': False, 'message': f'导入失败: {str(e)}'})
-
 
 # --- 功能核心：直接从复杂 Excel 排班表批量导入数据 ---
 @scheduling_bp.route('/data/import', methods=['POST'])

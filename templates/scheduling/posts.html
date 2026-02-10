@@ -3,15 +3,11 @@
 {% block content %}
 <div class="container mt-4">
     <div class="hr-tabs mb-4">
-    <a href="{{ url_for('scheduling.schedule_list') }}" 
-       class="{% if request.endpoint == 'scheduling.schedule_list' %}active{% endif %}">📅 排班视图</a>
-    
-    <a href="{{ url_for('scheduling.post_list') }}" 
-       class="{% if request.endpoint == 'scheduling.post_list' %}active{% endif %}">🛠️ 岗位设置</a>
-    
-    <a href="{{ url_for('trip.trip_list') }}">💼 出差设置</a>
-    <a href="{{ url_for('leave.leave_list') }}">📝 请假管理</a>
-</div>
+        <a href="{{ url_for('scheduling.schedule_list') }}" class="{% if request.endpoint == 'scheduling.schedule_list' %}active{% endif %}">📅 排班视图</a>
+        <a href="{{ url_for('posts.list') }}" class="{% if request.endpoint == 'posts.list' %}active{% endif %}">🛠️ 岗位设置</a>
+        <a href="{{ url_for('trip.trip_list') }}" class="{% if request.endpoint == 'trip.trip_list' %}active{% endif %}">💼 出差设置</a>
+        <a href="{{ url_for('leave.leave_list') }}" class="{% if request.endpoint == 'leave.leave_list' %}active{% endif %}">📝 请假管理</a>
+    </div>
 
     <div class="row">
         <div class="col-md-4">
@@ -20,26 +16,26 @@
                     <h5 class="mb-0"><i class="bi bi-plus-circle me-2"></i>新增岗位</h5>
                 </div>
                 <div class="card-body">
-                    <form method="POST">
+                    <form method="POST" action="{{ url_for('posts.list') }}">
                         <div class="mb-3">
                             <label class="form-label fw-bold text-secondary">岗位名称</label>
-                            <input type="text" name="name" class="form-control" placeholder="如：白班 / 夜班" required>
+                            <input type="text" name="name" class="form-control" placeholder="如：安全巡检 / 机动岗" required>
                         </div>
                         <div class="row mb-3">
                             <div class="col">
-                                <label class="small text-muted">上班</label>
-                                <input type="time" name="default_start" class="form-control" value="08:00" title="上班时间">
+                                <label class="small text-muted">上班时间</label>
+                                <input type="time" name="default_start" class="form-control" value="08:00">
                             </div>
                             <div class="col">
-                                <label class="small text-muted">下班</label>
-                                <input type="time" name="default_end" class="form-control" value="20:00" title="下班时间">
+                                <label class="small text-muted">下班时间</label>
+                                <input type="time" name="default_end" class="form-control" value="20:00">
                             </div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-bold text-secondary">显示颜色</label>
                             <div class="d-flex align-items-center gap-3">
                                 <input type="color" name="color" class="form-control form-control-color shadow-sm" value="#007bff" style="width: 60px;">
-                                <small class="text-muted">此颜色将显示在排班日历中</small>
+                                <small class="text-muted">用于排班表颜色区分</small>
                             </div>
                         </div>
                         <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm">
@@ -52,46 +48,51 @@
 
         <div class="col-md-8">
             <div class="card shadow border-0">
-                <div class="card-header bg-dark text-white py-3">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-3">
                     <h5 class="mb-0"><i class="bi bi-list-stars me-2"></i>现有岗位列表</h5>
-                    <button class="btn btn-outline-secondary btn-sm px-3" onclick="document.getElementById('postImportInput').click()">
-                <i class="bi bi-file-earmark-arrow-up"></i> 导入岗位设置
-            </button>
-            <a href="{{ url_for('scheduling.export_posts') }}" class="btn btn-outline-secondary btn-sm px-3">
-                <i class="bi bi-file-earmark-arrow-down"></i> 导出岗位设置
-            </a>
+                    <div class="btn-group shadow-sm">
+                        <input type="file" id="postImportInput" style="display: none;" accept=".xlsx, .xls" onchange="handlePostImport(this)">
+                        
+                        <button class="btn btn-outline-light btn-sm px-3" onclick="document.getElementById('postImportInput').click()">
+                            <i class="bi bi-file-earmark-arrow-up"></i> 导入岗位
+                        </button>
+                        <a href="{{ url_for('posts.export_config') }}" class="btn btn-outline-light btn-sm px-3">
+                            <i class="bi bi-file-earmark-arrow-down"></i> 导出配置
+                        </a>
+                    </div>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0">
                             <thead class="table-light">
                                 <tr class="small text-secondary">
-                                    <th class="ps-4" width="120">颜色预览</th>
+                                    <th class="ps-4" width="100">颜色</th>
                                     <th>岗位名称</th>
-                                    <th>标准工时</th>
+                                    <th>默认时间段</th>
                                     <th class="text-center pe-4" width="150">操作</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for post in posts %}
                                 <tr>
-                                    <td><span class="badge" style="background-color: {{ post.color }};">&nbsp;&nbsp;&nbsp;</span></td>
+                                    <td class="ps-4">
+                                        <div class="rounded-circle shadow-sm" style="width: 24px; height: 24px; background-color: {{ post.color }}; border: 2px solid #fff;"></div>
+                                    </td>
                                     <td><strong class="text-dark">{{ post.name }}</strong></td>
-                                    <td class="text-muted">{{ post.default_start }} - {{ post.default_end }}</td>
+                                    <td class="text-muted small">
+                                        <i class="bi bi-clock me-1"></i>{{ post.default_start }} - {{ post.default_end }}
+                                    </td>
                                     <td class="text-center pe-4">
-                                        <div class="btn-group btn-group-sm btn-group-custom shadow-sm">
-                                            <a href="{{ url_for('scheduling.post_delete', id=post.id) }}" 
-                                               class="btn text-danger" 
-                                               title="永久删除此岗位"
-                                               onclick="return confirm('确定删除【{{ post.name }}】岗位吗？此操作不可撤销！')">
-                                                <i class="bi bi-trash"></i> 删除岗位
-                                            </a>
-                                        </div>
+                                        <a href="{{ url_for('posts.delete', id=post.id) }}" 
+                                           class="btn btn-sm btn-outline-danger border-0" 
+                                           onclick="return confirm('确定删除【{{ post.name }}】吗？若已有排班数据将无法删除。')">
+                                            <i class="bi bi-trash"></i> 删除
+                                        </a>
                                     </td>
                                 </tr>
                                 {% else %}
                                 <tr>
-                                    <td colspan="3" class="text-center py-5 text-muted">
+                                    <td colspan="4" class="text-center py-5 text-muted">
                                         <i class="bi bi-inbox fs-2 d-block mb-2"></i>
                                         暂未设置任何岗位
                                     </td>
@@ -105,4 +106,51 @@
         </div>
     </div>
 </div>
+
+<script>
+/**
+ * 处理岗位 Excel 导入
+ */
+function handlePostImport(input) {
+    if (!input.files || input.files.length === 0) return;
+    
+    const file = input.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+
+    // 显示加载状态（可选）
+    const btn = event.currentTarget; 
+    
+    fetch("{{ url_for('posts.import_config') }}", {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message || '导入成功！');
+            window.location.reload(); // 刷新页面显示新岗位
+        } else {
+            alert('导入失败：' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('网络请求失败，请检查后端接口');
+    })
+    .finally(() => {
+        input.value = ''; // 清除选择的文件，方便下次触发 onchange
+    });
+}
+</script>
+
+<style>
+/* 保持与你的排班系统一致的风格 */
+.hr-tabs { border-bottom: 2px solid #eee; display: flex; gap: 20px; }
+.hr-tabs a { text-decoration: none; color: #666; padding: 10px 5px; border-bottom: 3px solid transparent; transition: all 0.3s; font-weight: 500; }
+.hr-tabs a:hover { color: #0d6efd; }
+.hr-tabs a.active { color: #0d6efd; border-bottom-color: #0d6efd; }
+.form-control-color { padding: 0.2rem; cursor: pointer; }
+.table-hover tbody tr:hover { background-color: rgba(13, 110, 253, 0.02); }
+</style>
 {% endblock %}

@@ -2,11 +2,11 @@
 
 {% block content %}
 <div class="container mt-4">
-    <div class="hr-tabs">
-        <a href="{{ url_for('scheduling.schedule_list') }}" class="{% if active_tab == 'calendar' %}active{% endif %}">📅 排班视图</a>
-        <a href="{{ url_for('scheduling.post_list') }}" class="{% if active_tab == 'posts' %}active{% endif %}">🛠️ 岗位设置</a>
-        <a href="{{ url_for('trip.trip_list') }}">💼 出差设置</a>
-        <a href="{{ url_for('leave.leave_list') }}" class="active">📝 请假管理</a>
+    <div class="hr-tabs mb-4">
+        <a href="{{ url_for('scheduling.schedule_list') }}" class="{% if request.endpoint == 'scheduling.schedule_list' %}active{% endif %}">📅 排班视图</a>
+        <a href="{{ url_for('posts.list') }}" class="{% if request.endpoint == 'posts.list' %}active{% endif %}">🛠️ 岗位设置</a>
+        <a href="{{ url_for('trip.trip_list') }}" class="{% if request.endpoint == 'trip.trip_list' %}active{% endif %}">💼 出差设置</a>
+        <a href="{{ url_for('leave.leave_list') }}" class="{% if request.endpoint == 'leave.leave_list' %}active{% endif %}">📝 请假管理</a>
     </div>
 
     <div class="card card-custom">
@@ -118,4 +118,13 @@ function copyLeaveMsg(name, type, reason, startDate, endDate, totalDays, post) {
     }
 }
 </script>
+<style>
+/* 保持与你的排班系统一致的风格 */
+.hr-tabs { border-bottom: 2px solid #eee; display: flex; gap: 20px; }
+.hr-tabs a { text-decoration: none; color: #666; padding: 10px 5px; border-bottom: 3px solid transparent; transition: all 0.3s; font-weight: 500; }
+.hr-tabs a:hover { color: #0d6efd; }
+.hr-tabs a.active { color: #0d6efd; border-bottom-color: #0d6efd; }
+.form-control-color { padding: 0.2rem; cursor: pointer; }
+.table-hover tbody tr:hover { background-color: rgba(13, 110, 253, 0.02); }
+</style>
 {% endblock %}

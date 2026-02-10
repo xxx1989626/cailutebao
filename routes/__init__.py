@@ -9,6 +9,7 @@ def register_blueprints(app):
     from .fund import fund_bp
     from .permission import permission_bp
     from .scheduling import scheduling_bp
+    from .posts import posts_bp
     from .dorm import dorm_bp
     from .notification import notification_bp
     from .trip import trip_bp
@@ -21,6 +22,7 @@ def register_blueprints(app):
     app.register_blueprint(fund_bp)
     app.register_blueprint(permission_bp)
     app.register_blueprint(scheduling_bp)
+    app.register_blueprint(posts_bp)
     app.register_blueprint(dorm_bp)
     app.register_blueprint(notification_bp)
     app.register_blueprint(trip_bp)
