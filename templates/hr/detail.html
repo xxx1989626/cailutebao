@@ -81,13 +81,13 @@
                                         <tr>
                                             <th>户籍地址</th>
                                             <td>{{ [cycle.household_province, cycle.household_city,
-                                                cycle.household_district, cycle.household_town, cycle.household_detail]
+                                                cycle.household_district, cycle.household_town, cycle.household_village, cycle.household_detail]
                                                 | reject('none') | join(' ') or '未填写' }}</td>
                                         </tr>
                                         <tr>
                                             <th>居住地址</th>
                                             <td>{{ [cycle.residence_province, cycle.residence_city,
-                                                cycle.residence_district, cycle.residence_town, cycle.residence_detail]
+                                                cycle.residence_district, cycle.residence_town, cycle.residence_village, cycle.residence_detail]
                                                 | reject('none') | join(' ') or '未填写' }}</td>
                                         </tr>
                                         <tr>
