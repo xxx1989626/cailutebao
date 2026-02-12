@@ -82,7 +82,7 @@
                                     <i class="bi bi-calendar-plus"></i> 延期/修改
                                 </a>
                                 {% endif %}
-                                {% if 'delete' in admin %}
+                                {% if current_user.username == 'admin' %}
                                 <a href="{{ url_for('leave.delete_leave', id=leave.id) }}" class="btn btn-outline-danger"
                                     onclick="return confirm('确认删除该记录吗？')">
                                     <i class="bi bi-trash"></i>

@@ -8,6 +8,7 @@ Markdown格式
 分离scheduling.py文件
 新增posts.py文件
 修改考勤模块四个标签页的ui
+修改通知ui
 
 [7.2.2-alpha] - 2026-02-05
 新增请假上传文件
