@@ -213,6 +213,16 @@ function initCalendar() {
     calendar = new FullCalendar.Calendar(calendarEl, {
         locale: 'zh-cn',
         headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,dayGridWeek,dayGridDay' },
+        
+        buttonText: {
+            today: '今天',
+            month: '月视图',
+            week: '周视图',
+            day: '日视图',
+            prev: '上一月',
+            next: '下一月'
+        },
+        firstDay: 1,
         initialView: 'dayGridMonth',
         editable: true,
         droppable: true,
