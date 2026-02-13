@@ -28,6 +28,7 @@
                             <th>实际销假</th>
                             <th>天数</th>
                             <th>状态</th>
+                            <th>是否上报</th>
                             <th>附件</th>
                             <th class="text-center pe-3">操作</th>
                         </tr>
@@ -60,6 +61,13 @@
                                     <span class="badge rounded-pill bg-light text-secondary border">已销假</span>
                                 {% endif %}
                             </td>
+                            <td>
+    {% if leave.is_reported %}
+        <span class="badge bg-success"><i class="bi bi-check"></i> 已上报</span>
+    {% else %}
+        <span class="badge bg-secondary"><i class="bi bi-x"></i> 未上报</span>
+    {% endif %}
+</td>
                             <td>
                                 {% if leave.attachments %}
                                 <div class="d-flex flex-wrap gap-1">

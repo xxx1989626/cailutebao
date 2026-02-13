@@ -33,8 +33,8 @@ def notify_expiring_leaves():
 @perm.require('leave.view')
 def leave_list():
     leaves = LeaveRecord.query.order_by(
-        LeaveRecord.status == '请假中',
-        LeaveRecord.start_date.asc()
+        LeaveRecord.status == '已销假',
+        LeaveRecord.start_date.desc()
     ).all()
     return render_template('leave/list.html', leaves=leaves)
 
@@ -61,6 +61,8 @@ def add_leave():
         
         total_days_raw = request.form.get('total_days')
         t_days = float(total_days_raw) if total_days_raw else (end_date - start_date).days + 1
+        is_reported = request.form.get('is_reported') == 'on'
+        reported_at = datetime.now() if is_reported else None
 
         new_leave = LeaveRecord(
             user_id=request.form.get('user_id'),
@@ -70,13 +72,15 @@ def add_leave():
             total_days=t_days,
             reason=request.form.get('reason'),
             attachments=file_paths,
+            is_reported=is_reported,
             status='请假中'
         )
         db.session.add(new_leave)
         db.session.flush()
 
         # 修复点：使用统一的 log_action
-        desc = f"为 {new_leave.user.name} 登记了 {new_leave.leave_type}，周期：{new_leave.start_date} 至 {new_leave.end_date}"
+        reported_note = "已上报" if is_reported else "未上报"
+        desc = f"为 {new_leave.user.name} 登记了 {new_leave.leave_type}，周期：{new_leave.start_date} 至 {new_leave.end_date} 上报状态：{reported_note}"
         log_action(
             action_type="新增请假",
             target_type="LeaveRecord",
@@ -89,7 +93,10 @@ def add_leave():
         flash('请假登记成功', 'success')
         return redirect(url_for('leave.leave_list'))
     
-    employees = EmploymentCycle.query.filter_by(status='在职').all()
+    employees = EmploymentCycle.query.filter_by(status='在职')\
+    .order_by(EmploymentCycle.post, EmploymentCycle.name)\
+    .all()
+
     current_date = datetime.now().strftime('%Y-%m-%d')
     return render_template('leave/add.html', employees=employees, form_default_date=current_date)
 
@@ -102,10 +109,13 @@ def edit_leave(id):
     if request.method == 'POST':
         old_type = leave.leave_type
         old_end = leave.end_date
+        old_is_reported = leave.is_reported
         leave.leave_type = request.form.get('leave_type')
         leave.start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date()
         leave.end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date()
         leave.reason = request.form.get('reason')
+        new_is_reported = request.form.get('is_reported') == 'on'
+        leave.is_reported = new_is_reported
         
         current_attachments = list(leave.attachments) if leave.attachments else []
         file_change_note = ""
@@ -131,6 +141,10 @@ def edit_leave(id):
         desc = f"修改了 {leave.user.name} 的请假记录。"
         if old_type != leave.leave_type: desc += f" 类型从 {old_type} 改为 {leave.leave_type};"
         if old_end != leave.end_date: desc += f" 结束日期从 {old_end} 改为 {leave.end_date};"
+        if old_is_reported != new_is_reported:
+            old_status = "已上报" if old_is_reported else "未上报"
+            new_status = "已上报" if new_is_reported else "未上报"
+            desc += f" 上报状态从 {old_status} 改为 {new_status};"
         desc += file_change_note
         
         # 修复点：使用统一的 log_action

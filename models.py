@@ -264,6 +264,7 @@ class LeaveRecord(db.Model):
     status = db.Column(db.String(20), default='请假中')    # 状态
     attachments = db.Column(db.JSON, default=[])          # 附件
     created_at = db.Column(db.DateTime, default=datetime.now)  # 请假记录创建时间
+    is_reported = db.Column(db.Boolean, default=False, comment='是否上报：False=未上报，True=已上报')  # 布尔类型，默认未上报
 # ==================== 聊天模型 ====================
 class ChatMessage(db.Model):
     __tablename__ = 'chat_messages'  # 数据库表名
