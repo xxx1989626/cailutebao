@@ -1,12 +1,11 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app
 from models import db, LeaveRecord, EmploymentCycle, OperationLog, Notification, User
 from utils import perm, save_uploaded_file, log_action 
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import json
+from sqlalchemy import func, and_
 
 leave_bp = Blueprint('leave', __name__, url_prefix='/leave')
-
-# 已移除旧的 record_event 函数，直接使用 utils 里的 log_action
 
 def notify_expiring_leaves():
     """该函数应由定时任务调度，在每天 20:00 运行"""
@@ -29,14 +28,68 @@ def notify_expiring_leaves():
                     db.session.add(n)
             db.session.commit()
 
+def calculate_continuous_leave_count(user_id):
+    leaves = LeaveRecord.query.filter_by(user_id=user_id).order_by(LeaveRecord.start_date).all()
+    if not leaves:
+        return 0
+    
+    count = 1  
+    prev_leave = leaves[0]
+    
+    for leave in leaves[1:]:
+        next_day_expected = prev_leave.end_date + timedelta(days=1)
+        if leave.start_date > next_day_expected:
+            count += 1
+        prev_leave = leave
+    
+    return count
+
 @leave_bp.route('/list')
 @perm.require('leave.view')
 def leave_list():
-    leaves = LeaveRecord.query.order_by(
-        LeaveRecord.status == '已销假',
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    
+    pagination = LeaveRecord.query.order_by(
+        LeaveRecord.status.desc(), 
         LeaveRecord.start_date.desc()
-    ).all()
-    return render_template('leave/list.html', leaves=leaves)
+    ).paginate(page=page, per_page=per_page, error_out=False)
+    leaves = pagination.items
+    
+    user_leave_stats = {}
+    
+    active_user_ids = db.session.query(LeaveRecord.user_id).distinct().all()
+    
+    for (u_id,) in active_user_ids:
+        emp_obj = EmploymentCycle.query.get(u_id)
+        if not emp_obj:
+            continue
+            
+        records = LeaveRecord.query.filter_by(user_id=u_id).order_by(LeaveRecord.start_date.asc()).all()
+        
+        real_count = 0
+        last_end_date = None
+        
+        for r in records:
+            if last_end_date is None or r.start_date > (last_end_date + timedelta(days=1)):
+                real_count += 1
+            
+            if last_end_date is None or r.end_date > last_end_date:
+                last_end_date = r.end_date
+                
+        user_leave_stats[u_id] = {
+            'name': emp_obj.name, 
+            'count': real_count
+        }
+
+    sorted_stats = dict(sorted(user_leave_stats.items(), key=lambda x: x[1]['count'], reverse=True))
+    
+    return render_template(
+        'leave/list.html', 
+        leaves=leaves,
+        pagination=pagination,
+        user_leave_stats=sorted_stats 
+    )
 
 @leave_bp.route('/add', methods=['GET', 'POST'])
 @perm.require('leave.add')
@@ -147,7 +200,6 @@ def edit_leave(id):
             desc += f" 上报状态从 {old_status} 改为 {new_status};"
         desc += file_change_note
         
-        # 修复点：使用统一的 log_action
         log_action(
             action_type="修改请假",
             target_type="LeaveRecord",
@@ -168,7 +220,6 @@ def finish_leave(id):
     leave = LeaveRecord.query.get_or_404(id)
     
     if request.method == 'POST':
-        # 从表单获取实际销假日期
         actual_end_str = request.form.get('actual_end_date')
         if not actual_end_str:
             flash('错误：必须选择实际销假日期', 'danger')
@@ -176,11 +227,9 @@ def finish_leave(id):
             
         actual_end_date = datetime.strptime(actual_end_str, '%Y-%m-%d').date()
         
-        # 更新记录
         leave.status = '已销假'
         leave.actual_end_date = actual_end_date
         
-        # 记录日志
         desc = f"{leave.user.name} 已办理销假，实际结束日期：{actual_end_date}"
         log_action(
             action_type="办理销假",

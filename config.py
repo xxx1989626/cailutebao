@@ -34,9 +34,6 @@ MAX_CONTENT_LENGTH = 50 * 1024 * 1024
 # Flask Secret Key（用于表单安全，随机生成即可，本地使用无所谓）
 SECRET_KEY = 'cailutebao-local-dev-secret-key-2025'
 
-# 分页配置
-PER_PAGE = 20
-
 # 内置兜底数据（如果网络不可用或API失效，使用本地列表）
 FALLBACK_DATA = {
     'ethnic': [
