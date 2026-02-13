@@ -31,7 +31,7 @@
         <div class="col-md-6 mb-3">
             <label class="form-label">请假类型</label>
             <select name="leave_type" class="form-select" required>
-                {% for type in ['事假', '病假', '年假', '调休', '婚庆/产假'] %}
+                {% for type in ['事假', '病假', '年假', '调休', '婚假', '产假', '其他'] %}
                 <option value="{{ type }}" {% if leave and leave.leave_type == type %}selected{% endif %}>{{ type }}</option>
                 {% endfor %}
             </select>

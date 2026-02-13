@@ -36,7 +36,19 @@
                         {% for leave in leaves %}
                         <tr>
                             <td class="ps-3"><strong>{{ leave.user.name }}</strong></td>
-                            <td><span class="badge bg-info bg-opacity-10 text-info border border-info-subtle">{{ leave.leave_type }}</span></td>
+                            <td>
+    {% set leave_type_colors = {
+        '事假': 'bg-primary bg-opacity-10 text-primary border border-primary-subtle',
+        '病假': 'bg-danger bg-opacity-10 text-danger border border-danger-subtle',
+        '年假': 'bg-success bg-opacity-10 text-success border border-success-subtle',
+        '调休': 'bg-warning bg-opacity-10 text-warning border border-warning-subtle',
+        '婚假': 'bg-pink bg-opacity-10 text-pink border border-pink-subtle',
+        '产假': 'bg-purple bg-opacity-10 text-purple border border-purple-subtle',
+        '其他': 'bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle',
+    } %}
+    {% set default_color = 'bg-info bg-opacity-10 text-info border border-info-subtle' %}
+    <span class="badge {{ leave_type_colors.get(leave.leave_type, default_color) }}">{{ leave.leave_type }}</span>
+</td>
                             <td>{{ leave.start_date }}</td>
                             <td>{{ leave.end_date }}</td>
                             <td>{{ leave.actual_end_date or '-' }}</td>

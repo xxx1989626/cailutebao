@@ -32,7 +32,10 @@ def notify_expiring_leaves():
 @leave_bp.route('/list')
 @perm.require('leave.view')
 def leave_list():
-    leaves = LeaveRecord.query.order_by(LeaveRecord.start_date.desc()).all()
+    leaves = LeaveRecord.query.order_by(
+        LeaveRecord.status == '请假中',
+        LeaveRecord.start_date.asc()
+    ).all()
     return render_template('leave/list.html', leaves=leaves)
 
 @leave_bp.route('/add', methods=['GET', 'POST'])
