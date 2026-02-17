@@ -1,0 +1,103 @@
+<!-- 操作历史开始 -->
+                            <div class="mt-5">
+    <h5 class="border-bottom pb-2 d-flex align-items-center justify-content-between">
+        <span><i class="bi bi-clock-history me-2"></i> 资产操作历史</span>
+        {% if history_items %}
+        <small class="text-muted fw-normal" style="font-size: 0.8rem;">共 {{ pagination.total }} 条记录</small>
+        {% endif %}
+    </h5>
+
+    {% if history_items %}
+    <div class="d-flex justify-content-end mb-2">
+        <ul class="pagination pagination-sm mb-0">
+            <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('asset.asset_detail', asset_id=asset.id, page=pagination.prev_num) if pagination.has_prev else '#' }}">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+            </li>
+            <li class="page-item disabled">
+                <span class="page-link text-dark">{{ pagination.page }} / {{ pagination.pages }}</span>
+            </li>
+            <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('asset.asset_detail', asset_id=asset.id, page=pagination.next_num) if pagination.has_next else '#' }}">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <div class="list-group list-group-flush shadow-sm rounded border">
+        {% for h in history_items %}
+        <div class="list-group-item p-3 history-row" data-sn="{{ h.sn_number or 'all' }}">
+            <div class="d-flex w-100 justify-content-between align-items-center mb-1">
+                <h6 class="mb-0 fw-bold">
+                    {% set badge_color = 'bg-secondary' %}
+                    {% if h.action == '发放' %}{% set badge_color = 'bg-primary' %}
+                    {% elif h.action == '归还' or h.action.startswith('归还') %}{% set badge_color = 'bg-info text-dark' %}
+                    {% elif h.action.startswith('更换') %}{% set badge_color = 'bg-info text-white' %}
+                    {% elif h.action == '补充' %}{% set badge_color = 'bg-success' %}
+                    {% elif h.action == '报废' or h.action == '消耗' %}{% set badge_color = 'bg-danger' %}
+                    {% elif h.action == '维修' %}{% set badge_color = 'bg-warning text-dark' %}{% endif %}
+                    <span class="badge {{ badge_color }} me-2">{{ h.action }}</span>
+                    {{ format_datetime(h.action_date) }}
+                </h6>
+                <small class="text-muted bg-light px-2 py-1 rounded border">
+                    <i class="bi bi-person"></i> {{ h.operator.name if h.operator else '系统' }}
+                </small>
+            </div>
+            <div class="ms-1 ps-3 border-start">
+                <p class="mb-0 text-dark">
+                    {# 将 更换(发放) 和 更换(回收) 加入友好显示列表 #}
+                    {% if h.action in ['发放', '归还', '更换(发放)', '更换(回收)'] and h.user %}
+                    <strong>{{ h.user.name }}</strong>
+            
+                    {# 根据不同动作显示不同的动词 #}
+                    {% if h.action == '发放' %}领用了
+                    {% elif h.action == '更换(发放)' %}领用了(新)
+                    {% elif h.action == '更换(回收)' %}归还了(旧)
+                    {% else %}归还了{% endif %}
+            
+                    <span class="text-primary fw-bold">{{ h.quantity }}</span> 个{{ asset.name }}
+            
+                    {% elif h.action.startswith('归还（离职自动）') %}
+                    <span class="text-danger"><i class="bi bi-person-x"></i> {{ h.note }}</span>
+                    {% else %}
+                    {{ h.action }}数量: <span class="fw-bold">{{ h.quantity }}</span>
+                    {% endif %}
+                </p>
+            </div>
+            </div>
+            {% endfor %}
+            </div>
+            
+            <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('asset.asset_detail', asset_id=asset.id, page=pagination.prev_num) if pagination.has_prev else '#' }}">上一页</a>
+            </li>
+
+            {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                {% if page_num %}
+                    <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                        <a class="page-link" href="{{ url_for('asset.asset_detail', asset_id=asset.id, page=page_num) }}">{{ page_num }}</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                {% endif %}
+            {% endfor %}
+
+            <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('asset.asset_detail', asset_id=asset.id, page=pagination.next_num) if pagination.has_next else '#' }}">下一页</a>
+            </li>
+        </ul>
+    </nav>
+
+    {% else %}
+    <div class="text-center py-5 border rounded bg-light shadow-sm">
+        <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
+        <p class="text-muted mt-2">暂无操作历史记录</p>
+    </div>
+    {% endif %}
+</div>
+                                
+                            <!-- 操作历史结束 -->

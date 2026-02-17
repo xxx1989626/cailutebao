@@ -1051,6 +1051,42 @@ def update_inventory(asset_id):
     db.session.commit()
     return jsonify({"status": "success", "message": f"资产 {asset.sn_number} 盘点成功"})
 
+@asset_bp.route('/inventory/quick_check', methods=['POST'])
+@login_required
+@perm.require('asset.inventory')
+def quick_check():
+    """连续扫码盘点接口：通过 SN 编号快速标记"""
+    data = request.get_json()
+    sn = data.get('sn')
+    
+    if not sn:
+        return jsonify({"status": "error", "message": "无效的资产编号"}), 400
+
+    # 1. 在 AssetInstance 表中查找该 SN
+    # 注意：根据你的模型字段，这里假设是 AssetInstance 且字段名为 sn_number
+    asset = AssetInstance.query.filter_by(sn_number=sn).first()
+    
+    if not asset:
+        return jsonify({"status": "error", "message": f"库中未找到编号: {sn}"}), 404
+
+    # 2. 更新盘点时间
+    asset.last_check_date = datetime.now()
+    
+    # 3. 自动将状态改为正常（扫码即表示资产存在且可用）
+    asset.status = '正常'
+    
+    try:
+        db.session.commit()
+        return jsonify({
+            "status": "success", 
+            "message": "盘点成功",
+            "asset_name": asset.asset_info.name, # 返回资产名称供前端展示
+            "sn": asset.sn_number
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"status": "error", "message": "数据库更新失败"}), 500
+
 @asset_bp.route('/inventory/export')
 @login_required
 @perm.require('asset.inventory')

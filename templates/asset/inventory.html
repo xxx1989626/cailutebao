@@ -6,12 +6,14 @@
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
             <h4 class="mb-0"><i class="bi bi-clipboard-check"></i> 全局资产盘点</h4>
             <div>
-                <a href="{{ url_for('asset.asset_list') }}" class="btn btn-outline-light btn-sm me-2">返回资产列表</a>
-                <a href="{{ url_for('asset.export_inventory') }}" class="btn btn-outline-light btn-sm">导出盘点清单</a>
+                <a href="{{ url_for('asset.asset_list') }}" class="btn btn-outline-light btn-sm me-1">返回列表</a>
+                <a href="{{ url_for('asset.export_inventory') }}" class="btn btn-outline-light btn-sm me-1">导出清单</a>
+                <button class="btn btn-warning btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#scanModal">
+                    <i class="bi bi-qr-code-scan"></i> 扫码盘点
+                </button>
             </div>
         </div>
         <div class="card-body">
-            <!-- 筛选栏 -->
             <form method="GET" class="row g-3 mb-4">
                 <div class="col-md-3">
                     <select name="type" class="form-select">
@@ -25,8 +27,7 @@
                     <select name="status" class="form-select">
                         <option value="">所有资产状态</option>
                         {% for status in asset_status %}
-                        <option value="{{ status }}" {% if status_filter==status %}selected{% endif %}>{{ status }}
-                        </option>
+                        <option value="{{ status }}" {% if status_filter==status %}selected{% endif %}>{{ status }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -34,13 +35,12 @@
                     <button type="submit" class="btn btn-outline-secondary w-100">筛选</button>
                 </div>
                 <div class="col-md-4 text-end">
-                    <span class="badge bg-success me-2">正常：{{ normal }} 个</span>
-                    <span class="badge bg-danger me-2">异常：{{ abnormal }} 个</span>
-                    <span class="badge bg-secondary">总计：{{ total }} 个</span>
+                    <span class="badge bg-success me-2">正常：{{ normal }}</span>
+                    <span class="badge bg-danger me-2">异常：{{ abnormal }}</span>
+                    <span class="badge bg-secondary">总计：{{ total }}</span>
                 </div>
             </form>
 
-            <!-- 盘点清单 -->
             <div class="table-responsive" style="max-height: 70vh; overflow-y: auto;">
                 <table class="table table-hover align-middle">
                     <thead class="table-light sticky-top">
@@ -51,43 +51,31 @@
                             <th>存放位置</th>
                             <th>负责人</th>
                             <th>资产状态</th>
-                            <th>资产归属</th>
                             <th>上次盘点</th>
                             <th>操作</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for asset in assets %}
-                        <tr>
+                        <tr data-sn="{{ asset.sn_number }}">
                             <td>{{ asset.sn_number }}</td>
                             <td>{{ asset.asset_info.name }}</td>
                             <td><span class="badge bg-light text-dark">{{ asset.asset_info.type }}</span></td>
                             <td>{{ asset.current_room.number if asset.current_room else '待分配' }}</td>
                             <td>{{ asset.current_holder.name if asset.current_holder else '无' }}</td>
                             <td>
-                                <span
-                                    class="badge {% if asset.status == '正常' %}bg-success{% elif asset.status == '维修' %}bg-warning{% else %}bg-danger{% endif %}">
+                                <span class="badge {% if asset.status == '正常' %}bg-success{% elif asset.status == '维修' %}bg-warning{% else %}bg-danger{% endif %} status-badge">
                                     {{ asset.status }}
                                 </span>
                             </td>
+                            <td class="last-check-cell">{{ format_date(asset.last_check_date) or '未盘点' }}</td>
                             <td>
-                                {{ asset.asset_info.ownership or '' }}
-
-                            </td>
-                            <td>{{ format_date(asset.last_check_date) or '未盘点' }}</td>
-                            <td>
-                                <button class="btn btn-sm btn-primary"
-                                    onclick="checkAsset('{{ asset.id }}', '{{ asset.sn_number }}')">
-                                    <i class="bi bi-check-circle"></i> 标记已盘点
+                                <button class="btn btn-sm btn-primary" onclick="checkAsset('{{ asset.id }}', '{{ asset.sn_number }}')">
+                                    <i class="bi bi-check-circle"></i> 标记
                                 </button>
                             </td>
                         </tr>
                         {% endfor %}
-                        {% if not assets %}
-                        <tr>
-                            <td colspan="9" class="text-center text-muted py-3">无符合条件的资产</td>
-                        </tr>
-                        {% endif %}
                     </tbody>
                 </table>
             </div>
@@ -95,7 +83,124 @@
     </div>
 </div>
 
+<div class="modal fade" id="scanModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-fullscreen-md-down">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title"><i class="bi bi-camera me-2"></i>连续扫码盘点</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="stopScanner()"></button>
+            </div>
+            <div class="modal-body p-0 bg-black">
+                <div id="reader" style="width: 100%; background: #000;"></div>
+                <div class="bg-white p-3" style="min-height: 150px; border-radius: 20px 20px 0 0; margin-top: -20px; position: relative; z-index: 10;">
+                    <p class="text-primary fw-bold mb-2 small">最近扫描记录：</p>
+                    <div id="scan-feedback-msg" class="alert alert-light border small py-2">等待扫描...</div>
+                    <ul id="scan-history" class="list-group list-group-flush small" style="max-height: 120px; overflow-y: auto;"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<audio id="successSound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
+
+<script src="https://unpkg.com/html5-qrcode"></script>
 <script>
+    let html5QrCode;
+    let lastScannedCode = "";
+    let lastScannedTime = 0;
+
+    function onScanSuccess(decodedText) {
+        const now = Date.now();
+        if (decodedText === lastScannedCode && (now - lastScannedTime) < 2000) return;
+        
+        lastScannedCode = decodedText;
+        lastScannedTime = now;
+
+        // 处理 URL 类型的二维码，提取 SN
+        let sn = decodedText;
+        if (decodedText.includes('/')) {
+            sn = decodedText.split('/').pop();
+        }
+        console.log("正在盘点 SN:", sn);
+
+        // 提交后端请求 - 修正了这里提交的变量名为 sn
+        fetch(`/asset/inventory/quick_check`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ "sn": sn, "status": "正常" })
+        })
+        .then(res => {
+            if(!res.ok) throw new Error('网络响应异常');
+            return res.json();
+        })
+        .then(data => {
+            if (data.status === 'success') {
+                playSuccessSound();
+                showFeedback(sn, data.asset_name || "盘点成功", true);
+                updateUIRow(sn); 
+            } else {
+                showFeedback(sn, data.message, false);
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            showFeedback(sn, "网络请求失败: " + err.message, false);
+        });
+    }
+
+    function showFeedback(sn, msg, isSuccess) {
+        const feedbackEl = document.getElementById('scan-feedback-msg');
+        const historyEl = document.getElementById('scan-history');
+        feedbackEl.className = `alert py-2 small ${isSuccess ? 'alert-success' : 'alert-danger'}`;
+        feedbackEl.innerHTML = `<strong>${sn}</strong>: ${msg}`;
+
+        const li = document.createElement('li');
+        li.className = "list-group-item d-flex justify-content-between align-items-center py-1 px-0";
+        li.innerHTML = `<span class="small">${sn}</span> <small class="${isSuccess?'text-success':'text-danger'}">${isSuccess?'成功':'失败'}</small>`;
+        historyEl.prepend(li);
+    }
+
+    function updateUIRow(sn) {
+        // 使用 data-sn 选择器
+        const row = document.querySelector(`tr[data-sn="${sn}"]`);
+        if (row) {
+            row.classList.add('table-success');
+            const dateCell = row.querySelector('.last-check-cell');
+            if(dateCell) dateCell.textContent = new Date().toLocaleDateString();
+            
+            // 状态同步改为正常
+            const badge = row.querySelector('.status-badge');
+            if(badge) {
+                badge.className = "badge bg-success status-badge";
+                badge.textContent = "正常";
+            }
+            
+            setTimeout(() => row.classList.remove('table-success'), 3000);
+        }
+    }
+
+    document.getElementById('scanModal').addEventListener('shown.bs.modal', function () {
+        html5QrCode = new Html5Qrcode("reader");
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+        html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess)
+            .catch(err => alert("相机启动失败: " + err));
+    });
+
+    function stopScanner() {
+        if (html5QrCode) {
+            html5QrCode.stop().then(() => html5QrCode.clear()).catch(e => console.log(e));
+        }
+    }
+
+    function playSuccessSound() {
+        const snd = document.getElementById('successSound');
+        snd.currentTime = 0;
+        snd.play().catch(e => console.log("音频播放受阻"));
+        if (navigator.vibrate) navigator.vibrate(100);
+    }
+
+    // 手动标记函数同步更新 UI
     function checkAsset(assetId, assetSn) {
         fetch(`/asset/inventory/update/${assetId}`, {
             method: 'POST',
@@ -103,15 +208,8 @@
             body: JSON.stringify({ "status": "正常" })
         }).then(res => res.json()).then(data => {
             if (data.status === 'success') {
-                alert(data.message);
-                // 刷新当前行的盘点时间
-                const rows = document.querySelectorAll('tbody tr');
-                rows.forEach(row => {
-                    if (row.querySelector('td:first-child').textContent === assetSn) {
-                        const now = new Date().toLocaleDateString();
-                        row.querySelector('td:nth-child(8)').textContent = now;
-                    }
-                });
+                updateUIRow(assetSn);
+                alert("已标记为正常");
             }
         });
     }

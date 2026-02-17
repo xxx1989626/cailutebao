@@ -1,0 +1,46 @@
+<script src="https://unpkg.com/html5-qrcode"></script>
+
+<div class="container">
+    <h4 class="mb-3">连续扫码盘点</h4>
+    
+    <div id="reader" style="width: 100%; max-width: 500px; margin: auto;"></div>
+    
+    <div class="mt-4">
+        <h5>本次已盘点列表</h5>
+        <ul id="scan-history" class="list-group">
+            </ul>
+    </div>
+</div>
+
+<script>
+    function onScanSuccess(decodedText) {
+        // 1. 防止重复扫描（简单逻辑：如果刚扫过，不处理）
+        console.log("扫码结果: " + decodedText);
+        
+        // 2. 将结果发送给后端盘点接口
+        // 假设 decodedText 包含资产 ID 或 SN
+        fetch('/asset/api/check_in', {
+            method: 'POST',
+            body: JSON.stringify({ data: decodedText }),
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(response => response.json())
+        .then(res => {
+            if(res.status === 'success') {
+                // 3. 连续扫码的关键：成功后不跳转，直接在下方列表增加记录
+                const li = document.createElement('li');
+                li.className = "list-group-item list-group-item-success";
+                li.innerHTML = `已盘点: ${res.asset_name} (编号: ${res.sn})`;
+                document.getElementById('scan-history').prepend(li);
+                
+                // 提示音或震动（可选）
+                window.navigator.vibrate(100); 
+            }
+        });
+    }
+
+    // 初始化相机：建议设置 fps 为 10-15，qrbox 大小适中
+    let html5QrcodeScanner = new Html5QrcodeScanner(
+        "reader", { fps: 10, qrbox: 250 }, false);
+    html5QrcodeScanner.render(onScanSuccess);
+</script>

@@ -378,6 +378,11 @@ if __name__ == '__main__':
         except ImportError:
             pass  # 模块未定义权限列表，跳过
         
+        # --- 证书路径配置 ---
+        # 使用 r"" 原始字符串防止 Windows 路径转义错误
+        cert_file = r"C:\Users\39160\AppData\Local\Posh-ACME\LE_PROD\3070382756\cailutebao.top\fullchain.cer"
+        key_file = r"C:\Users\39160\AppData\Local\Posh-ACME\LE_PROD\3070382756\cailutebao.top\cert.key"
+
         # 创建系统管理员账号
         admin_user = User.query.filter_by(username='admin').first()
         if not admin_user:
@@ -394,4 +399,17 @@ if __name__ == '__main__':
         print("数据库初始化完成，定时备份服务已启动")
     
     # 启动服务器
-    socketio.run(app, host='0.0.0.0', port=8000, debug=True)
+    if os.path.exists(cert_file) and os.path.exists(key_file):
+        print("检测到安全证书，正在以 HTTPS 模式启动服务器...")
+        # 核心修改：注入 ssl_context
+        socketio.run(
+            app, 
+            host='0.0.0.0', 
+            port=8000, 
+            debug=True, 
+            keyfile=key_file,
+            certfile=cert_file
+        )
+    else:
+        print("警告：未找到证书文件，将以普通的 HTTP 模式启动！")
+        socketio.run(app, host='0.0.0.0', port=8000, debug=True)

@@ -1,0 +1,223 @@
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script>
+    // 1. 全局状态
+    let qrcode = null;
+    let selectedSubId = null;
+    let selectedSubSn = null;
+
+    function initQRCode(text) {
+        const container = document.getElementById("qrcode");
+        if (!container) return;
+
+        container.innerHTML = "";
+        qrcode = new QRCode(container, {
+            text: text,
+            width: 128,
+            height: 128,
+            colorDark : "#000000",
+            colorLight : "#ffffff",
+            correctLevel : QRCode.CorrectLevel.H
+            });
+            document.getElementById("qr-sn-display").innerText = "SN: " + text;
+    }
+
+    // 2. 子资产选中逻辑
+    function selectSubAsset(id, sn, element) {
+        selectedSubId = id;
+        selectedSubSn = sn;
+
+        // UI高亮切换
+        document.querySelectorAll('.sub-asset-item').forEach(item => {
+            item.classList.remove('active', 'bg-primary', 'text-white');
+        });
+        element.classList.add('active', 'bg-primary', 'text-white');
+
+        initQRCode(sn);
+
+        // 更新提醒栏
+        const alertBox = document.getElementById('subSelectAlert');
+        if (alertBox) {
+            alertBox.classList.remove('d-none');
+            document.getElementById('selectedSnText').innerText = sn;
+        }
+
+        // 按钮文字与状态联动
+        const repairBtn = document.getElementById('repairBtnText');
+        const scrapBtn = document.getElementById('scrapBtnText');
+        const mainRepairBtn = document.getElementById('mainRepairBtn');
+        const isRepairing = element.getAttribute('data-status') === '维修';
+        
+        if ('{{ asset.type }}' !== '消耗品') {
+            if (repairBtn && mainRepairBtn) {
+                if (isRepairing) {
+                    mainRepairBtn.className = "btn btn-info text-white";
+                    repairBtn.innerText = "修复选中件";
+                } else {
+                    mainRepairBtn.className = "btn btn-warning";
+                    repairBtn.innerText = "维修选中件";
+                }
+            }
+            if (scrapBtn) scrapBtn.innerText = "报废选中件";
+            
+            const scrapBtnDom = document.getElementById('scrapBtn');
+            const isInStock = element.querySelector('.badge').innerText === '在库';
+            if (scrapBtnDom) scrapBtnDom.disabled = !isInStock;
+        }
+
+        filterHistoryTable(sn);
+    }
+
+    // 3. 清除选中状态
+    function clearSubSelect() {
+        selectedSubId = null;
+        selectedSubSn = null;
+
+        document.querySelectorAll('.sub-asset-item').forEach(item => {
+            item.classList.remove('active', 'bg-primary', 'text-white');
+        });
+
+        initQRCode('{{ asset.number }}');
+
+        const alertBox = document.getElementById('subSelectAlert');
+        if (alertBox) alertBox.classList.add('d-none');
+
+        if ('{{ asset.type }}' !== '消耗品') {
+            const repairBtn = document.getElementById('repairBtnText');
+            const scrapBtn = document.getElementById('scrapBtnText');
+            const mainRepairBtn = document.getElementById('mainRepairBtn');
+            
+            if (repairBtn && mainRepairBtn) {
+                if ('{{ asset.status }}' === '维修中') {
+                    mainRepairBtn.className = "btn btn-info text-white";
+                    repairBtn.innerText = "维修完成";
+                } else {
+                    mainRepairBtn.className = "btn btn-warning";
+                    repairBtn.innerText = "维修";
+                }
+            }
+            if (scrapBtn) scrapBtn.innerText = "报废";
+            
+            const scrapBtnDom = document.getElementById('scrapBtn');
+            if (scrapBtnDom) scrapBtnDom.disabled = {{ (asset.stock_quantity <= 0) | tojson }};
+        }
+
+        filterHistoryTable('all');
+    }
+
+    // 4. 维修按钮分发
+    function handleRepairClick() {
+        if ('{{ asset.type }}' === '消耗品') return;
+        
+        if (selectedSubId) {
+            const subItem = document.querySelector(`.sub-asset-item.active`);
+            const isSubRepairing = subItem.getAttribute('data-status') === '维修';
+
+            if (isSubRepairing) {
+                openSubAssetModal('维修完成', "{{ url_for('asset.asset_complete_repair_sub') }}", 'bg-info text-white', 'btn-info');
+            } else {
+                openSubAssetModal('维修', "{{ url_for('asset.asset_repair_sub') }}", 'bg-warning', 'btn-warning');
+            }
+        } else {
+            if ('{{ asset.status }}' === '维修中') {
+                new bootstrap.Modal(document.getElementById('completeRepairModal')).show();
+            } else {
+                new bootstrap.Modal(document.getElementById('repairModal')).show();
+            }
+        }
+    }
+
+    // 5. 报废按钮分发
+    function handleScrapClick() {
+        if ('{{ asset.type }}' === '消耗品') return;
+        
+        if (selectedSubId) {
+            const subItem = document.querySelector(`.sub-asset-item.active`);
+            const isInStock = subItem.querySelector('.badge').innerText === '在库';
+            
+            if (!isInStock) {
+                alert('该子资产不在库存中，无法报废！请先归还后再操作。');
+                return;
+            }
+            openSubAssetModal('报废', "{{ url_for('asset.asset_scrap_sub') }}", 'bg-danger text-white', 'btn-danger');
+        } else {
+            new bootstrap.Modal(document.getElementById('scrapModal')).show();
+        }
+    }
+
+    // 6. 模态框通用处理器
+    function openSubAssetModal(action, url, headerClass, btnClass) {
+        document.getElementById('hiddenSubId').value = selectedSubId;
+        document.getElementById('subAssetForm').action = url;
+        document.getElementById('subModalHeader').className = `modal-header ${headerClass}`;
+        document.getElementById('subModalTitle').innerText = `子资产${action}`;
+        document.getElementById('subModalMessage').innerHTML = `您正在对编号为 <span class="badge bg-dark">${selectedSubSn}</span> 的资产进行${action}操作。`;
+
+        const submitBtn = document.getElementById('subModalSubmitBtn');
+        submitBtn.className = `btn ${btnClass}`;
+        submitBtn.innerText = `确认提交${action}`;
+
+        const subModal = new bootstrap.Modal(document.getElementById('subAssetDynamicModal'));
+        subModal.show();
+        
+        subModal._element.addEventListener('hidden.bs.modal', function() {
+            window.location.reload();
+        });
+    }
+
+    // 7. 辅助功能：表格过滤
+    function filterHistoryTable(sn) {
+        const rows = document.querySelectorAll('.history-row');
+        rows.forEach(row => {
+            const rowSn = row.getAttribute('data-sn') || "all";
+            row.style.display = (sn === 'all' || rowSn === sn) ? '' : 'none';
+        });
+    }
+
+    // 8. 初始化与监听
+    document.addEventListener('DOMContentLoaded', function() {
+        initQRCode('{{ asset.number }}');
+        // 消耗品预览逻辑
+        const suppInput = document.getElementById('supp_qty');
+        const suppPreview = document.getElementById('supp_preview');
+        if (suppInput && suppPreview) {
+            const currentTotal = parseInt(suppPreview.dataset.total) || 0;
+            suppInput.addEventListener('input', function () {
+                const val = Math.max(1, parseInt(this.value.trim()) || 1);
+                suppPreview.innerText = `补充后总数将变为: ${currentTotal + val}`;
+            });
+        }
+
+        // 初始化报废按钮状态
+        if ('{{ asset.type }}' !== '消耗品') {
+            const scrapBtnDom = document.getElementById('scrapBtn');
+            if (scrapBtnDom) scrapBtnDom.disabled = {{ (asset.stock_quantity <= 0) | tojson }};
+        }
+
+        // 处理空子资产列表
+        if (!document.getElementById('subAssetList')) {
+            const clearBtn = document.querySelector('.btn-sm.btn-link[onclick="clearSubSelect()"]');
+            if (clearBtn) clearBtn.style.display = 'none';
+        }
+    });
+</script>
+
+<style>
+    @media print {
+        /* 打印时隐藏所有内容 */
+        body * { visibility: hidden; }
+        /* 只显示二维码卡片部分 */
+        .card.shadow-sm.border-primary, .card.shadow-sm.border-primary * {
+            visibility: visible;
+        }
+        .card.shadow-sm.border-primary {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 300px; /* 设定标签宽度 */
+        }
+        .btn { display: none !important; } /* 隐藏打印按钮本身 */
+    }
+    .sub-asset-item { cursor: pointer; transition: background-color 0.2s ease; }
+    .sub-asset-item:hover { background-color: #f8f9fa; }
+    .sub-asset-item.active { border-left: 5px solid #0d6efd; }
+</style>
