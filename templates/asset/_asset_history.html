@@ -1,3 +1,4 @@
+<!-- _asset_history.html -->
 <!-- 操作历史开始 -->
                             <div class="mt-5">
     <h5 class="border-bottom pb-2 d-flex align-items-center justify-content-between">
@@ -8,23 +9,6 @@
     </h5>
 
     {% if history_items %}
-    <div class="d-flex justify-content-end mb-2">
-        <ul class="pagination pagination-sm mb-0">
-            <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-                <a class="page-link" href="{{ url_for('asset.asset_detail', asset_id=asset.id, page=pagination.prev_num) if pagination.has_prev else '#' }}">
-                    <i class="bi bi-chevron-left"></i>
-                </a>
-            </li>
-            <li class="page-item disabled">
-                <span class="page-link text-dark">{{ pagination.page }} / {{ pagination.pages }}</span>
-            </li>
-            <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-                <a class="page-link" href="{{ url_for('asset.asset_detail', asset_id=asset.id, page=pagination.next_num) if pagination.has_next else '#' }}">
-                    <i class="bi bi-chevron-right"></i>
-                </a>
-            </li>
-        </ul>
-    </div>
 
     <div class="list-group list-group-flush shadow-sm rounded border">
         {% for h in history_items %}
@@ -70,27 +54,8 @@
             {% endfor %}
             </div>
             
-            <nav class="mt-4">
-        <ul class="pagination justify-content-center">
-            <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-                <a class="page-link" href="{{ url_for('asset.asset_detail', asset_id=asset.id, page=pagination.prev_num) if pagination.has_prev else '#' }}">上一页</a>
-            </li>
-
-            {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
-                {% if page_num %}
-                    <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
-                        <a class="page-link" href="{{ url_for('asset.asset_detail', asset_id=asset.id, page=page_num) }}">{{ page_num }}</a>
-                    </li>
-                {% else %}
-                    <li class="page-item disabled"><span class="page-link">...</span></li>
-                {% endif %}
-            {% endfor %}
-
-            <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-                <a class="page-link" href="{{ url_for('asset.asset_detail', asset_id=asset.id, page=pagination.next_num) if pagination.has_next else '#' }}">下一页</a>
-            </li>
-        </ul>
-    </nav>
+            {% from "_pagination.html" import render_pagination %}
+            {{ render_pagination(pagination, 'asset.asset_detail', asset_id=asset.id) }}
 
     {% else %}
     <div class="text-center py-5 border rounded bg-light shadow-sm">
