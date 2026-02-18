@@ -26,6 +26,18 @@
                                 在职 {{ cycle.hire_date | calc_work_duration(cycle.departure_date) }}
                             </strong>
                             <span class="badge bg-light text-dark">{{ cycle.status }}</span>
+                            {% if current_user.role == 'admin' and associated_user %}
+    <form action="{{ url_for('auth.reset_user_password', user_id=associated_user.id) }}" 
+          method="POST" 
+          style="display:inline;" 
+          onsubmit="return confirm('确定要将该用户 [{{ associated_user.name }}] 的密码重置为 123456 吗？');">
+        <button type="submit" class="btn btn-sm btn-outline-warning">
+            <i class="bi bi-shield-lock"></i> 重置登录密码
+        </button>
+    </form>
+{% elif current_user.role == 'admin' %}
+    <span class="badge bg-light text-dark">该员工未开通登录账号</span>
+{% endif %}
                         </div>
                         <div class="card-body">
                             <!-- 基本信息表格 -->

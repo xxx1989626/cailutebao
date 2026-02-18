@@ -504,6 +504,7 @@ def hr_detail(id_card):
         return redirect(url_for('hr.hr_list'))
     
     current_cycle = next((c for c in cycles if c.status == '在职'), None)
+    associated_user = User.query.filter_by(username=current_cycle.id_card).first() if current_cycle else None
 
     # --- 新增：获取可发放的资产列表 ---
     available_assets = []
@@ -519,6 +520,7 @@ def hr_detail(id_card):
                            current_cycle=current_cycle,
                            id_card=id_card,
                            available_assets=available_assets,
+                           associated_user=associated_user,
                            positions=POSITIONS, 
                            posts=POSTS,
                            salary_modes=SALARY_MODES,

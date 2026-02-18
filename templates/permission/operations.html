@@ -113,33 +113,8 @@
             </tbody>
         </table>
     </div>
-
-    <!-- 3. 新增分页导航栏 -->
-    {% if pagination.pages > 1 %}
-    <nav class="mt-4">
-        <ul class="pagination justify-content-center">
-            <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-                <a class="page-link"
-                    href="{{ url_for('permission.permission_operations', page=pagination.prev_num, start_date=start_date, end_date=end_date) }}">上一页</a>
-            </li>
-            {% for page in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=3) %}
-            {% if page %}
-            <li class="page-item {% if page == pagination.page %}active{% endif %}">
-                <a class="page-link"
-                    href="{{ url_for('permission.permission_operations', page=page, start_date=start_date, end_date=end_date) }}">{{
-                    page }}</a>
-            </li>
-            {% else %}
-            <li class="page-item disabled"><span class="page-link">...</span></li>
-            {% endif %}
-            {% endfor %}
-            <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-                <a class="page-link"
-                    href="{{ url_for('permission.permission_operations', page=pagination.next_num, start_date=start_date, end_date=end_date) }}">下一页</a>
-            </li>
-        </ul>
-    </nav>
-    {% endif %}
+    {% from "_pagination.html" import render_pagination %}
+    {{ render_pagination(pagination, 'permission.permission_operations') }}
 </div>
 {% endblock %}
 

@@ -26,10 +26,11 @@ def login():
             if latest_cycle and latest_cycle.status == '离职':
                 flash('该账号已离职，无法登录系统', 'danger')
                 return redirect(url_for('auth.login'))
-
-
-
+            
             login_user(user)
+            if user.check_password('123456'):
+                flash('您的账户使用的是初始密码，请立即修改！', 'warning')
+                return redirect(url_for('auth.change_password'))
             flash('登录成功', 'success')
             return redirect(url_for('main.index'))
         else:
@@ -76,3 +77,25 @@ def change_password():
         return redirect(url_for('main.index')) # 修改成功后跳回首页
 
     return render_template('auth/change_password.html')
+
+@auth_bp.route('/reset_user_password/<int:user_id>', methods=['POST'])
+@login_required
+def reset_user_password(user_id):
+    # 1. 严格权限检查
+    if current_user.role != 'admin':
+        flash('权限不足，只有管理员可以重置密码', 'danger')
+        return redirect(url_for('main.index'))
+        
+    # 2. 获取目标用户
+    user = User.query.get_or_404(user_id)
+    
+    # 3. 执行重置
+    user.set_password('123456')
+    db.session.commit()
+    
+    # 注意：根据你的 User 模型，这里使用的是 user.name
+    flash(f'用户 {user.name} 的密码已重置为 123456', 'success')
+    
+    # 4. 安全返回：如果 referrer 不存在，回退到主页
+    next_page = request.referrer or url_for('main.index')
+    return redirect(next_page)

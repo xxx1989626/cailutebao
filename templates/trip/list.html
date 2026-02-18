@@ -121,6 +121,8 @@
                 </table>
             </div>
         </div>
+        {% from "_pagination.html" import render_pagination %}
+        {{ render_pagination(pagination, 'trip.trip_list') }}
     </div>
 </div>
 
