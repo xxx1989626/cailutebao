@@ -1,3 +1,4 @@
+<!-- templates/hr/register_success.html -->
 <!DOCTYPE html>
 <html lang="zh">
 <head>
@@ -7,26 +8,85 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
     <title>提交成功</title>
     <style>
-        body { background-color: #f8f9fa; }
-        .success-card { max-width: 400px; margin: 100px auto; border: none; border-radius: 15px; }
-        .success-icon { font-size: 4rem; color: #198754; }
+        body { 
+            font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", sans-serif;
+            background-color: #f8f9fa;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .success-card { 
+            max-width: 500px;
+            width: 90%;
+            margin: 20px;
+            border: none; 
+            border-radius: 15px;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+        
+        .success-icon { 
+            font-size: 5rem; 
+            color: #198754;
+            background: rgba(25, 135, 84, 0.1);
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+        }
+        
+        .success-title {
+            color: #212529;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        
+        .home-btn {
+            border-radius: 8px;
+            padding: 0.75rem 2rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        
+        .home-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(13, 110, 253, 0.2);
+        }
+        
+        .card-body {
+            padding: 2rem;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="card success-card shadow text-center p-4">
+        <div class="card success-card shadow">
             <div class="card-body">
-                <div class="success-icon mb-3">
+                <div class="success-icon mb-4">
                     <i class="bi bi-check-circle-fill"></i>
                 </div>
-                <h3 class="card-title mb-3">登记已提交</h3>
+                <h3 class="success-title">登记已提交成功！</h3>
                 <p class="card-text text-muted mb-4">
-                    您的登记信息已成功录入系统。<br>
+                    您的入职登记信息已成功录入系统。<br>
+                    管理员将尽快审核您的信息，请耐心等待通知。
                 </p>
-                <div class="d-grid">
-                    <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg">返回首页</a>
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('index') }}" class="btn btn-primary home-btn btn-lg">
+                        <i class="bi bi-house-door me-2"></i>返回首页
+                    </a>
                 </div>
-                <p class="mt-3 small text-muted">提示：审核通过后方可登录</p>
+                <div class="mt-4 alert alert-light border">
+                    <p class="mb-0 small text-muted">
+                        <i class="bi bi-info-circle me-1"></i> 
+                        提示：审核通过后方可登录系统，如有疑问请联系人力资源部
+                    </p>
+                </div>
             </div>
         </div>
     </div>

@@ -1,35 +1,399 @@
+<!-- templates/fund/import.html -->
 {% extends "base.html" %}
 
 {% block title %}批量导入资金记录{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="card shadow">
+<!-- 自定义样式 -->
+<style>
+    /* 页面整体样式 */
+    .import-card {
+        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        border: none;
+        overflow: hidden;
+    }
+    
+    .import-card .card-header {
+        background: linear-gradient(135deg, #198754 0%, #157347 100%);
+        padding: 1.25rem 1.5rem;
+        border-bottom: none;
+    }
+    
+    .import-card .card-body {
+        padding: 2rem;
+    }
+    
+    /* 导入要求提示框 */
+    .import-requirements {
+        border-radius: 8px;
+        background-color: #f8f9fa;
+        border-left: 4px solid #0dcaf0;
+        padding: 1.25rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .import-requirements ul {
+        margin-bottom: 0;
+        padding-left: 1.5rem;
+    }
+    
+    .import-requirements li {
+        margin-bottom: 0.5rem;
+        line-height: 1.6;
+    }
+    
+    .import-requirements li:last-child {
+        margin-bottom: 0;
+    }
+    
+    /* 文件上传区域 */
+    .file-upload-area {
+        border: 2px dashed #ced4da;
+        border-radius: 8px;
+        padding: 2rem;
+        text-align: center;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        background-color: #fafafa;
+        margin-bottom: 1.5rem;
+    }
+    
+    .file-upload-area:hover {
+        border-color: #198754;
+        background-color: #f0fdf4;
+    }
+    
+    .file-upload-area.drag-over {
+        border-color: #198754;
+        background-color: #e6fffa;
+        transform: scale(1.01);
+    }
+    
+    .file-upload-icon {
+        font-size: 3rem;
+        color: #adb5bd;
+        margin-bottom: 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .file-upload-area:hover .file-upload-icon {
+        color: #198754;
+    }
+    
+    /* 按钮样式 */
+    .btn-import {
+        border-radius: 8px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+    
+    .btn-import:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(25, 135, 84, 0.2);
+    }
+    
+    .btn-cancel {
+        border-radius: 8px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+    
+    .btn-cancel:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(108, 117, 125, 0.2);
+    }
+    
+    /* 文件信息显示 */
+    .file-info {
+        display: none;
+        margin-top: 1rem;
+        padding: 1rem;
+        background-color: #e9f5ee;
+        border-radius: 6px;
+    }
+    
+    /* 响应式优化 */
+    @media (max-width: 768px) {
+        .import-card .card-body {
+            padding: 1.5rem 1rem;
+        }
+        
+        .file-upload-area {
+            padding: 1.5rem 1rem;
+        }
+        
+        .btn-import, .btn-cancel {
+            width: 100%;
+            margin-bottom: 0.75rem;
+        }
+        
+        .button-group {
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+    }
+    
+    /* 加载状态 */
+    .loading-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.8);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+    }
+    
+    .loading-spinner {
+        width: 50px;
+        height: 50px;
+        border: 5px solid #f3f3f3;
+        border-top: 5px solid #198754;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 1rem;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    /* 模板下载链接 */
+    .template-link {
+        display: inline-flex;
+        align-items: center;
+        color: #0dcaf0;
+        text-decoration: none;
+        margin-top: 0.5rem;
+        transition: all 0.2s ease;
+    }
+    
+    .template-link:hover {
+        color: #0891b2;
+        text-decoration: underline;
+    }
+</style>
+
+<div class="container mt-4 mb-5">
+    <!-- 加载遮罩层 -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <p class="text-muted">正在导入数据，请稍候...</p>
+    </div>
+    
+    <!-- 导入主卡片 -->
+    <div class="card import-card">
+        <!-- 卡片头部 -->
         <div class="card-header bg-success text-white">
-            <h4 class="mb-0"><i class="bi bi-upload"></i> 批量导入资金记录（Excel）</h4>
+            <h4 class="mb-0 d-flex align-items-center">
+                <i class="bi bi-upload me-2"></i> 批量导入资金记录（Excel）
+            </h4>
         </div>
+        
+        <!-- 卡片主体 -->
         <div class="card-body">
-            <div class="alert alert-info">
-                <strong>导入要求：</strong>
-                <ul class="mb-0">
-                    <li>必须包含列：日期, 资方, 项目, 金额</li>
-                    <li>可选列：备注</li>
-                    <li>日期格式：YYYY.MM 或 YYYY-MM-DD</li>
-                    <li>金额正数收入，负数支出</li>
+            <!-- 导入要求提示 -->
+            <div class="import-requirements">
+                <h5 class="text-primary mb-2">
+                    <i class="bi bi-info-circle me-1"></i> 导入要求
+                </h5>
+                <ul>
+                    <li><strong>必填列：</strong> 日期, 资方, 项目, 金额（请确保列名完全一致）</li>
+                    <li><strong>可选列：</strong> 备注</li>
+                    <li><strong>日期格式：</strong> YYYY.MM.DD 或 YYYY-MM-DD（建议使用标准格式）</li>
+                    <li><strong>金额规则：</strong> 正数表示收入，负数表示支出（例如：1000 表示收入1000元，-500 表示支出500元）</li>
+                    <li><strong>文件格式：</strong> 仅支持 .xlsx 格式，不支持 .xls 格式</li>
                 </ul>
+                
+                <!-- 模板下载链接 -->
+                <a href="{{ url_for('fund.fund_import') }}" class="template-link" target="_blank">
+                    <i class="bi bi-download me-1"></i> 下载标准导入模板
+                </a>
             </div>
             
-            <form method="POST" enctype="multipart/form-data">
-                <div class="mb-3">
-                    <label class="form-label">选择Excel文件</label>
-                    <input type="file" name="file" class="form-control" accept=".xlsx" required>
+            <!-- 导入表单 -->
+            <form method="POST" enctype="multipart/form-data" id="importForm">
+                <!-- 文件上传区域 -->
+                <div class="file-upload-area" id="fileUploadArea">
+                    <input type="file" name="file" id="fileInput" class="d-none" accept=".xlsx" required>
+                    
+                    <div class="file-upload-icon">
+                        <i class="bi bi-file-earmark-excel"></i>
+                    </div>
+                    
+                    <h5 class="text-muted mb-2">拖放Excel文件到此处</h5>
+                    <p class="text-secondary small mb-3">或点击下方按钮选择文件</p>
+                    
+                    <button type="button" class="btn btn-outline-success" id="selectFileBtn">
+                        <i class="bi bi-folder-open me-1"></i> 选择文件
+                    </button>
+                    
+                    <!-- 文件信息显示 -->
+                    <div class="file-info" id="fileInfo">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span id="fileName" class="text-success fw-medium"></span>
+                            <button type="button" class="btn btn-sm btn-outline-danger" id="removeFileBtn">
+                                <i class="bi bi-x-circle me-1"></i> 移除
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <div class="text-center">
-                    <button type="submit" class="btn btn-success btn-lg px-5">开始导入</button>
-                    <a href="{{ url_for('fund.fund_list') }}" class="btn btn-secondary btn-lg px-5">取消</a>
+                
+                <!-- 操作按钮组 -->
+                <div class="d-flex justify-content-center gap-4 button-group">
+                    <button type="submit" class="btn btn-success btn-import">
+                        <i class="bi bi-check-circle me-1"></i> 开始导入
+                    </button>
+                    <a href="{{ url_for('fund.fund_list') }}" class="btn btn-secondary btn-cancel">
+                        <i class="bi bi-x-circle me-1"></i> 取消
+                    </a>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+<!-- 交互增强脚本 -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 获取DOM元素
+        const fileUploadArea = document.getElementById('fileUploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const selectFileBtn = document.getElementById('selectFileBtn');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const removeFileBtn = document.getElementById('removeFileBtn');
+        const importForm = document.getElementById('importForm');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        
+        // 点击选择文件
+        selectFileBtn.addEventListener('click', function() {
+            fileInput.click();
+        });
+        
+        // 文件选择事件
+        fileInput.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                const file = this.files[0];
+                
+                // 验证文件格式
+                if (file.name.endsWith('.xlsx')) {
+                    fileName.textContent = file.name;
+                    fileInfo.style.display = 'block';
+                    
+                    // 添加文件选择成功的视觉反馈
+                    fileUploadArea.classList.add('drag-over');
+                    setTimeout(() => {
+                        fileUploadArea.classList.remove('drag-over');
+                    }, 500);
+                } else {
+                    alert('请选择 .xlsx 格式的Excel文件！');
+                    this.value = ''; // 清空选择
+                }
+            }
+        });
+        
+        // 移除文件
+        removeFileBtn.addEventListener('click', function() {
+            fileInput.value = '';
+            fileInfo.style.display = 'none';
+            fileName.textContent = '';
+        });
+        
+        // 拖放功能
+        fileUploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            fileUploadArea.classList.add('drag-over');
+        });
+        
+        fileUploadArea.addEventListener('dragleave', function() {
+            fileUploadArea.classList.remove('drag-over');
+        });
+        
+        fileUploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            fileUploadArea.classList.remove('drag-over');
+            
+            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                const file = e.dataTransfer.files[0];
+                
+                // 验证文件格式
+                if (file.name.endsWith('.xlsx')) {
+                    // 创建一个新的FileList对象
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(file);
+                    fileInput.files = dataTransfer.files;
+                    
+                    // 更新文件信息显示
+                    fileName.textContent = file.name;
+                    fileInfo.style.display = 'block';
+                } else {
+                    alert('请选择 .xlsx 格式的Excel文件！');
+                }
+            }
+        });
+        
+        // 表单提交处理
+        importForm.addEventListener('submit', function(e) {
+            // 验证是否选择了文件
+            if (!fileInput.files || fileInput.files.length === 0) {
+                e.preventDefault();
+                alert('请先选择要导入的Excel文件！');
+                fileUploadArea.classList.add('drag-over');
+                setTimeout(() => {
+                    fileUploadArea.classList.remove('drag-over');
+                }, 1000);
+                return false;
+            }
+            
+            // 二次确认
+            if (!confirm('确认要导入所选文件中的数据吗？导入后将自动计算余额并添加到系统中。')) {
+                e.preventDefault();
+                return false;
+            }
+            
+            // 显示加载状态
+            loadingOverlay.style.display = 'flex';
+            
+            // 禁用提交按钮防止重复提交
+            const submitBtn = this.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> 导入中...';
+            }
+        });
+        
+        // 错误提示处理（如果有flash消息）
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    setTimeout(() => {
+                        const alertClass = category === 'error' ? 'danger' : category;
+                        const alertHtml = `
+                            <div class="alert alert-${alertClass} alert-dismissible fade show fixed-top mt-3 mx-auto" style="max-width: 500px; z-index: 1000;">
+                                <strong>${category === 'error' ? '导入失败' : '提示'}</strong>：${message}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        `;
+                        document.body.insertAdjacentHTML('afterbegin', alertHtml);
+                        
+                        // 3秒后自动关闭
+                        setTimeout(() => {
+                            const alert = document.querySelector('.alert');
+                            if (alert) alert.remove();
+                        }, 5000);
+                    }, 100);
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    });
+</script>
 {% endblock %}

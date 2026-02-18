@@ -1,139 +1,343 @@
+<!-- templates/index.html -->
 {% extends "base.html" %}
 
 {% block title %}首页 - 看板{% endblock %}
 
 {% block content %}
+<!-- 自定义样式 -->
+<style>
+    /* 全局样式 */
+    :root {
+        --primary-gradient: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+        --secondary-gradient: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+        --info-gradient: linear-gradient(135deg, #0dcaf0 0%, #0aa2b5 100%);
+        --success-gradient: linear-gradient(135deg, #198754 0%, #146c43 100%);
+        --warning-gradient: linear-gradient(135deg, #ffc107 0%, #d39e00 100%);
+    }
+    
+    /* 数据卡片样式 */
+    .stat-card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s ease;
+        overflow: hidden;
+        position: relative;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+    }
+    
+    .stat-card.bg-primary {
+        background: var(--primary-gradient) !important;
+    }
+    
+    .stat-card.bg-secondary {
+        background: var(--secondary-gradient) !important;
+    }
+    
+    .stat-card.bg-info {
+        background: var(--info-gradient) !important;
+    }
+    
+    .stat-card.bg-success {
+        background: var(--success-gradient) !important;
+    }
+    
+    .stat-card.bg-warning {
+        background: var(--warning-gradient) !important;
+    }
+    
+    .stat-card .card-body {
+        position: relative;
+        z-index: 2;
+    }
+    
+    /* 卡片装饰效果 */
+    .stat-card::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 60px;
+        height: 60px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 0 0 0 50%;
+        z-index: 1;
+    }
+    
+    /* 地图卡片样式 */
+    .map-card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+    }
+    
+    .map-card .card-header {
+        background: var(--info-gradient);
+        color: white;
+        border-bottom: none;
+        padding: 1rem 1.5rem;
+        font-weight: 500;
+    }
+    
+    .map-card .card-body {
+        padding: 1.5rem;
+    }
+    
+    /* 值班卡片样式 */
+    .duty-card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s ease;
+    }
+    
+    .duty-card:hover {
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+    }
+    
+    .duty-card .card-header {
+        background: white;
+        border-bottom: 1px solid #f1f3f5;
+        padding: 0.75rem 1rem;
+    }
+    
+    .duty-card .badge {
+        padding: 0.35em 0.65em;
+        font-weight: 500;
+    }
+    
+    /* 表格样式优化 */
+    .table-responsive {
+        border-radius: 8px;
+    }
+    
+    .table-sm th {
+        border-top: none;
+        color: #495057;
+        font-weight: 500;
+        padding: 0.75rem 0.5rem;
+    }
+    
+    .table-sm td {
+        padding: 0.75rem 0.5rem;
+        vertical-align: middle;
+    }
+    
+    .table-hover tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+    
+    /* 滚动条美化 */
+    ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: #f1f3f5;
+        border-radius: 3px;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: #ced4da;
+        border-radius: 3px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+        background: #adb5bd;
+    }
+    
+    /* 响应式优化 */
+    @media (max-width: 768px) {
+        .stat-card .card-body {
+            padding: 1rem !important;
+        }
+        
+        #chinaMap {
+            height: 350px !important;
+        }
+        
+        .duty-card .card-body {
+            max-height: 200px !important;
+        }
+    }
+    
+    @media (max-width: 576px) {
+        #chinaMap {
+            height: 300px !important;
+        }
+    }
+    
+    /* 加载动画 */
+    .loading-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(0, 0, 0, 0.1);
+        border-radius: 50%;
+        border-top-color: #0d6efd;
+        animation: spin 1s ease-in-out infinite;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
+
 <div class="container mt-4">
-    <div class="row g-3 mb-5">
+    <!-- 数据统计卡片行 -->
+    <div class="row g-4 mb-5">
+        <!-- 在职人数 -->
         <div class="col-md col-6">
-            <div class="card text-white bg-primary h-100 shadow-sm">
-                <div class="card-body text-center py-3">
-                    <i class="bi bi-people fs-2 mb-2"></i>
-                    <h6 class="mb-1">在职人数</h6>
-                    <h3 class="mb-0">{{ active_count }}</h3>
+            <div class="card text-white bg-primary h-100 stat-card">
+                <div class="card-body text-center py-4">
+                    <i class="bi bi-people fs-2 mb-2 opacity-80"></i>
+                    <h6 class="mb-1 opacity-90">在职人数</h6>
+                    <h3 class="mb-0 fw-bold">{{ active_count }}</h3>
                 </div>
             </div>
         </div>
 
+        <!-- 离职人数 -->
         <div class="col-md col-6">
-            <div class="card text-white bg-secondary h-100 shadow-sm">
-                <div class="card-body text-center py-3">
-                    <i class="bi bi-person-x fs-2 mb-2"></i>
-                    <h6 class="mb-1">离职人数</h6>
-                    <h3 class="mb-0">{{ departed_count }}</h3>
+            <div class="card text-white bg-secondary h-100 stat-card">
+                <div class="card-body text-center py-4">
+                    <i class="bi bi-person-x fs-2 mb-2 opacity-80"></i>
+                    <h6 class="mb-1 opacity-90">离职人数</h6>
+                    <h3 class="mb-0 fw-bold">{{ departed_count }}</h3>
                 </div>
             </div>
         </div>
 
+        <!-- 历史总人数 -->
         <div class="col-md col-6">
-            <div class="card text-white bg-info h-100 shadow-sm">
-                <div class="card-body text-center py-3">
-                    <i class="bi bi-person-heart fs-2 mb-2"></i>
-                    <h6 class="mb-1">历史总人数</h6>
-                    <h3 class="mb-0">{{ total_unique }}</h3>
+            <div class="card text-white bg-info h-100 stat-card">
+                <div class="card-body text-center py-4">
+                    <i class="bi bi-person-heart fs-2 mb-2 opacity-80"></i>
+                    <h6 class="mb-1 opacity-90">历史总人数</h6>
+                    <h3 class="mb-0 fw-bold">{{ total_unique }}</h3>
                 </div>
             </div>
         </div>
         
+        <!-- 当前队费 -->
         {% if perm.can('fund.view') %}
         <div class="col-md col-6">
-            <div class="card text-white bg-success h-100 shadow-sm">
-                <div class="card-body text-center py-3">
-                    <i class="bi bi-wallet2 fs-2 mb-2"></i>
-                    <h6 class="mb-1">当前队费</h6>
-                    <h3 class="mb-0">¥{{ "%.0f"|format(current_balance) }}</h3>
+            <div class="card text-white bg-success h-100 stat-card">
+                <div class="card-body text-center py-4">
+                    <i class="bi bi-wallet2 fs-2 mb-2 opacity-80"></i>
+                    <h6 class="mb-1 opacity-90">当前队费</h6>
+                    <h3 class="mb-0 fw-bold">¥{{ "%.0f"|format(current_balance) }}</h3>
                 </div>
             </div>
         </div>
         {% endif %}
 
+        <!-- 本月生日 -->
         <div class="col-md col-6">
-            <div class="card text-white bg-warning h-100 shadow-sm">
-                <div class="card-body text-center py-2">
-                    <i class="bi bi-gift fs-4 mb-1"></i>
-                    <h6 class="mb-1">本月生日</h6>
-                    <h4 class="mb-1">{{ birthday_employees|length }} <small class="fs-6">人</small></h4>
+            <div class="card text-dark bg-warning h-100 stat-card">
+                <div class="card-body text-center py-3">
+                    <i class="bi bi-gift fs-4 mb-1 opacity-80"></i>
+                    <h6 class="mb-1 opacity-90">本月生日</h6>
+                    <h4 class="mb-1 fw-bold">{{ birthday_employees|length }} <small class="fs-6">人</small></h4>
                     
-                    <div style="max-height: 55px; overflow-y: auto; font-size: 0.75rem;" class="mt-1">
+                    <div style="max-height: 60px; overflow-y: auto; font-size: 0.8rem;" class="mt-2 px-2">
                         {% if birthday_employees %}
                             {% for emp in birthday_employees %}
-                            <div class="d-flex justify-content-between px-2">
-                                <span>{{ emp.name }}</span>
-                                <span>{{ emp.birthday.month }}月 {{ emp.birthday.day }}日</span>
+                            <div class="d-flex justify-content-between align-items-center py-1">
+                                <span class="fw-medium">{{ emp.name }}</span>
+                                <span class="text-muted">{{ emp.birthday.month }}月{{ emp.birthday.day }}日</span>
                             </div>
                             {% endfor %}
                         {% else %}
-                            <p class="small opacity-75 mb-0">无</p>
+                            <p class="small opacity-75 mb-0">暂无人员生日</p>
                         {% endif %}
                     </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-
-
-
+    <!-- 地图和值班信息区域 -->
     <div class="row g-4">
-    <div class="col-lg-8">
-        <div class="card shadow h-100">
-            <div class="card-header bg-info text-white">
-                <h5 class="mb-0"><i class="bi bi-geo-alt"></i> 在职人员户籍地分布（全国地图）</h5>
-            </div>
-            <div class="card-body">
-                <div id="chinaMap" style="width:100%; height:500px;"></div>
+        <!-- 中国地图 -->
+        <div class="col-lg-8">
+            <div class="card map-card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-geo-alt me-2"></i> 在职人员户籍地分布（全国地图）</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div id="chinaMap" style="width:100%; height:500px;"></div>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="col-lg-4">
-        <div class="row g-4">
-            <div class="col-12">
-                <div class="card shadow border-0 border-start border-primary border-4">
-                    <div class="card-header bg-white d-flex justify-content-between align-items-center py-2">
-                        <h6 class="mb-0 fw-bold text-primary"><i class="bi bi-calendar-check"></i> 今日值班</h6>
-                        <span class="badge bg-primary rounded-pill small" id="today_label"></span>
-                    </div>
-                    <div class="card-body p-0" style="max-height: 245px; overflow-y: auto;">
-                        <div class="table-responsive">
-                            <table class="table table-sm table-hover mb-0 align-middle" style="font-size: 0.85rem;">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th class="ps-2">姓名</th>
-                                        <th>岗位</th>
-                                        <th>电话</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="today_duty_list">
-                                    <tr><td colspan="2" class="text-center py-3 text-muted">加载中...</td></tr>
-                                </tbody>
-                            </table>
+        <!-- 值班信息 -->
+        <div class="col-lg-4">
+            <div class="row g-4">
+                <!-- 今日值班 -->
+                <div class="col-12">
+                    <div class="card duty-card border-0 border-start border-primary border-4">
+                        <div class="card-header d-flex justify-content-between align-items-center py-3">
+                            <h6 class="mb-0 fw-bold text-primary"><i class="bi bi-calendar-check me-2"></i> 今日值班</h6>
+                            <span class="badge bg-primary rounded-pill small px-3 py-1" id="today_label"></span>
+                        </div>
+                        <div class="card-body p-0" style="max-height: 250px; overflow-y: auto;">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover mb-0 align-middle" style="font-size: 0.9rem;">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="ps-3">姓名</th>
+                                            <th>岗位</th>
+                                            <th>电话</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="today_duty_list">
+                                        <tr>
+                                            <td colspan="3" class="text-center py-4 text-muted">
+                                                <div class="loading-spinner mx-auto mb-2"></div>
+                                                加载中...
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="col-12">
-                <div class="card shadow border-0 border-start border-success border-4">
-                    <div class="card-header bg-white d-flex justify-content-between align-items-center py-2">
-                        <h6 class="mb-0 fw-bold text-success"><i class="bi bi-calendar-plus"></i> 明日预告</h6>
-                        <span class="badge bg-success rounded-pill small" id="tomorrow_label"></span>
-                    </div>
-                    <div class="card-body p-0" style="max-height: 245px; overflow-y: auto;">
-                        <div class="table-responsive">
-                            <table class="table table-sm table-hover mb-0 align-middle" style="font-size: 0.85rem;">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th class="ps-2">姓名</th>
-                                        <th>岗位</th>
-                                        <th>电话</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="tomorrow_duty_list">
-                                    <tr><td colspan="2" class="text-center py-3 text-muted">加载中...</td></tr>
-                                </tbody>
-                            </table>
+                <!-- 明日预告 -->
+                <div class="col-12">
+                    <div class="card duty-card border-0 border-start border-success border-4">
+                        <div class="card-header d-flex justify-content-between align-items-center py-3">
+                            <h6 class="mb-0 fw-bold text-success"><i class="bi bi-calendar-plus me-2"></i> 明日预告</h6>
+                            <span class="badge bg-success rounded-pill small px-3 py-1" id="tomorrow_label"></span>
+                        </div>
+                        <div class="card-body p-0" style="max-height: 250px; overflow-y: auto;">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover mb-0 align-middle" style="font-size: 0.9rem;">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="ps-3">姓名</th>
+                                            <th>岗位</th>
+                                            <th>电话</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tomorrow_duty_list">
+                                        <tr>
+                                            <td colspan="3" class="text-center py-4 text-muted">
+                                                <div class="loading-spinner mx-auto mb-2"></div>
+                                                加载中...
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -141,51 +345,47 @@
         </div>
     </div>
 </div>
-        
-
-        <!-- ECharts核心 + 中国地图数据包 -->
-<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/echarts/map/js/china.js"></script>
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        // 初始化地图图表
         var chartDom = document.getElementById('chinaMap');
         var myChart = echarts.init(chartDom);
 
-        // 接收后端传递的数据（Jinja2 已 tojson 并 safe）
+        // 接收后端传递的数据
         var provinceMapData = {{ province_map_data | safe }};
 
-
-        
-
-        // 动态计算最大值（避免硬编码）
+        // 动态计算最大值
         var maxValue = provinceMapData.length > 0 
             ? Math.max(...provinceMapData.map(item => item.value)) 
             : 10;
 
         var option = {
-            backgroundColor: '#fff',  // 背景白底，更干净
+            backgroundColor: '#fff',
             title: {
                 text: '在职人员户籍地分布',
                 left: 'center',
                 top: 20,
                 textStyle: {
                     color: '#333',
-                    fontSize: 20,
-                    fontWeight: 'bold'
+                    fontSize: 18,
+                    fontWeight: '500'
                 }
             },
             tooltip: {
                 trigger: 'item',
                 formatter: function (params) {
                     if (params.data) {
-                        return `${params.name}<br/>人数：${params.data.value} 人`;
+                        return `${params.name}<br/><strong>人数：${params.data.value} 人</strong>`;
                     }
-                    return `${params.name}<br/>人数：0 人`;
+                    return `${params.name}<br/><strong>人数：0 人</strong>`;
                 },
-                backgroundColor: 'rgba(0,0,0,0.7)',
-                borderColor: '#333',
-                textStyle: { color: '#fff' }
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                borderColor: '#e9ecef',
+                borderWidth: 1,
+                textStyle: { color: '#212529' },
+                shadowBlur: 10,
+                shadowColor: 'rgba(0, 0, 0, 0.1)'
             },
             visualMap: {
                 min: 0,
@@ -196,19 +396,23 @@
                 calculable: true,
                 orient: 'horizontal',
                 inRange: {
-                    color: ['#e6f7ff', '#bae7ff', '#91d5ff', '#69c0ff', '#40a9ff', '#1890ff', '#0050b3']
+                    color: ['#e8f4fd', '#d1e7dd', '#bcdff1', '#74c0fc', '#4dabf7', '#339af0', '#228be6']
                 },
-                textStyle: { color: '#333' }
+                textStyle: { color: '#495057', fontSize: 12 },
+                itemWidth: 15,
+                itemHeight: 80
             },
             series: [{
                 name: '人数',
                 type: 'map',
                 map: 'china',
-                roam: false,  // true支持缩放拖拽
+                roam: true,  // 允许缩放和拖拽
+                zoom: 1.1,   // 初始缩放比例
                 label: {
                     show: true,
-                    fontSize: 11,
-                    color: '#333',
+                    fontSize: 12,
+                    color: '#495057',
+                    fontWeight: '400',
                     formatter: function (params) {
                         return params.data ? `${params.name}\n${params.data.value}` : params.name;
                     }
@@ -217,18 +421,19 @@
                     label: {
                         show: true,
                         color: '#fff',
-                        fontSize: 12,
-                        fontWeight: 'bold'
+                        fontSize: 13,
+                        fontWeight: '500'
                     },
                     itemStyle: {
-                        areaColor: '#0050b3',
-                        shadowBlur: 10,
-                        shadowColor: 'rgba(0, 0, 0, 0.3)'
+                        areaColor: '#228be6',
+                        shadowBlur: 15,
+                        shadowColor: 'rgba(0, 0, 0, 0.2)'
                     }
                 },
                 itemStyle: {
-                    borderColor: '#aaa',
-                    borderWidth: 1
+                    borderColor: '#e9ecef',
+                    borderWidth: 1,
+                    areaColor: '#f8f9fa'
                 },
                 data: provinceMapData
             }]
@@ -236,61 +441,95 @@
 
         myChart.setOption(option);
 
-        // 响应式
+        // 响应式调整
         window.addEventListener('resize', function () {
             myChart.resize();
         });
+
+        // 设置日期标签
+        const today = new Date();
+        const tomorrow = new Date();
+        tomorrow.setDate(today.getDate() + 1);
+
+        // 格式化日期为中文格式
+        function formatDateToChinese(date) {
+            const year = date.getFullYear();
+            const month = date.getMonth() + 1;
+            const day = date.getDate();
+            
+            // 获取星期几
+            const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+            const weekDay = weekDays[date.getDay()];
+            
+            return `${year}年${month}月${day}日 ${weekDay}`;
+        }
+        
+        document.getElementById('today_label').innerText = formatDateToChinese(today);
+        document.getElementById('tomorrow_label').innerText = formatDateToChinese(tomorrow);
+
+        // 异步获取值班数据
+        fetch("{{ url_for('scheduling.get_daily_duty') }}")
+            .then(res => {
+                if (!res.ok) throw new Error('网络请求失败');
+                return res.json();
+            })
+            .then(data => {
+                renderDutyTable('today_duty_list', data.today);
+                renderDutyTable('tomorrow_duty_list', data.tomorrow);
+            })
+            .catch(err => {
+                console.error("加载值班信息失败:", err);
+                document.getElementById('today_duty_list').innerHTML = 
+                    '<tr><td colspan="3" class="text-center py-4 text-danger">加载失败，请刷新页面</td></tr>';
+                document.getElementById('tomorrow_duty_list').innerHTML = 
+                    '<tr><td colspan="3" class="text-center py-4 text-danger">加载失败，请刷新页面</td></tr>';
+            });
     });
-    // index.html 中的 <script> 标签内
 
-document.addEventListener('DOMContentLoaded', function() {
-    // 1. 设置日期标签
-    const today = new Date();
-    const tomorrow = new Date();
-    tomorrow.setDate(today.getDate() + 1);
+    // 渲染值班表格
+    function renderDutyTable(elementId, dataList) {
+        const tbody = document.getElementById(elementId);
+        
+        // 清空加载状态
+        tbody.innerHTML = '';
+        
+        if (!dataList || dataList.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-muted"><i class="bi bi-calendar-x me-2"></i>暂无排班记录</td></tr>';
+            return;
+        }
 
-    function formatDateToChinese(date) {
-    const year = date.getFullYear();
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
-    return `${year}年${month}月${day}日`;
-}
-    
-    document.getElementById('today_label').innerText = formatDateToChinese(today);
-    document.getElementById('tomorrow_label').innerText = formatDateToChinese(tomorrow);
-
-    // 2. 异步获取值班数据
-    fetch("{{ url_for('scheduling.get_daily_duty') }}")
-        .then(res => res.json())
-        .then(data => {
-            renderDutyTable('today_duty_list', data.today);
-            renderDutyTable('tomorrow_duty_list', data.tomorrow);
-        })
-        .catch(err => console.error("加载值班信息失败:", err));
-});
-
-function renderDutyTable(elementId, dataList) {
-    const tbody = document.getElementById(elementId);
-    if (!dataList || dataList.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-muted">暂无排班记录</td></tr>';
-        return;
+        // 渲染数据行
+        tbody.innerHTML = dataList.map(item => {
+            const badgeClass = item.type === '夜' ? 'bg-warning text-dark' : 'bg-info text-white';
+            const postText = item.post + (item.type === '夜' ? '(夜班)' : '');
+            
+            return `
+                <tr>
+                    <td class="ps-3 fw-medium text-dark">${item.name || '未知'}</td>
+                    <td>
+                        <span class="badge ${badgeClass}">${postText}</span>
+                    </td>
+                    <td>
+                        ${item.phone ? 
+                            `<a href="tel:${item.phone}" class="text-decoration-none text-primary">
+                                <i class="bi bi-telephone-outbound me-1"></i>${item.phone}
+                            </a>` : 
+                            '<span class="text-muted"><i class="bi bi-phone-slash me-1"></i>未记录</span>'
+                        }
+                    </td>
+                </tr>
+            `;
+        }).join('');
     }
-
-    tbody.innerHTML = dataList.map(item => `
-        <tr>
-            <td class="ps-3 fw-bold text-dark">${item.name}</td>
-            <td>
-                <span class="badge ${item.type === '夜' ? 'bg-warning text-dark' : 'bg-info text-dark'}">
-                    ${item.post}${item.type === '夜' ? '(夜班)' : ''}
-                </span>
-            </td>
-            <td>
-                <a href="tel:${item.phone}" class="text-decoration-none">
-                    <i class="bi bi-telephone-outbound me-1"></i>${item.phone || '未记录'}
-                </a>
-            </td>
-        </tr>
-    `).join('');
-}
+    
+    // 平滑滚动
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            document.querySelector(this.getAttribute('href')).scrollIntoView({
+                behavior: 'smooth'
+            });
+        });
+    });
 </script>
-        {% endblock %}
+{% endblock %}

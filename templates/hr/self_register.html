@@ -1,3 +1,4 @@
+<!-- templates/hr/self_register.html -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -8,31 +9,125 @@
     <style>
         /* 隐藏掉不该让队员填写的区域 */
         .admin-only { display: none !important; }
+        
+        /* 页面整体样式 */
+        body {
+            font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", sans-serif;
+            background-color: #f8f9fa;
+            padding-top: 20px;
+            padding-bottom: 40px;
+        }
+        
+        /* 卡片样式 */
+        .register-card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        /* 卡片头部 */
+        .register-header {
+            background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%) !important;
+            padding: 1.25rem 1.5rem;
+            border-bottom: none;
+        }
+        
+        /* 卡片内容 */
+        .register-body {
+            padding: 2rem;
+        }
+        
+        /* 提交按钮 */
+        .submit-btn {
+            padding: 0.75rem 2rem;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* 提示信息 */
+        .info-alert {
+            border-radius: 8px;
+            border-left: 4px solid #0d6efd;
+            background-color: #e7f1ff;
+            border-top-color: #e7f1ff;
+            border-right-color: #e7f1ff;
+            border-bottom-color: #e7f1ff;
+        }
+        
+        /* 响应式优化 */
+        @media (max-width: 768px) {
+            .register-body {
+                padding: 1rem;
+            }
+            
+            .submit-btn {
+                width: 100%;
+            }
+        }
     </style>
 </head>
-<body class="bg-light">
-    <div class="container py-4">
-        <div class="card shadow">
-            <div class="card-header bg-primary text-white text-center">
-                <h4 class="mb-0">新员工入职自助登记</h4>
+<body>
+    <div class="container">
+        <div class="card register-card shadow">
+            <div class="card-header register-header text-white text-center">
+                <h4 class="mb-0">
+                    <i class="bi bi-person-plus-fill me-2"></i>自助花名册登记
+                </h4>
             </div>
-            <div class="card-body">
-                <form method="POST" enctype="multipart/form-data">
+            <div class="card-body register-body">
+                <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
                     {% include "hr/_employee_form.html" %}
                     
-                    <div class="alert alert-info mt-4">
-                        <i class="bi bi-info-circle"></i> 请确保填写信息真实有效，提交后请等待管理员审核。
+                    <div class="alert info-alert mt-4">
+                        <i class="bi bi-info-circle me-2"></i> 
+                        <strong>温馨提示：</strong>请确保填写信息真实有效，提交后请等待管理员审核。所有带<span class="text-danger">*</span>的字段为必填项。
                     </div>
                     
-                    <div class="text-center mt-4">
-                        <button type="submit" class="btn btn-primary btn-lg w-100">提交入职申请</button>
+                    <div class="text-center mt-5 pt-3 border-top">
+                        <button type="submit" class="btn btn-primary submit-btn btn-lg w-100">
+                            <i class="bi bi-paper-plane me-2"></i>提交花名册登记
+                        </button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
     
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 表单验证
+        (() => {
+            'use strict'
+            const forms = document.querySelectorAll('.needs-validation')
+            Array.from(forms).forEach(form => {
+                form.addEventListener('submit', event => {
+                    if (!form.checkValidity()) {
+                        event.preventDefault()
+                        event.stopPropagation()
+                    }
+                    form.classList.add('was-validated')
+                }, false)
+            })
+        })()
+
+        // 移除管理员相关的字段验证
+        document.addEventListener('DOMContentLoaded', function() {
+            // 移除薪资模式、职位、岗位等管理员字段的必填验证
+            const adminFields = document.querySelectorAll('.admin-only, select[name="salary_mode"], select[name="position"], select[name="post"]');
+            adminFields.forEach(field => {
+                if (field.hasAttribute('required')) {
+                    field.removeAttribute('required');
+                }
+            });
+        });
+    </script>
 </body>
 </html>

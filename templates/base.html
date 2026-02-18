@@ -1,3 +1,4 @@
+<!-- templates/base.html -->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -8,89 +9,397 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <style>
+        :root {
+            --primary-color: #0d6efd;
+            --dark-color: #212529;
+            --light-bg: #f8f9fa;
+            --border-color: #dee2e6;
+            --danger-color: #dc3545;
+            --success-color: #198754;
+        }
+        
+        /* 全局样式 */
         body {
-            padding-top: 70px;
+            padding-top: 76px;
+            background-color: var(--light-bg);
+            font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", sans-serif;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        /* 导航栏样式优化 */
+        .navbar {
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            z-index: 1030;
+            background: linear-gradient(135deg, #212529 0%, #343a40 100%) !important;
+        }
+        
+        .navbar-brand {
+            font-weight: 600;
+            font-size: 1.25rem;
+            letter-spacing: 0.5px;
+        }
+        
+        .navbar-brand img {
+            transition: transform 0.3s ease;
+        }
+        
+        .navbar-brand:hover img {
+            transform: rotate(5deg);
+        }
+        
+        .nav-link {
+            position: relative;
+            transition: all 0.2s ease;
+            margin: 0 2px;
+            border-radius: 4px;
+            padding: 0.5rem 0.75rem !important;
+        }
+        
+        .nav-link:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            transform: translateY(-1px);
+        }
+        
+        .nav-link.active {
+            background-color: rgba(13, 110, 253, 0.2);
+            border-radius: 4px;
+        }
+        
+        /* 徽章样式优化 */
+        .badge {
+            transition: all 0.2s ease;
+        }
+        
+        .badge:hover {
+            transform: scale(1.05);
+        }
+        
+        /* 按钮样式优化 */
+        .btn-outline-light {
+            border-width: 1px;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-outline-light:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            transform: translateY(-1px);
+        }
+        
+        /* 页脚样式 */
+        .footer {
+            margin-top: 60px;
+            padding: 30px 0;
+            background: linear-gradient(135deg, #212529 0%, #343a40 100%);
+            color: rgba(255, 255, 255, 0.8);
+            text-align: center;
+            border-top: 3px solid var(--primary-color);
+        }
+        
+        .footer small {
+            font-size: 0.875rem;
+        }
+        
+        /* 通知提示样式 */
+        .alert {
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            border: none;
+            margin-bottom: 1.5rem;
+        }
+        
+        /* 呼吸闪烁动画 */
+        @keyframes flash-red {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.05); text-shadow: 0 0 10px rgba(220, 53, 69, 0.6); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        
+        .warning-blink {
+            animation: flash-red 1.5s infinite ease-in-out;
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background-color: rgba(220, 53, 69, 0.05);
+        }
+        
+        /* 聊天悬浮按钮 */
+        #chat-fab {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background: var(--primary-color);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 9999;
+            box-shadow: 0 6px 20px rgba(13, 110, 253, 0.4);
+            transition: all 0.3s ease;
+            border: none;
+        }
+        
+        #chat-fab:hover {
+            transform: scale(1.1);
+            box-shadow: 0 8px 25px rgba(13, 110, 253, 0.5);
+        }
+        
+        /* 聊天窗口样式 */
+        #chat-window {
+            display: none;
+            position: fixed;
+            bottom: 100px;
+            right: 30px;
+            width: 420px;
+            height: 580px;
+            background: white;
+            border-radius: 15px;
+            z-index: 9999;
+            flex-direction: column;
+            border: none;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        #chat-window .bg-primary {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #0a58ca 100%) !important;
+            padding: 1rem 1.5rem;
+        }
+        
+        #chat-title {
+            font-weight: 500;
+            font-size: 1.1rem;
+        }
+        
+        #chat-user-list {
+            width: 160px;
+            background-color: #f8f9fa;
+            border-right: 1px solid var(--border-color);
+        }
+        
+        #chat-user-list .list-group-item {
+            border: none;
+            padding: 0.75rem 1rem;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        
+        #chat-user-list .list-group-item:hover {
+            background-color: #e9ecef;
+        }
+        
+        #chat-user-list .list-group-item.active {
+            background-color: rgba(13, 110, 253, 0.1);
+            color: var(--primary-color);
+            font-weight: 500;
+            border-left: 3px solid var(--primary-color);
+        }
+        
+        #msg-container {
+            flex: 1;
+            padding: 1.25rem;
+            overflow-y: auto;
             background-color: #f8f9fa;
         }
-        .navbar-brand {
-            font-weight: bold;
+        
+        #msg-container .badge {
+            font-weight: 400;
+            padding: 0.35em 0.65em;
         }
-        .footer {
-            margin-top: 50px;
-            padding: 20px 0;
-            background-color: #343a40;
-            color: white;
-            text-align: center;
+        
+        #msg-container .mb-3 {
+            margin-bottom: 1rem !important;
         }
-        /* 定义呼吸闪烁动画 */
-@keyframes flash-red {
-    0% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.7; transform: scale(1.02); text-shadow: 0 0 8px rgba(220, 53, 69, 0.4); }
-    100% { opacity: 1; transform: scale(1); }
-}
-
-.warning-blink {
-    animation: flash-red 1.5s infinite ease-in-out;
-    display: inline-block; /* 必须是 inline-block 缩放动画才生效 */
-    padding: 2px 8px;
-    border-radius: 4px;
-    background-color: rgba(220, 53, 69, 0.05); /* 淡淡的红底色 */
-}
+        
+        #msg-container .bg-primary {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #0a58ca 100%) !important;
+            border-radius: 12px 12px 0 12px;
+        }
+        
+        #msg-container .bg-white {
+            border-radius: 12px 12px 12px 0;
+            border: 1px solid #e9ecef;
+        }
+        
+        #chat-input {
+            border-radius: 8px 0 0 8px;
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 1rem;
+        }
+        
+        #chat-send-btn {
+            border-radius: 0 8px 8px 0;
+            background-color: var(--primary-color);
+            border: none;
+            padding: 0.5rem 1.25rem;
+            transition: all 0.2s ease;
+        }
+        
+        #chat-send-btn:hover {
+            background-color: #0b5ed7;
+            transform: translateY(-1px);
+        }
+        
+        /* 滚动条美化 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f3f5;
+            border-radius: 3px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #ced4da;
+            border-radius: 3px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #adb5bd;
+        }
+        
+        /* 响应式优化 */
+        @media (max-width: 992px) {
+            .navbar-nav {
+                padding-top: 0.5rem;
+            }
+            
+            .nav-item {
+                margin-bottom: 0.25rem;
+            }
+            
+            .navbar-text {
+                display: block;
+                margin: 0.5rem 0;
+            }
+            
+            .navbar .d-flex {
+                flex-direction: column;
+                gap: 0.5rem;
+                padding-top: 0.5rem;
+            }
+            
+            #chat-window {
+                width: 90%;
+                left: 5%;
+                right: 5%;
+                bottom: 90px;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            body {
+                padding-top: 70px;
+            }
+            
+            #chat-user-list {
+                width: 120px;
+            }
+            
+            #msg-container {
+                padding: 0.75rem;
+            }
+            
+            #chat-fab {
+                width: 50px;
+                height: 50px;
+                bottom: 20px;
+                right: 20px;
+            }
+        }
+        
+        /* 加载动画 */
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
+    <!-- 导航栏 -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
         <div class="container-fluid">
             <a class="navbar-brand d-flex align-items-center" href="/">
-            <img src="{{ url_for('static', filename='favicon.ico') }}" 
-                 alt="Logo" 
-                 width="30" 
-                 height="30" 
-                 class="d-inline-block align-text-top me-2"
-                 style="border-radius: 4px;"> 
-            蔡路特保队队务管理系统
-        </a>
+                <img src="{{ url_for('static', filename='favicon.ico') }}" 
+                     alt="Logo" 
+                     width="32" 
+                     height="32" 
+                     class="d-inline-block align-text-top me-2"
+                     style="border-radius: 4px;"> 
+                蔡路特保队队务管理系统
+            </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
-                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <!-- 核心修复：清理<ul>内的多余空白/注释，确保只有<li>作为直接子元素 -->
+                <!-- 导航菜单 -->
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('main.index') }}"><i class="bi bi-house"></i> 首页看板</a>
+                        <a class="nav-link {% if request.endpoint == 'main.index' %}active{% endif %}" 
+                           href="{{ url_for('main.index') }}">
+                            <i class="bi bi-house me-1"></i> 首页看板
+                        </a>
                     </li>
                     <li class="nav-item">
                         {% if current_user.is_authenticated %}
                             {% if perm.can('hr.view') %}
-                                <a class="nav-link" href="{{ url_for('hr.hr_list') }}">
-                                    <i class="bi bi-people"></i> 人事管理
+                                <a class="nav-link {% if request.endpoint and 'hr.' in request.endpoint %}active{% endif %}" 
+                                   href="{{ url_for('hr.hr_list') }}">
+                                    <i class="bi bi-people me-1"></i> 人事管理
                                     {% if pending_count > 0 %}
-                                        <span class="badge bg-danger rounded-pill">{{ pending_count }}</span>
+                                        <span class="badge bg-danger rounded-pill ms-1">{{ pending_count }}</span>
                                     {% endif %}
                                 </a>
                             {% else %}
-                                <a class="nav-link" href="{{ url_for('hr.hr_detail', id_card=current_user.username) }}">我的信息</a>
+                                <a class="nav-link {% if request.endpoint == 'hr.hr_detail' %}active{% endif %}" 
+                                   href="{{ url_for('hr.hr_detail', id_card=current_user.username) }}">
+                                    <i class="bi bi-person me-1"></i> 我的信息
+                                </a>
                             {% endif %}
                         {% else %}
-                            <a class="nav-link" href="{{ url_for('auth.login') }}">我的信息</a>
+                            <a class="nav-link" href="{{ url_for('auth.login') }}">
+                                <i class="bi bi-person me-1"></i> 我的信息
+                            </a>
                         {% endif %}
                     </li>
                     {% if perm.can('asset.view') %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('asset.asset_list') }}"><i class="bi bi-box-seam"></i> 资产管理</a>
+                            <a class="nav-link {% if request.endpoint and 'asset.' in request.endpoint %}active{% endif %}" 
+                               href="{{ url_for('asset.asset_list') }}">
+                                <i class="bi bi-box-seam me-1"></i> 资产管理
+                            </a>
                         </li>
                     {% endif %}
                     {% if perm.can('fund.view') %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('fund.fund_list') }}"><i class="bi bi-currency-exchange"></i> 资金管理</a>
+                            <a class="nav-link {% if request.endpoint and 'fund.' in request.endpoint %}active{% endif %}" 
+                               href="{{ url_for('fund.fund_list') }}">
+                                <i class="bi bi-currency-exchange me-1"></i> 资金管理
+                            </a>
                         </li>
                     {% endif %}
                     {% if perm.can('dorm.view') %}
                         <li class="nav-item">
                             <a class="nav-link {% if request.endpoint and 'dorm.' in request.endpoint %}active{% endif %}"
                                href="{{ url_for('dorm.dorm_map') }}">
-                                <i class="bi bi-door-open"></i> 宿舍管理
+                                <i class="bi bi-door-open me-1"></i> 宿舍管理
                             </a>
                         </li>
                     {% endif %}
@@ -98,51 +407,56 @@
                         <li class="nav-item">
                             <a class="nav-link {% if request.endpoint and 'scheduling.' in request.endpoint %}active{% endif %}"
                                href="{{ url_for('scheduling.schedule_list') }}">
-                                <i class="bi bi-calendar-check"></i> 考勤管理</a>
+                                <i class="bi bi-calendar-check me-1"></i> 考勤管理
+                            </a>
                         </li>
                     {% endif %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('notification.notification_list') }}">
-                            <i class="bi bi-bell"></i> 通知
+                        <a class="nav-link {% if request.endpoint and 'notification.' in request.endpoint %}active{% endif %}" 
+                           href="{{ url_for('notification.notification_list') }}">
+                            <i class="bi bi-bell me-1"></i> 通知
                             {% if current_user.is_authenticated %}
                                 {% set unread_count = current_user.notifications|selectattr('is_read', 'equalto', false)|list|length %}
                                 {% if unread_count > 0 %}
-                                    <span class="badge bg-danger rounded-pill">{{ unread_count }}</span>
+                                    <span class="badge bg-danger rounded-pill ms-1">{{ unread_count }}</span>
                                 {% endif %}
                             {% endif %}
                         </a>
                     </li>
                     {% if current_user.role == 'admin' %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('permission.permission_manage') }}"><i class="bi bi-shield-lock"></i> 权限管理</a>
+                            <a class="nav-link {% if request.endpoint and 'permission.' in request.endpoint %}active{% endif %}" 
+                               href="{{ url_for('permission.permission_manage') }}">
+                                <i class="bi bi-shield-lock me-1"></i> 权限管理
+                            </a>
                         </li>
                     {% endif %}
                 </ul>
 
                 <!-- 右侧：日期 + 用户信息 + 登录/登出 -->
-                <div class="d-flex align-items-center">
-                    <span class="navbar-text me-3">
-                        <i class="bi bi-calendar"></i> {{ today_str() }}
+                <div class="d-flex align-items-center flex-wrap">
+                    <span class="navbar-text me-3 d-none d-md-inline">
+                        <i class="bi bi-calendar me-1"></i> {{ today_str() }}
                     </span>
                     <span class="navbar-text me-3">
                         {% if current_user.is_authenticated %}
-                            <a class="nav-link" href="{{ url_for('permission.permission_operations') }}">
-                                <i class="bi bi-person-circle"></i> {{ current_user.name }}
+                            <a class="nav-link p-0 d-inline-block" href="{{ url_for('permission.permission_operations') }}">
+                                <i class="bi bi-person-circle me-1"></i> {{ current_user.name }}
                             </a>
                         {% else %}
-                            <span class="text-muted">未登录</span>
+                            <span class="text-muted"><i class="bi bi-person-circle me-1"></i> 未登录</span>
                         {% endif %}
                     </span>
                     {% if current_user.is_authenticated %}
                         <a href="{{ url_for('auth.change_password') }}" class="btn btn-outline-light me-2">
-                            <i class="bi bi-key"></i> 修改密码
+                            <i class="bi bi-key me-1"></i> 修改密码
                         </a>
                         <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-light">
-                            <i class="bi bi-box-arrow-right"></i> 登出
+                            <i class="bi bi-box-arrow-right me-1"></i> 登出
                         </a>
                     {% else %}
                         <a href="{{ url_for('auth.login') }}" class="btn btn-outline-light">
-                            <i class="bi bi-box-arrow-in-right"></i> 登录
+                            <i class="bi bi-box-arrow-in-right me-1"></i> 登录
                         </a>
                     {% endif %}
                 </div>
@@ -150,41 +464,47 @@
         </div>
     </nav>
     
-    <div id="chat-fab"
-        style="position:fixed; bottom:25px; right:25px; width:55px; height:55px; background:#0d6efd; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:9999; box-shadow:0 4px 15px rgba(0,0,0,0.3);">
+    <!-- 聊天悬浮按钮 -->
+    <button id="chat-fab" aria-label="打开聊天">
         <i class="bi bi-chat-dots-fill fs-4"></i>
-    </div>
+    </button>
     
-    <div id="chat-window"
-        style="display:none; position:fixed; bottom:90px; right:25px; width:400px; height:550px; background:white; border-radius:12px; z-index:9999; flex-direction:column; border:1px solid #dee2e6; box-shadow: 0 10px 30px rgba(0,0,0,0.2); overflow:hidden;">
-        <div class="bg-primary text-white p-3 d-flex justify-content-between align-items-center">
+    <!-- 聊天窗口 -->
+    <div id="chat-window">
+        <div class="bg-primary text-white d-flex justify-content-between align-items-center">
             <strong id="chat-title">蔡路特保队</strong>
-            <button type="button" class="btn-close btn-close-white" id="chat-close-btn"></button>
+            <button type="button" class="btn-close btn-close-white" id="chat-close-btn" aria-label="关闭聊天"></button>
         </div>
         <div style="flex:1; display:flex; overflow:hidden;">
-            <div id="chat-user-list" class="bg-light border-end" style="width:150px; overflow-y:auto;">
+            <div id="chat-user-list" class="bg-light border-end overflow-y-auto">
                 <div class="list-group list-group-flush">
                     <a href="javascript:void(0);" class="list-group-item list-group-item-action active"
-                        data-uid="group">队内群聊</a>
+                       data-uid="group">
+                        <i class="bi bi-people me-1"></i> 队内群聊
+                    </a>
                 </div>
             </div>
             <div style="flex:1; display:flex; flex-direction:column;">
-                <div id="msg-container" style="flex:1; padding:15px; overflow-y:auto; background:#f8f9fa;"></div>
-                <div class="p-2 border-top">
+                <div id="msg-container"></div>
+                <div class="p-3 border-top">
                     <div class="input-group">
-                        <input type="text" id="chat-input" class="form-control form-control-sm" placeholder="输入消息...">
-                        <button class="btn btn-primary btn-sm" id="chat-send-btn">发送</button>
+                        <input type="text" id="chat-input" class="form-control" placeholder="输入消息...">
+                        <button class="btn btn-primary" id="chat-send-btn">
+                            <i class="bi bi-send me-1"></i> 发送
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
     
+    <!-- 主要内容区域 -->
     <div class="container mt-4">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
                     <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        <i class="bi bi-{% if category == 'success' %}check-circle{% elif category == 'danger' %}exclamation-circle{% elif category == 'warning' %}exclamation-triangle{% else %}info{% endif %} me-2"></i>
                         {{ message }}
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
@@ -194,44 +514,67 @@
         {% block content %}{% endblock %}
     </div>
 
+    <!-- 页脚 -->
     <footer class="footer">
         <div class="container">
-            <small>© 2026 蔡路特保队队务管理系统 · 本地部署 · 仅限内部使用</small>
+            <div class="row">
+                <div class="col-12">
+                    <small>© 2026 蔡路特保队队务管理系统 · 本地部署 · 仅限内部使用</small>
+                    <div class="mt-2">
+                        <small class="text-muted">系统版本: v1.0.0 | 最后更新: 2026-02</small>
+                    </div>
+                </div>
+            </div>
         </div>
     </footer>
 
+    <!-- 脚本引入 -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts/map/js/china.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+
 
     {% block scripts %}{% endblock %}
 
+    <!-- 通知音频 -->
     <audio id="globalNoticeAudio" preload="auto">
         <source src="/static/audio/beep.mp3" type="audio/mpeg">
     </audio>
 
     <script>
         $(document).ready(function () {
-            // --- A. 原有的全局通知逻辑 ---
+            // --- A. 全局通知逻辑优化 ---
             let globalAlarmInterval = null;
             window.originalTitle = document.title;
             let isChecking = false;
 
+            // 检查未读通知
             function doGlobalCheck() {
                 if (isChecking) return;
                 isChecking = true;
+                
                 fetch("/notification/unread_count")
-                    .then(response => response.json())
+                    .then(response => {
+                        if (!response.ok) throw new Error('请求失败');
+                        return response.json();
+                    })
                     .then(data => {
                         isChecking = false;
-                        const count = data.unread_count;
+                        const count = data.unread_count || 0;
                         const audio = document.getElementById('globalNoticeAudio');
+                        
+                        // 更新标题和通知音效
                         if (count > 0) {
                             document.title = `(新消息 ${count}) ` + window.originalTitle;
                             if (!globalAlarmInterval) {
                                 globalAlarmInterval = setInterval(() => {
-                                    audio.play().catch(e => { });
-                                }, 2000);
+                                    audio.play().catch(e => console.log('音频播放失败:', e));
+                                }, 3000);
                             }
                         } else {
                             if (globalAlarmInterval) {
@@ -241,27 +584,38 @@
                             document.title = window.originalTitle;
                         }
                     })
-                    .catch(err => { isChecking = false; });
+                    .catch(err => { 
+                        console.error('检查通知失败:', err);
+                        isChecking = false; 
+                    });
             }
-            setInterval(doGlobalCheck, 5000);
+            
+            // 初始检查和定时检查
             doGlobalCheck();
+            setInterval(doGlobalCheck, 6000);
 
             // 点击解锁音频权限
             $(document).one('click', function () {
                 const audio = document.getElementById('globalNoticeAudio');
-                audio.play().then(() => { audio.pause(); }).catch(e => { });
+                audio.play().then(() => { audio.pause(); }).catch(e => console.log('音频初始化失败:', e));
             });
 
-            // --- B. 聊天系统集成逻辑 ---
+            // --- B. 聊天系统集成逻辑优化 ---
             const socket = io();
             let currentTarget = 'group';
+            let unreadCounts = {};
+            let lastDate = null;
 
-            // 1. 打开/关闭窗口 (使用 jQuery 绑定确保稳定性)
+            // 1. 打开/关闭聊天窗口
             $('#chat-fab').on('click', function () {
                 const win = $('#chat-window');
                 if (win.is(':hidden')) {
-                    win.css('display', 'flex'); // flex 布局
+                    win.css('display', 'flex');
                     loadUsers();
+                    // 加载当前选中的聊天历史
+                    if (currentTarget === 'group') {
+                        loadChatHistory('group');
+                    }
                 } else {
                     win.hide();
                 }
@@ -271,136 +625,206 @@
                 $('#chat-window').hide();
             });
 
-            let unreadCounts = {};
+            // 点击空白处关闭聊天窗口（可选）
+            $(document).on('click', function (e) {
+                if (!$(e.target).closest('#chat-window, #chat-fab').length) {
+                    $('#chat-window').hide();
+                }
+            });
 
-            // 2. 加载用户名单
+            // 2. 加载用户列表
             function loadUsers() {
                 $.get('/api/chat/users', function (data) {
                     const $list = $('#chat-user-list .list-group');
-                    // 清除除了“全体”之外的所有选项
                     $list.find('a[data-uid!="group"]').remove();
 
                     if (data && data.length > 0) {
-                        // 有权限：渲染私聊名单
                         data.forEach(u => {
                             const count = unreadCounts[u.id] || 0;
-                            const badgeHtml = `<span class="badge bg-danger rounded-pill float-end ${count > 0 ? '' : 'd-none'}" id="badge-${u.id}">${count}</span>`;
-                            $list.append(`<a href="javascript:void(0);" class="list-group-item list-group-item-action" data-uid="${u.id}">${u.name}${badgeHtml}</a>`);
+                            const badgeHtml = count > 0 ? 
+                                `<span class="badge bg-danger rounded-pill float-end" id="badge-${u.id}">${count}</span>` : 
+                                `<span class="badge bg-danger rounded-pill float-end d-none" id="badge-${u.id}">0</span>`;
+                            
+                            $list.append(`
+                                <a href="javascript:void(0);" class="list-group-item list-group-item-action" data-uid="${u.id}">
+                                    <i class="bi bi-person me-1"></i> ${u.name}${badgeHtml}
+                                </a>
+                            `);
                         });
-                        $('#chat-user-list').show(); // 显示侧边栏
+                        $('#chat-user-list').show();
                     } else {
-                        // 无权限：隐藏侧边栏，强制选中“全体”
                         $('#chat-user-list').hide();
                         currentTarget = 'group';
-                        $('#chat-title').text('全体群聊');
-                        // 触发一次点击，加载群聊历史
+                        $('#chat-title').text('队内群聊');
                         $('a[data-uid="group"]').addClass('active');
                     }
+                }).fail(function() {
+                    console.error('加载用户列表失败');
                 });
             }
 
-            // 3. 切换聊天对象
+            // 3. 加载聊天历史
+            function loadChatHistory(target) {
+                $('#msg-container').html('<div class="text-center py-4 text-muted"><div class="loading-spinner mx-auto mb-2"></div>加载中...</div>');
+                
+                $.get('/api/chat/history/' + target, function (msgs) {
+                    $('#msg-container').empty();
+                    lastDate = null;
+                    if (msgs && msgs.length > 0) {
+                        msgs.forEach(renderMsg);
+                    } else {
+                        $('#msg-container').html('<div class="text-center py-5 text-muted"><i class="bi bi-chat-dots fs-3 mb-2"></i><br>暂无聊天记录</div>');
+                    }
+                }).fail(function() {
+                    $('#msg-container').html('<div class="text-center py-4 text-danger"><i class="bi bi-exclamation-circle me-2"></i>加载聊天记录失败</div>');
+                });
+            }
+
+            // 4. 切换聊天对象
             $(document).on('click', '#chat-user-list .list-group-item', function (e) {
                 e.preventDefault();
+                
+                // 更新选中状态
                 $('#chat-user-list .list-group-item').removeClass('active');
                 $(this).addClass('active');
-
+                
+                // 获取聊天对象信息
                 currentTarget = $(this).data('uid');
-                const $clone = $(this).clone();
-                $clone.find('.badge').remove(); 
-                const pureName = $clone.text().trim();
-                $('#chat-title').text(currentTarget === 'group' ? '全体群聊' : '与 ' + pureName + ' 私聊');
-
-                $('#msg-container').empty();
-                $.get('/api/chat/history/' + currentTarget, function (msgs) {
-                    msgs.forEach(renderMsg);
-                });
+                const userName = $(this).text().trim().replace(/\d+$/, '').trim();
+                $('#chat-title').text(currentTarget === 'group' ? '队内群聊' : `与 ${userName} 私聊`);
+                
+                // 清除未读计数
+                unreadCounts[currentTarget] = 0;
+                $(`#badge-${currentTarget}`).addClass('d-none').text('0');
+                
+                // 检查是否还有未读消息
+                if (Object.values(unreadCounts).every(v => v === 0)) {
+                    $('#chat-fab').removeClass('warning-blink').css('background-color', 'var(--primary-color)');
+                }
+                
+                // 加载聊天历史
+                loadChatHistory(currentTarget);
             });
 
-            // 4. 发送消息函数
-            function send() {
+            // 5. 发送消息
+            function sendMessage() {
                 const text = $('#chat-input').val().trim();
                 if (text) {
-                    socket.emit('send_msg', { recipient_id: currentTarget, content: text });
-                    $('#chat-input').val('');
+                    // 禁用发送按钮防止重复发送
+                    $('#chat-send-btn').prop('disabled', true).html('<div class="loading-spinner mx-auto"></div>');
+                    
+                    socket.emit('send_msg', { 
+                        recipient_id: currentTarget, 
+                        content: text 
+                    }, function() {
+                        // 发送成功回调
+                        $('#chat-input').val('');
+                        $('#chat-send-btn').prop('disabled', false).html('<i class="bi bi-send me-1"></i> 发送');
+                    });
                 }
             }
 
-            $('#chat-send-btn').on('click', send);
-            $('#chat-input').on('keypress', function (e) { if (e.which == 13) send(); });
+            $('#chat-send-btn').on('click', sendMessage);
+            $('#chat-input').on('keypress', function (e) { 
+                if (e.which == 13 && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
 
-            let lastDate = null;
-
-            // 5. 渲染消息到界面
+            // 6. 渲染消息
             function renderMsg(data) {
+                if (!data) return;
+                
                 const isMe = data.sender_id == "{{ current_user.id }}";
-                const msgDate = data.full_date; // 后端需要传这个字段
+                const msgDate = data.full_date || new Date().toLocaleDateString();
+                const time = data.timestamp || new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
+                // 日期分隔符
                 let dateHtml = '';
                 if (msgDate !== lastDate) {
-                    dateHtml = `<div class="text-center my-3"><span class="badge bg-secondary-subtle text-dark" style="font-size: 0.7rem;">${msgDate}</span></div>`;
+                    dateHtml = `<div class="text-center my-3">
+                        <span class="badge bg-secondary-subtle text-dark">${msgDate}</span>
+                    </div>`;
                     lastDate = msgDate;
                 }
 
+                // 消息HTML
                 const html = `
-            ${dateHtml}
-            <div class="mb-3 ${isMe ? 'text-end' : 'text-start'}">
-                <div style="font-size:0.7rem; color:#888;">${data.sender_name} ${data.timestamp}</div>
-                <div class="p-2 rounded shadow-sm d-inline-block ${isMe ? 'bg-primary text-white' : 'bg-white border'}" style="max-width:85%; word-break:break-all;">
-                    ${data.content}
-                </div>
-            </div>`;
+                    ${dateHtml}
+                    <div class="mb-3 ${isMe ? 'text-end' : 'text-start'}">
+                        <div style="font-size:0.75rem; color:#6c757d; margin-bottom:4px;">
+                            ${data.sender_name || '未知用户'} ${time}
+                        </div>
+                        <div class="p-3 rounded shadow-sm d-inline-block ${isMe ? 'bg-primary text-white' : 'bg-white border'}" 
+                             style="max-width:80%; word-break:break-all;">
+                            ${data.content}
+                        </div>
+                    </div>`;
+                
                 $('#msg-container').append(html);
                 $('#msg-container').scrollTop($('#msg-container')[0].scrollHeight);
             }
 
-            // 6. 接收 Socket 实时消息
+            // 7. 接收实时消息
             socket.on('receive_msg', function (data) {
                 const isMe = data.sender_id == "{{ current_user.id }}";
                 const msgSource = data.is_group ? 'group' : data.sender_id;
 
+                // 非自己发送的消息才处理提醒
                 if (!isMe) {
-                    if (!data.is_group && $(`#badge-${msgSource}`).length === 0) {
-                        loadUsers();
-                        }
-                    // 如果当前没在看这个人的聊天窗，或者是窗口关着的，就加红点
-                    if ($('#chat-window').is(':hidden') || currentTarget != msgSource) {
-                        unreadCounts[msgSource] = (unreadCounts[msgSource] || 0) + 1;
-                        setTimeout(() => {
-                            const $badge = $(`#badge-${msgSource}`);
+                    // 更新未读计数
+                    unreadCounts[msgSource] = (unreadCounts[msgSource] || 0) + 1;
+                    
+                    // 更新徽章显示
+                    setTimeout(() => {
+                        const $badge = $(`#badge-${msgSource}`);
+                        if ($badge.length) {
                             $badge.text(unreadCounts[msgSource]).removeClass('d-none');
-                            }, 500);
-                        // 全局提醒：悬浮球变红
-                        $('#chat-fab').addClass('warning-blink').css('background-color', '#dc3545');
+                        } else if (msgSource !== 'group') {
+                            // 如果用户列表还没加载，重新加载
+                            loadUsers();
+                        }
+                    }, 300);
+                    
+                    // 聊天窗口未打开或不在当前聊天，显示提醒
+                    if ($('#chat-window').is(':hidden') || currentTarget != msgSource) {
+                        $('#chat-fab').addClass('warning-blink').css('background-color', 'var(--danger-color)');
+                        
+                        // 播放提示音
+                        const audio = document.getElementById('globalNoticeAudio');
+                        if (audio) audio.play().catch(e => console.log('播放提示音失败:', e));
                     }
-
-                    // 播放声音
-                    const audio = document.getElementById('globalNoticeAudio');
-                    if (audio) audio.play().catch(e => { });
                 }
 
-                // 只有在当前选中的窗口才渲染消息
-                if (data.is_group && currentTarget === 'group') {
-                    renderMsg(data);
-                } else if (!data.is_group && (data.sender_id == currentTarget || isMe)) {
+                // 当前窗口显示该消息
+                if ((data.is_group && currentTarget === 'group') || 
+                    (!data.is_group && (data.sender_id == currentTarget || isMe))) {
                     renderMsg(data);
                 }
             });
 
-            // 当用户点击悬浮球打开聊天窗时，清除提醒状态
-            $(document).on('click', '#chat-user-list .list-group-item', function () {
-                const uid = $(this).data('uid');
-                unreadCounts[uid] = 0;
-                $(`#badge-${uid}`).addClass('d-none').text('0');
-
-                // 检查是否还有其他红点，没有就恢复悬浮球颜色
-                if (Object.values(unreadCounts).every(v => v === 0)) {
-                    $('#chat-fab').removeClass('warning-blink').css('background-color', '#0d6efd');
+            // 8. Socket连接状态处理
+            socket.on('connect', function() {
+                console.log('Socket连接成功');
+            });
+            
+            socket.on('disconnect', function() {
+                console.log('Socket连接断开');
+                // 可以添加重连逻辑
+            });
+            
+            // 9. 响应式调整
+            $(window).resize(function() {
+                if ($(window).width() < 576 && $('#chat-window').is(':visible')) {
+                    $('#chat-window').css({
+                        'width': '90%',
+                        'left': '5%',
+                        'right': '5%'
+                    });
                 }
-
-                // 切换窗口时重置日期追踪
-                lastDate = null;
             });
         });
     </script>
 </body>
+</html>

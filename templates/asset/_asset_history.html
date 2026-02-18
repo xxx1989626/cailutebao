@@ -1,68 +1,245 @@
-<!-- _asset_history.html -->
+<!-- templates/asset/_asset_history.html -->
 <!-- 操作历史开始 -->
-                            <div class="mt-5">
-    <h5 class="border-bottom pb-2 d-flex align-items-center justify-content-between">
-        <span><i class="bi bi-clock-history me-2"></i> 资产操作历史</span>
+<div class="mt-5">
+    <h5 class="border-bottom pb-2 mb-4 d-flex align-items-center justify-content-between" style="border-color: #e9ecef !important;">
+        <span class="text-dark fw-semibold">
+            <i class="bi bi-clock-history me-2 text-primary"></i> 资产操作历史
+        </span>
         {% if history_items %}
-        <small class="text-muted fw-normal" style="font-size: 0.8rem;">共 {{ pagination.total }} 条记录</small>
+        <small class="text-muted fw-normal" style="font-size: 0.8rem;">
+            <i class="bi bi-database me-1"></i> 共 {{ pagination.total }} 条记录
+        </small>
         {% endif %}
     </h5>
 
     {% if history_items %}
-
-    <div class="list-group list-group-flush shadow-sm rounded border">
+    <!-- 历史记录列表 -->
+    <div class="list-group list-group-flush shadow-sm rounded border overflow-hidden" style="border-color: #e9ecef !important;">
         {% for h in history_items %}
-        <div class="list-group-item p-3 history-row" data-sn="{{ h.sn_number or 'all' }}">
-            <div class="d-flex w-100 justify-content-between align-items-center mb-1">
-                <h6 class="mb-0 fw-bold">
+        <div class="list-group-item p-4 history-row border-0" 
+             data-sn="{{ h.sn_number or 'all' }}"
+             style="border-bottom: 1px solid #f1f3f5 !important;">
+            <!-- 记录头部：操作类型、时间、操作人 -->
+            <div class="d-flex flex-wrap w-100 justify-content-between align-items-center mb-3 gap-2">
+                <div class="d-flex align-items-center">
+                    <!-- 操作类型标签 -->
                     {% set badge_color = 'bg-secondary' %}
-                    {% if h.action == '发放' %}{% set badge_color = 'bg-primary' %}
-                    {% elif h.action == '归还' or h.action.startswith('归还') %}{% set badge_color = 'bg-info text-dark' %}
-                    {% elif h.action.startswith('更换') %}{% set badge_color = 'bg-info text-white' %}
-                    {% elif h.action == '补充' %}{% set badge_color = 'bg-success' %}
-                    {% elif h.action == '报废' or h.action == '消耗' %}{% set badge_color = 'bg-danger' %}
-                    {% elif h.action == '维修' %}{% set badge_color = 'bg-warning text-dark' %}{% endif %}
-                    <span class="badge {{ badge_color }} me-2">{{ h.action }}</span>
-                    {{ format_datetime(h.action_date) }}
-                </h6>
-                <small class="text-muted bg-light px-2 py-1 rounded border">
-                    <i class="bi bi-person"></i> {{ h.operator.name if h.operator else '系统' }}
-                </small>
+                    {% set action_icon = 'bi-gear' %}
+                    
+                    {% if h.action == '发放' %}
+                        {% set badge_color = 'bg-primary' %}
+                        {% set action_icon = 'bi-person-plus-fill' %}
+                    {% elif h.action == '归还' or h.action.startswith('归还') %}
+                        {% set badge_color = 'bg-info text-dark' %}
+                        {% set action_icon = 'bi-box-arrow-in-left' %}
+                    {% elif h.action.startswith('更换') %}
+                        {% set badge_color = 'bg-info text-white' %}
+                        {% set action_icon = 'bi-arrow-left-right' %}
+                    {% elif h.action == '补充' %}
+                        {% set badge_color = 'bg-success' %}
+                        {% set action_icon = 'bi-plus-circle-fill' %}
+                    {% elif h.action == '报废' or h.action == '消耗' %}
+                        {% set badge_color = 'bg-danger' %}
+                        {% set action_icon = 'bi-trash3-fill' if h.action == '报废' else 'bi-basket3-fill' %}
+                    {% elif h.action == '维修' %}
+                        {% set badge_color = 'bg-warning text-dark' %}
+                        {% set action_icon = 'bi-wrench' %}
+                    {% endif %}
+                    
+                    <span class="badge {{ badge_color }} me-3 px-3 py-1">
+                        <i class="bi {{ action_icon }} me-1"></i> {{ h.action }}
+                    </span>
+                    
+                    <!-- 操作时间 -->
+                    <span class="text-muted">
+                        <i class="bi bi-calendar-clock me-1"></i> {{ format_datetime(h.action_date) }}
+                    </span>
+                </div>
+                
+                <!-- 操作人信息 -->
+                <div class="bg-light px-3 py-1 rounded border border-light-subtle d-flex align-items-center">
+                    <i class="bi bi-person-circle me-1 text-primary"></i> 
+                    {{ h.operator.name if h.operator else '系统' }}
+                </div>
             </div>
-            <div class="ms-1 ps-3 border-start">
+            
+            <!-- 记录详情 -->
+            <div class="ms-2 ps-4 border-start border-primary-subtle">
                 <p class="mb-0 text-dark">
-                    {# 将 更换(发放) 和 更换(回收) 加入友好显示列表 #}
+                    {# 处理发放/归还/更换操作 #}
                     {% if h.action in ['发放', '归还', '更换(发放)', '更换(回收)'] and h.user %}
-                    <strong>{{ h.user.name }}</strong>
-            
-                    {# 根据不同动作显示不同的动词 #}
-                    {% if h.action == '发放' %}领用了
-                    {% elif h.action == '更换(发放)' %}领用了(新)
-                    {% elif h.action == '更换(回收)' %}归还了(旧)
-                    {% else %}归还了{% endif %}
-            
-                    <span class="text-primary fw-bold">{{ h.quantity }}</span> 个{{ asset.name }}
-            
+                        <strong class="text-dark">{{ h.user.name }}</strong>
+                        
+                        {# 根据不同动作显示不同的动词 #}
+                        {% if h.action == '发放' %}
+                            <span class="text-muted">领用了</span>
+                        {% elif h.action == '更换(发放)' %}
+                            <span class="text-info">领用了(新)</span>
+                        {% elif h.action == '更换(回收)' %}
+                            <span class="text-secondary">归还了(旧)</span>
+                        {% else %}
+                            <span class="text-success">归还了</span>
+                        {% endif %}
+                        
+                        <span class="text-primary fw-bold">{{ h.quantity }}</span> 
+                        <span class="text-muted">个{{ asset.name }}</span>
+                        
+                    {# 处理离职自动归还 #}
                     {% elif h.action.startswith('归还（离职自动）') %}
-                    <span class="text-danger"><i class="bi bi-person-x"></i> {{ h.note }}</span>
+                        <span class="text-danger">
+                            <i class="bi bi-person-x me-1"></i> {{ h.note or '员工离职自动归还资产' }}
+                        </span>
+                        
+                    {# 其他操作类型 #}
                     {% else %}
-                    {{ h.action }}数量: <span class="fw-bold">{{ h.quantity }}</span>
+                        <span class="text-muted">{{ h.action }}</span>
+                        <span class="text-dark fw-bold">数量:</span> 
+                        <span class="text-primary fw-bold">{{ h.quantity }}</span>
                     {% endif %}
                 </p>
+                
+                {# 显示备注信息（如果有） #}
+                {% if h.note and not h.action.startswith('归还（离职自动）') %}
+                <div class="mt-2 text-muted small">
+                    <i class="bi bi-chat-right-text me-1"></i> 备注: {{ h.note }}
+                </div>
+                {% endif %}
             </div>
-            </div>
-            {% endfor %}
-            </div>
-            
-            {% from "_pagination.html" import render_pagination %}
-            {{ render_pagination(pagination, 'asset.asset_detail', asset_id=asset.id) }}
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- 分页控件 -->
+    <div class="mt-4">
+        {% from "_pagination.html" import render_pagination %}
+        {{ render_pagination(pagination, 'asset.asset_detail', asset_id=asset.id) }}
+    </div>
 
     {% else %}
-    <div class="text-center py-5 border rounded bg-light shadow-sm">
-        <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
-        <p class="text-muted mt-2">暂无操作历史记录</p>
+    <!-- 无记录时的空状态 -->
+    <div class="text-center py-5 border rounded bg-light shadow-sm" style="border-color: #e9ecef !important;">
+        <div class="mb-3">
+            <i class="bi bi-inbox text-muted" style="font-size: 3rem; opacity: 0.5;"></i>
+        </div>
+        <p class="text-muted mt-2 mb-0">暂无操作历史记录</p>
+        <p class="text-secondary small mt-1">该资产尚未有任何操作记录</p>
     </div>
     {% endif %}
 </div>
-                                
-                            <!-- 操作历史结束 -->
+<!-- 操作历史结束 -->
+
+<!-- 自定义样式和交互 -->
+<style>
+/* 历史记录行悬停效果 */
+.history-row {
+    transition: all 0.2s ease;
+    background-color: #ffffff;
+}
+
+.history-row:hover {
+    background-color: #f8f9fa;
+    transform: translateX(2px);
+}
+
+/* 标签样式优化 */
+.badge {
+    font-size: 0.85em;
+    font-weight: 500;
+    border-radius: 6px;
+}
+
+/* 分页控件样式适配 */
+.pagination {
+    justify-content: center;
+}
+
+.page-link {
+    border-radius: 6px !important;
+    margin: 0 2px;
+}
+
+.page-item.active .page-link {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+/* 响应式优化 */
+@media (max-width: 768px) {
+    .history-row .d-flex.flex-wrap {
+        flex-direction: column;
+        align-items: flex-start !important;
+    }
+    
+    .history-row .bg-light.px-3 {
+        margin-top: 0.5rem;
+        padding: 0.25rem 0.75rem !important;
+    }
+    
+    .history-row {
+        padding: 1rem !important;
+    }
+}
+
+/* 空状态样式优化 */
+.bg-light.shadow-sm {
+    background-color: #fafbfc !important;
+}
+
+/* 边框和间距优化 */
+.border-primary-subtle {
+    border-color: rgba(13, 110, 253, 0.1) !important;
+}
+
+.border-light-subtle {
+    border-color: rgba(248, 249, 250, 0.5) !important;
+}
+</style>
+
+<script>
+// 页面加载完成后初始化交互效果
+document.addEventListener('DOMContentLoaded', function() {
+    // 为历史记录行添加平滑过渡效果
+    const historyRows = document.querySelectorAll('.history-row');
+    historyRows.forEach(row => {
+        row.style.transition = 'all 0.2s ease-in-out';
+        
+        // 点击行时高亮显示
+        row.addEventListener('click', function() {
+            // 移除其他行的高亮
+            historyRows.forEach(r => r.classList.remove('bg-primary-subtle'));
+            // 添加当前行高亮
+            this.classList.add('bg-primary-subtle');
+        });
+    });
+    
+    // 分页按钮交互优化
+    const paginationLinks = document.querySelectorAll('.page-link');
+    paginationLinks.forEach(link => {
+        link.style.transition = 'all 0.2s ease';
+        
+        link.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px)';
+            this.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+        });
+        
+        link.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = 'none';
+        });
+    });
+});
+
+// 可选：添加按操作类型筛选的功能
+function filterHistoryByAction(actionType) {
+    const historyRows = document.querySelectorAll('.history-row');
+    
+    historyRows.forEach(row => {
+        const badge = row.querySelector('.badge');
+        if (actionType === 'all' || (badge && badge.textContent.includes(actionType))) {
+            row.style.display = 'block';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+</script>

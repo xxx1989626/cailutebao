@@ -456,7 +456,7 @@ def asset_exchange(asset_id):
             user_id=user_id,
             operator_id=current_user.id, 
             quantity=quantity, 
-            note=f"发放新物: {reason}"
+            note=f"发放新物: "
         ))
 
         # --- 5. 审计日志 ---

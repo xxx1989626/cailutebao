@@ -1,79 +1,396 @@
+<!-- templates/asset/edit.html -->
 {% extends "base.html" %}
 
 {% block title %}编辑资产 - {{ asset.name }}{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="card shadow">
-        <div class="card-header bg-warning text-dark">
-            <h4 class="mb-0"><i class="bi bi-pencil"></i> 编辑资产 - {{ asset.name }}</h4>
+<style>
+    /* 基础样式变量 */
+    :root {
+        --warning-color: #ffc107;
+        --warning-dark: #e0a800;
+        --success-color: #198754;
+        --secondary-color: #6c757d;
+        --light-color: #f8f9fa;
+        --dark-color: #212529;
+        --danger-color: #dc3545;
+    }
+    
+    /* 卡片样式 */
+    .edit-card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+        max-width: 900px;
+        margin: 0 auto;
+    }
+    
+    /* 卡片头部 */
+    .edit-header {
+        background: linear-gradient(135deg, var(--warning-color) 0%, var(--warning-dark) 100%) !important;
+        padding: 1rem 1.5rem;
+        border-bottom: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    /* 卡片内容 */
+    .edit-body {
+        padding: 2rem;
+    }
+    
+    /* 表单样式 */
+    .form-label {
+        font-weight: 500;
+        color: #495057;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+    }
+    
+    .form-label .required {
+        color: var(--danger-color);
+        margin-left: 4px;
+    }
+    
+    .form-control, .form-select {
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        border: 1px solid #ced4da;
+        transition: all 0.2s ease;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: var(--warning-color);
+        box-shadow: 0 0 0 4px rgba(255, 193, 7, 0.1);
+        outline: none;
+    }
+    
+    .form-control[readonly] {
+        background-color: #f8f9fa;
+        border-color: #e9ecef;
+        color: #6c757d;
+    }
+    
+    /* 表单行间距 */
+    .form-row {
+        margin-bottom: 1.5rem;
+    }
+    
+    /* 提示文本 */
+    .form-text {
+        margin-top: 0.5rem;
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+    
+    .caution-text {
+        color: #fd7e14;
+        font-weight: 500;
+    }
+    
+    /* 照片预览 */
+    .photo-preview {
+        display: inline-block;
+        margin-top: 0.5rem;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid #e9ecef;
+    }
+    
+    .photo-preview img {
+        display: block;
+        transition: transform 0.2s ease;
+    }
+    
+    .photo-preview:hover img {
+        transform: scale(1.05);
+    }
+    
+    /* 按钮样式 */
+    .action-btn {
+        border-radius: 8px;
+        padding: 0.75rem 2rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        margin: 0 0.5rem;
+        min-width: 140px;
+    }
+    
+    .action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .save-btn {
+        background-color: var(--warning-color) !important;
+        border-color: var(--warning-color) !important;
+        color: var(--dark-color) !important;
+    }
+    
+    .save-btn:hover {
+        background-color: var(--warning-dark) !important;
+        border-color: var(--warning-dark) !important;
+    }
+    
+    .cancel-btn {
+        background-color: var(--secondary-color) !important;
+        border-color: var(--secondary-color) !important;
+    }
+    
+    .cancel-btn:hover {
+        background-color: #5c636a !important;
+        border-color: #5c636a !important;
+    }
+    
+    /* 返回按钮 */
+    .back-btn {
+        transition: all 0.2s ease;
+    }
+    
+    .back-btn:hover {
+        transform: translateY(-2px);
+    }
+    
+    /* 响应式优化 */
+    @media (max-width: 768px) {
+        .edit-body {
+            padding: 1rem;
+        }
+        
+        .action-btn {
+            width: 100%;
+            margin: 0.5rem 0;
+            min-width: auto;
+        }
+        
+        .edit-header {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 1rem;
+        }
+    }
+    
+    /* 表单操作区 */
+    .form-actions {
+        margin-top: 2rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid #e9ecef;
+    }
+</style>
+
+<div class="container mt-4 mb-5">
+    <div class="card edit-card shadow">
+        <div class="card-header edit-header bg-warning text-dark">
+            <h4 class="mb-0">
+                <i class="bi bi-pencil me-2"></i>编辑资产 - {{ asset.name }}
+            </h4>
+            <a href="{{ url_for('asset.asset_detail', asset_id=asset.id) }}" class="btn btn-dark btn-sm back-btn">
+                <i class="bi bi-arrow-left me-1"></i>返回详情
+            </a>
         </div>
-        <div class="card-body">
-            <form method="POST" enctype="multipart/form-data">
-                <div class="row">
+        
+        <div class="card-body edit-body">
+            <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
+                <!-- 资产类型和名称 -->
+                <div class="row form-row">
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">资产类型 <span class="text-danger">*</span></label>
+                        <label class="form-label">
+                            资产类型
+                            <span class="required">*</span>
+                        </label>
                         <select name="type" class="form-select" required>
                             {% for t in ['装备', '消耗品', '固定资产', '服饰', '工具'] %}
                             <option value="{{ t }}" {% if t==asset.type %}selected{% endif %}>{{ t }}</option>
                             {% endfor %}
                         </select>
+                        <div class="invalid-feedback">
+                            请选择资产类型
+                        </div>
                     </div>
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">资产名称 <span class="text-danger">*</span></label>
+                        <label class="form-label">
+                            资产名称
+                            <span class="required">*</span>
+                        </label>
                         <input type="text" name="name" class="form-control" value="{{ asset.name }}" required>
+                        <div class="invalid-feedback">
+                            请输入资产名称
+                        </div>
                     </div>
                 </div>
-                <div class="row">
+                
+                <!-- 资产编号和总数 -->
+                <div class="row form-row">
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">资产编号（不可修改）</label>
+                        <label class="form-label">资产编号</label>
                         <input type="text" class="form-control bg-light" value="{{ asset.number }}" readonly>
+                        <div class="form-text">资产编号为唯一标识，不可修改</div>
                     </div>
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">总数（谨慎修改）</label>
+                        <label class="form-label">
+                            总数
+                            <span class="required">*</span>
+                        </label>
                         <input type="number" name="total_quantity" class="form-control"
                             value="{{ asset.total_quantity }}" min="1" required>
+                        <div class="form-text caution-text">
+                            <i class="bi bi-exclamation-triangle me-1"></i>
+                            谨慎修改总数，可能影响库存统计
+                        </div>
+                        <div class="invalid-feedback">
+                            请输入有效的数量（至少1）
+                        </div>
                     </div>
                 </div>
-                <div class="row">
+                
+                <!-- 购置日期和存放位置 -->
+                <div class="row form-row">
                     <div class="col-md-6 mb-3">
                         <label class="form-label">购置日期</label>
-                        <input type="date" name="purchase_date" class="form-control" value="{{ asset.purchase_date }}"
-                            min="0001-01-01" max="9999-12-31">
+                        <input type="date" name="purchase_date" class="form-control" 
+                            value="{{ asset.purchase_date }}" min="0001-01-01" max="9999-12-31">
+                        <div class="form-text">格式：YYYY-MM-DD，留空表示未设置</div>
                     </div>
                     <div class="col-md-6 mb-3">
                         <label class="form-label">存放位置</label>
-                        <input type="text" name="location" class="form-control" value="{{ asset.location }}">
+                        <input type="text" name="location" class="form-control" value="{{ asset.location or '' }}">
+                        <div class="form-text">例如：1号仓库、二楼办公室等</div>
                     </div>
-
                 </div>
-                <div class="row">
+                
+                <!-- 资产归属和照片 -->
+                <div class="row form-row">
                     <div class="col-md-6 mb-3">
                         <label class="form-label">资产归属</label>
                         <select name="ownership" class="form-select">
+                            <option value="">未指定</option>
                             {% for owner in ['公司', '派出所', '个人', '特保队'] %}
-                            <option value="{{ owner }}" {% if asset.ownership==owner %}selected{% endif %}>{{ owner }}
-                            </option>
+                            <option value="{{ owner }}" {% if asset.ownership==owner %}selected{% endif %}>{{ owner }}</option>
                             {% endfor %}
                         </select>
+                        <div class="form-text">资产的所属单位或个人</div>
                     </div>
                     <div class="col-md-6 mb-3">
                         <label class="form-label">资产照片</label>
                         <input type="file" name="photo" class="form-control" accept="image/*">
+                        <div class="form-text">支持JPG、PNG格式，建议大小不超过5MB</div>
                         {% if asset.photo_path %}
-                        <small class="text-muted">当前照片：<img src="/{{ asset.photo_path }}"
-                                width="100"></small>
+                        <div class="photo-preview mt-2">
+                            <img src="/{{ asset.photo_path }}" width="100" alt="{{ asset.name }}照片">
+                        </div>
+                        <div class="form-text mt-1">
+                            <small>当前照片，重新上传将替换原有照片</small>
+                        </div>
                         {% endif %}
                     </div>
                 </div>
-
-                <div class="text-center">
-                    <button type="submit" class="btn btn-warning btn-lg px-5">保存修改</button>
+                
+                <!-- 操作按钮 -->
+                <div class="form-actions text-center">
+                    <button type="submit" class="btn save-btn action-btn btn-lg">
+                        <i class="bi bi-save me-2"></i>保存修改
+                    </button>
                     <a href="{{ url_for('asset.asset_detail', asset_id=asset.id) }}"
-                        class="btn btn-secondary btn-lg px-5">取消</a>
+                        class="btn cancel-btn action-btn btn-lg">
+                        <i class="bi bi-x-circle me-2"></i>取消
+                    </a>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+<script>
+    // 表单验证
+    (() => {
+        'use strict'
+        const forms = document.querySelectorAll('.needs-validation')
+        Array.from(forms).forEach(form => {
+            form.addEventListener('submit', event => {
+                if (!form.checkValidity()) {
+                    event.preventDefault()
+                    event.stopPropagation()
+                }
+                form.classList.add('was-validated')
+                
+                // 添加提交中状态
+                const submitBtn = form.querySelector('.save-btn');
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>保存中...';
+                }
+            }, false)
+        })
+    })()
+
+    // 页面加载完成后的初始化
+    document.addEventListener('DOMContentLoaded', function() {
+        // 取消按钮确认提示
+        const cancelBtn = document.querySelector('.cancel-btn');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', function(e) {
+                // 检查表单是否有修改
+                if (isFormModified()) {
+                    if (!confirm('您有未保存的修改，确定要取消吗？')) {
+                        e.preventDefault();
+                    }
+                }
+            });
+        }
+        
+        // 照片预览点击放大
+        const photoPreview = document.querySelector('.photo-preview img');
+        if (photoPreview) {
+            photoPreview.style.cursor = 'pointer';
+            photoPreview.addEventListener('click', function() {
+                // 在新窗口打开大图
+                window.open(this.src, '_blank', 'width=800,height=600');
+            });
+        }
+        
+        // 文件选择验证（图片）
+        const photoInput = document.querySelector('input[name="photo"]');
+        if (photoInput) {
+            photoInput.addEventListener('change', function() {
+                if (this.files && this.files[0]) {
+                    const file = this.files[0];
+                    const fileSize = (file.size / 1024 / 1024).toFixed(2);
+                    
+                    // 检查文件大小（限制5MB）
+                    if (fileSize > 5) {
+                        alert(`图片大小(${fileSize}MB)超过限制(5MB)，请选择更小的图片`);
+                        this.value = '';
+                        return;
+                    }
+                    
+                    // 检查文件格式
+                    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif'];
+                    if (!allowedTypes.includes(file.type)) {
+                        alert('请选择有效的图片文件（JPG、PNG、GIF格式）');
+                        this.value = '';
+                        return;
+                    }
+                }
+            });
+        }
+        
+        // 检测表单是否被修改
+        function isFormModified() {
+            const inputs = document.querySelectorAll('input:not([readonly]), select, textarea');
+            for (let input of inputs) {
+                if (input.type === 'checkbox' || input.type === 'radio') {
+                    if (input.defaultChecked !== input.checked) return true;
+                } else if (input.type === 'file') {
+                    if (input.files.length > 0) return true;
+                } else if (input.defaultValue !== input.value) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    });
+</script>
 {% endblock %}

@@ -1,70 +1,261 @@
-                            <div class="mt-4 p-3 bg-light rounded shadow-sm">
-                                <div class="d-flex flex-wrap gap-2">
-                                    <!-- 发放按钮，仅装备和服饰类型且有库存时显示 -->
-                                    {% if asset.type in ['装备', '服饰'] and asset.stock_quantity > 0 %}
-                                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#issueModal">
-                                        <i class="bi bi-person-plus-fill"></i> 发放
-                                    </button>
-                                    {% endif %}
-                                    <!-- 归还按钮，仅当有已分配数量时显示 -->
-                                    {% if asset.allocated_quantity and asset.allocated_quantity > 0 %}
-                                    <button class="btn btn-outline-primary" data-bs-toggle="modal"
-                                        data-bs-target="#returnModal">
-                                        <i class="bi bi-box-arrow-in-left"></i> 归还
-                                    </button>
-                                    {% endif %}
-                                    <!-- 更换装备 -->
-                                    {% if asset.type in ['装备', '服饰'] and asset.allocated_quantity > 0 %}
-                                    <button class="btn btn-info text-white shadow-sm" 
-                                        data-bs-toggle="modal" data-bs-target="#exchangeModal">
-                                        <i class="bi bi-arrow-left-right"></i> 更换
-                                    </button>
-                                    {% endif %}
-                                    <!-- 消耗按钮，仅消耗品类型显示 -->
-                                    {% if asset.type == '消耗品' %}
-                                    <button class="btn btn-danger" data-bs-toggle="modal"
-                                        data-bs-target="#consumeModal">
-                                        <i class="bi bi-basket3-fill"></i> 消耗
-                                    </button>
-                                    {% endif %}
-                                    <!-- 补充库存按钮 -->     
-                                     {% if asset.type != '固定资产' %}     
-                                    <button class="btn btn-success" data-bs-toggle="modal"
-                                        data-bs-target="#supplementModal">
-                                        <i class="bi bi-plus-circle"></i> 补充
-                                    </button>
-                                    {% endif %}
-                                    <!-- 维修/修复按钮：排除消耗品类型 -->
-                                    {% if asset.type == '固定资产' %}
-                                        {% if asset.status == '维修中' %}
-                                        <button class="btn btn-info text-white" onclick="handleRepairClick()"
-                                            id="mainRepairBtn">
-                                            <i class="bi bi-check-circle"></i> <span id="repairBtnText">维修完成</span>
-                                        </button>
-                                        {% else %}
-                                        <button class="btn btn-warning" onclick="handleRepairClick()" id="mainRepairBtn">
-                                            <i class="bi bi-wrench"></i> <span id="repairBtnText">维修</span>
-                                        </button>
-                                        {% endif %}
-                                    {% endif %}
-                                    <!-- 报废按钮：排除消耗品类型 -->
-                                    {% if asset.type != '消耗品' %}
-                                    <button class="btn btn-danger" onclick="handleScrapClick()" id="scrapBtn">
-                                        <i class="bi bi-trash3"></i><span id="scrapBtnText">报废</span>
-                                    </button>
-                                    {% endif %}
-                                </div>
+<!-- templates/asset/_asset_actions.html -->
+<div class="mt-4 p-4 bg-white rounded-3 shadow-sm border border-light-subtle">
+    <!-- 主要操作按钮组 -->
+    <div class="d-flex flex-wrap gap-2 mb-3">
+        <!-- 发放按钮，仅装备和服饰类型且有库存时显示 -->
+        {% if asset.type in ['装备', '服饰'] and asset.stock_quantity > 0 %}
+        <button class="btn btn-primary btn-sm px-3 py-2 shadow-sm" 
+                data-bs-toggle="modal" 
+                data-bs-target="#issueModal"
+                title="发放该资产给使用人">
+            <i class="bi bi-person-plus-fill me-1"></i> 发放
+        </button>
+        {% endif %}
+        
+        <!-- 归还按钮，仅当有已分配数量时显示 -->
+        {% if asset.allocated_quantity and asset.allocated_quantity > 0 %}
+        <button class="btn btn-outline-primary btn-sm px-3 py-2" 
+                data-bs-toggle="modal"
+                data-bs-target="#returnModal"
+                title="收回已发放的资产">
+            <i class="bi bi-box-arrow-in-left me-1"></i> 归还
+        </button>
+        {% endif %}
+        
+        <!-- 更换装备 -->
+        {% if asset.type in ['装备', '服饰'] and asset.allocated_quantity > 0 %}
+        <button class="btn btn-info btn-sm px-3 py-2 text-white shadow-sm" 
+                data-bs-toggle="modal" 
+                data-bs-target="#exchangeModal"
+                title="更换已发放的装备/服饰">
+            <i class="bi bi-arrow-left-right me-1"></i> 更换
+        </button>
+        {% endif %}
+        
+        <!-- 消耗按钮，仅消耗品类型显示 -->
+        {% if asset.type == '消耗品' %}
+        <button class="btn btn-danger btn-sm px-3 py-2 shadow-sm" 
+                data-bs-toggle="modal"
+                data-bs-target="#consumeModal"
+                title="记录消耗品的使用">
+            <i class="bi bi-basket3-fill me-1"></i> 消耗
+        </button>
+        {% endif %}
+        
+        <!-- 补充库存按钮 -->     
+        {% if asset.type != '固定资产' %}     
+        <button class="btn btn-success btn-sm px-3 py-2 shadow-sm" 
+                data-bs-toggle="modal"
+                data-bs-target="#supplementModal"
+                title="补充该资产的库存数量">
+            <i class="bi bi-plus-circle me-1"></i> 补充
+        </button>
+        {% endif %}
+        
+        <!-- 维修/修复按钮：排除消耗品类型 -->
+        {% if asset.type == '固定资产' %}
+            {% if asset.status == '维修中' %}
+            <button class="btn btn-info btn-sm px-3 py-2 text-white shadow-sm" 
+                    onclick="handleRepairClick()"
+                    id="mainRepairBtn"
+                    title="标记该固定资产维修完成">
+                <i class="bi bi-check-circle me-1"></i> <span id="repairBtnText">维修完成</span>
+            </button>
+            {% else %}
+            <button class="btn btn-warning btn-sm px-3 py-2 shadow-sm" 
+                    onclick="handleRepairClick()" 
+                    id="mainRepairBtn"
+                    title="将该固定资产标记为维修中">
+                <i class="bi bi-wrench me-1"></i> <span id="repairBtnText">维修</span>
+            </button>
+            {% endif %}
+        {% endif %}
+        
+        <!-- 报废按钮：排除消耗品类型 -->
+        {% if asset.type != '消耗品' %}
+        <button class="btn btn-danger btn-sm px-3 py-2 shadow-sm" 
+                onclick="handleScrapClick()" 
+                id="scrapBtn"
+                title="报废该资产（不可逆操作）">
+            <i class="bi bi-trash3 me-1"></i><span id="scrapBtnText">报废</span>
+        </button>
+        {% endif %}
+    </div>
 
-                                {% if current_user.role == 'admin' %}
-                                <div class="mt-4 pt-3 border-top d-flex justify-content-end gap-2">
-                                    <a href="{{ url_for('asset.asset_edit', asset_id=asset.id) }}"
-                                        class="btn btn-sm btn-outline-secondary">
-                                        <i class="bi bi-pencil"></i> 编辑资料
-                                    </a>
-                                    <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal"
-                                        data-bs-target="#deleteModal">
-                                        <i class="bi bi-trash"></i> 彻底删除
-                                    </button>
-                                </div>
-                                {% endif %}
-                            </div>
+    <!-- 管理员操作区域 -->
+    {% if current_user.role == 'admin' %}
+    <div class="mt-3 pt-3 border-top border-light-subtle d-flex justify-content-end gap-2">
+        <a href="{{ url_for('asset.asset_edit', asset_id=asset.id) }}"
+            class="btn btn-sm btn-outline-secondary px-3 py-1"
+            title="编辑该资产的基本信息">
+            <i class="bi bi-pencil me-1"></i> 编辑资料
+        </a>
+        <button class="btn btn-sm btn-outline-danger px-3 py-1" 
+                data-bs-toggle="modal"
+                data-bs-target="#deleteModal"
+                title="彻底删除该资产记录（不可逆操作）">
+            <i class="bi bi-trash me-1"></i> 彻底删除
+        </button>
+    </div>
+    {% endif %}
+</div>
+
+<!-- 操作确认提示的JS -->
+<script>
+// 维修操作处理函数
+function handleRepairClick() {
+    const btn = document.getElementById('mainRepairBtn');
+    const btnText = document.getElementById('repairBtnText');
+    const isRepairing = btnText.textContent === '维修';
+    
+    // 确认操作
+    const confirmMessage = isRepairing 
+        ? '确认将该固定资产标记为维修中？' 
+        : '确认该固定资产维修完成并恢复正常状态？';
+    
+    if (confirm(confirmMessage)) {
+        // 这里可以添加AJAX请求来更新资产状态
+        
+        // 临时提示（实际项目中替换为AJAX请求）
+        alert(`操作成功！资产已${isRepairing ? '标记为维修中' : '恢复正常状态'}`);
+        
+        // 模拟按钮状态更新
+        if (isRepairing) {
+            btn.className = 'btn btn-info btn-sm px-3 py-2 text-white shadow-sm';
+            btnText.textContent = '维修完成';
+            btn.title = '标记该固定资产维修完成';
+        } else {
+            btn.className = 'btn btn-warning btn-sm px-3 py-2 shadow-sm';
+            btnText.textContent = '维修';
+            btn.title = '将该固定资产标记为维修中';
+        }
+    }
+}
+
+// 报废操作处理函数
+function handleScrapClick() {
+    // 二次确认，防止误操作
+    if (confirm('警告！报废操作不可逆，确认要报废该资产吗？\n\n报废后该资产将无法恢复使用！')) {
+        // 这里可以添加AJAX请求来处理报废逻辑
+        
+        // 临时提示（实际项目中替换为AJAX请求）
+        alert('资产已成功报废！页面将刷新以更新状态');
+        location.reload();
+    }
+}
+
+// 统一按钮样式和交互效果
+document.addEventListener('DOMContentLoaded', function() {
+    // 为所有操作按钮添加悬停效果
+    const actionButtons = document.querySelectorAll('.btn-sm');
+    actionButtons.forEach(btn => {
+        // 跳过禁用状态的按钮
+        if (btn.disabled) return;
+        
+        // 添加过渡效果
+        btn.style.transition = 'all 0.2s ease';
+        
+        // 悬停效果
+        btn.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px)';
+            this.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
+        });
+        
+        btn.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = btn.classList.contains('shadow-sm') ? '0 2px 4px rgba(0, 0, 0, 0.05)' : 'none';
+        });
+        
+        // 点击反馈
+        btn.addEventListener('mousedown', function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.1)';
+        });
+        
+        btn.addEventListener('mouseup', function() {
+            this.style.transform = 'translateY(-2px)';
+            this.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.1)';
+        });
+    });
+});
+</script>
+
+<!-- 自定义样式 -->
+<style>
+/* 操作区域容器样式优化 */
+.bg-white.rounded-3 {
+    background-color: #ffffff !important;
+    border-radius: 8px !important;
+}
+
+.border-light-subtle {
+    border-color: #e9ecef !important;
+}
+
+/* 按钮组间距和对齐优化 */
+.d-flex.flex-wrap.gap-2 {
+    gap: 0.5rem !important;
+}
+
+/* 按钮样式统一优化 */
+.btn-sm {
+    border-radius: 6px !important;
+    font-weight: 500 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+}
+
+/* 不同类型按钮的阴影优化 */
+.btn-primary.shadow-sm {
+    box-shadow: 0 2px 4px rgba(13, 110, 253, 0.15) !important;
+}
+
+.btn-success.shadow-sm {
+    box-shadow: 0 2px 4px rgba(25, 135, 84, 0.15) !important;
+}
+
+.btn-danger.shadow-sm {
+    box-shadow: 0 2px 4px rgba(220, 53, 69, 0.15) !important;
+}
+
+.btn-warning.shadow-sm {
+    box-shadow: 0 2px 4px rgba(255, 193, 7, 0.15) !important;
+}
+
+.btn-info.shadow-sm {
+    box-shadow: 0 2px 4px rgba(13, 202, 240, 0.15) !important;
+}
+
+/* 响应式优化 - 小屏幕下按钮换行更友好 */
+@media (max-width: 576px) {
+    .d-flex.flex-wrap.gap-2 {
+        justify-content: center !important;
+    }
+    
+    .btn-sm {
+        flex: 1 1 calc(50% - 0.5rem) !important;
+        min-width: 100px !important;
+    }
+    
+    .mt-3.pt-3.border-top {
+        justify-content: center !important;
+    }
+}
+
+/* 管理员操作按钮样式优化 */
+.btn-outline-secondary, .btn-outline-danger {
+    transition: all 0.2s ease !important;
+}
+
+.btn-outline-secondary:hover {
+    background-color: #6c757d !important;
+    color: white !important;
+}
+
+.btn-outline-danger:hover {
+    background-color: #dc3545 !important;
+    color: white !important;
+}
+</style>

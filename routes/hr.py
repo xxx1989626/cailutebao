@@ -479,7 +479,7 @@ def delete_pending(id):
 @login_required
 @perm.require('hr.edit')
 def generate_qr():
-    base_url = "http://cailutebao.top:8000"
+    base_url = "https://cailutebao.top"
     target_url = base_url + url_for('hr.self_register')
     qr = qrcode.QRCode(version=1, box_size=10, border=5)
     qr.add_data(target_url)

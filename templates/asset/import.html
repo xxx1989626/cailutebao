@@ -1,35 +1,274 @@
+<!-- templates/asset/import.html -->
 {% extends "base.html" %}
 
 {% block title %}导入资产{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="card shadow">
-        <div class="card-header bg-info text-white">
-            <h4 class="mb-0"><i class="bi bi-upload"></i> 导入资产</h4>
+<style>
+    /* 基础样式变量 */
+    :root {
+        --primary-color: #0dcaf0; /* info色值作为主色调 */
+        --success-color: #198754;
+        --secondary-color: #6c757d;
+        --light-color: #f8f9fa;
+        --dark-color: #212529;
+    }
+    
+    /* 卡片样式 */
+    .import-card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    
+    /* 卡片头部 */
+    .import-header {
+        background: linear-gradient(135deg, var(--primary-color) 0%, #0aa1c0 100%) !important;
+        padding: 1rem 1.5rem;
+        border-bottom: none;
+    }
+    
+    /* 卡片内容 */
+    .import-body {
+        padding: 2rem;
+    }
+    
+    /* 提示信息 */
+    .import-alert {
+        border-radius: 8px;
+        border-left: 4px solid var(--primary-color);
+        background-color: rgba(13, 202, 240, 0.05);
+        border-color: #b6e7f1;
+        padding: 1.25rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .import-alert strong {
+        color: var(--primary-color);
+    }
+    
+    .import-alert ul {
+        margin-top: 0.5rem;
+        padding-left: 1.5rem;
+    }
+    
+    .import-alert li {
+        margin-bottom: 0.5rem;
+        color: #495057;
+    }
+    
+    .import-alert li:last-child {
+        margin-bottom: 0;
+    }
+    
+    /* 文件输入框 */
+    .file-input {
+        border-radius: 8px;
+        padding: 1rem;
+        border: 1px solid #ced4da;
+        transition: all 0.2s ease;
+        background-color: white;
+    }
+    
+    .file-input:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 4px rgba(13, 202, 240, 0.1);
+        outline: none;
+    }
+    
+    /* 按钮样式 */
+    .action-btn {
+        border-radius: 8px;
+        padding: 0.75rem 2rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        margin: 0 0.5rem;
+        min-width: 140px;
+    }
+    
+    .action-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .import-btn {
+        background-color: var(--success-color) !important;
+        border-color: var(--success-color) !important;
+    }
+    
+    .import-btn:hover {
+        background-color: #157347 !important;
+        border-color: #157347 !important;
+    }
+    
+    .cancel-btn {
+        background-color: var(--secondary-color) !important;
+        border-color: var(--secondary-color) !important;
+    }
+    
+    .cancel-btn:hover {
+        background-color: #5c636a !important;
+        border-color: #5c636a !important;
+    }
+    
+    /* 表单标签 */
+    .form-label {
+        font-weight: 500;
+        color: #495057;
+        margin-bottom: 0.75rem;
+    }
+    
+    /* 响应式优化 */
+    @media (max-width: 768px) {
+        .import-body {
+            padding: 1rem;
+        }
+        
+        .action-btn {
+            width: 100%;
+            margin: 0.5rem 0;
+            min-width: auto;
+        }
+        
+        .import-alert {
+            padding: 1rem;
+        }
+    }
+    
+    /* 导入区域样式 */
+    .import-form {
+        margin-top: 1rem;
+    }
+    
+    /* 返回按钮 */
+    .back-btn {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        transition: all 0.2s ease;
+    }
+    
+    .back-btn:hover {
+        transform: translateY(-2px);
+    }
+</style>
+
+<div class="container mt-4 mb-5">
+    <div class="card import-card shadow">
+        <div class="card-header import-header bg-info text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">
+                <i class="bi bi-upload me-2"></i>批量导入资产
+            </h4>
+            <a href="{{ url_for('asset.asset_list') }}" class="btn btn-light btn-sm back-btn">
+                <i class="bi bi-arrow-left me-1"></i>返回列表
+            </a>
         </div>
-        <div class="card-body">
-            <div class="alert alert-info">
-                <strong>导入要求：</strong>
-                <ul class="mb-0">
-                    <li>必须包含列：资产类型、资产名称、资产编号</li>
-                    <li>可选列：数量、购置日期、存放位置、分配模式（personal/group）、部门</li>
-                    <li>资产编号不能重复</li>
-                    <li>数量默认为1</li>
-                </ul>
+        
+        <div class="card-body import-body">
+            <!-- 导入说明 -->
+            <div class="import-alert alert alert-info">
+                <div class="d-flex align-items-start">
+                    <i class="bi bi-info-circle text-info fs-4 me-3 mt-1"></i>
+                    <div>
+                        <strong>导入文件格式要求</strong>
+                        <ul class="mb-0">
+                            <li><span class="text-danger">★</span> 必须包含列：资产类型、资产名称、资产编号</li>
+                            <li><span class="text-secondary">○</span> 可选列：数量、购置日期、存放位置、分配模式（personal/group）、部门</li>
+                            <li><span class="text-warning">⚠</span> 资产编号不能重复，重复将导入失败</li>
+                            <li><span class="text-muted">ℹ</span> 数量未填写时默认值为1</li>
+                            <li><span class="text-muted">ℹ</span> 仅支持 .xlsx 格式的Excel文件</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
 
-            <form method="POST" enctype="multipart/form-data">
-                <div class="mb-3">
-                    <label class="form-label">选择Excel文件</label>
-                    <input type="file" name="file" class="form-control" accept=".xlsx" required>
+            <!-- 导入表单 -->
+            <form method="POST" enctype="multipart/form-data" class="import-form needs-validation" novalidate>
+                <div class="mb-4">
+                    <label class="form-label">
+                        <i class="bi bi-file-earmark-excel text-success me-1"></i> 选择Excel文件
+                        <span class="text-danger">*</span>
+                    </label>
+                    <input type="file" name="file" class="form-control file-input" accept=".xlsx, .xls" required>
+                    <div class="invalid-feedback">
+                        请选择有效的Excel文件
+                    </div>
+                    <div class="text-muted small mt-2">
+                        <i class="bi bi-exclamation-circle me-1"></i> 
+                        建议单次导入不超过1000条数据，文件大小不超过10MB
+                    </div>
                 </div>
-                <div class="text-center">
-                    <button type="submit" class="btn btn-success btn-lg px-5">开始导入</button>
-                    <a href="{{ url_for('asset.asset_list') }}" class="btn btn-secondary btn-lg px-5">取消</a>
+                
+                <div class="text-center mt-5 pt-4 border-top">
+                    <button type="submit" class="btn btn-success action-btn import-btn btn-lg">
+                        <i class="bi bi-cloud-upload me-2"></i>开始导入
+                    </button>
+                    <a href="{{ url_for('asset.asset_list') }}" class="btn btn-secondary action-btn cancel-btn btn-lg">
+                        <i class="bi bi-x-circle me-2"></i>取消
+                    </a>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+<script>
+    // 表单验证
+    (() => {
+        'use strict'
+        const forms = document.querySelectorAll('.needs-validation')
+        Array.from(forms).forEach(form => {
+            form.addEventListener('submit', event => {
+                if (!form.checkValidity()) {
+                    event.preventDefault()
+                    event.stopPropagation()
+                }
+                form.classList.add('was-validated')
+                
+                // 添加提交中状态
+                const submitBtn = form.querySelector('.import-btn');
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>导入中...';
+                }
+            }, false)
+        })
+    })()
+
+    // 文件选择验证
+    document.addEventListener('DOMContentLoaded', function() {
+        const fileInput = document.querySelector('.file-input');
+        
+        if (fileInput) {
+            fileInput.addEventListener('change', function() {
+                if (this.files && this.files[0]) {
+                    const file = this.files[0];
+                    const fileName = file.name;
+                    const fileSize = (file.size / 1024 / 1024).toFixed(2);
+                    
+                    // 检查文件大小（限制10MB）
+                    if (fileSize > 10) {
+                        alert(`文件大小(${fileSize}MB)超过限制(10MB)，请选择更小的文件`);
+                        this.value = '';
+                        return;
+                    }
+                    
+                    // 检查文件格式
+                    const ext = fileName.split('.').pop().toLowerCase();
+                    if (!['xlsx', 'xls'].includes(ext)) {
+                        alert('请选择有效的Excel文件（.xlsx 或 .xls 格式）');
+                        this.value = '';
+                        return;
+                    }
+                    
+                    // 显示文件名提示
+                    alert(`已选择文件：${fileName}\n文件大小：${fileSize}MB`);
+                }
+            });
+        }
+    });
+</script>
 {% endblock %}

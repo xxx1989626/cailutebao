@@ -406,10 +406,10 @@ if __name__ == '__main__':
             app, 
             host='0.0.0.0', 
             port=8000, 
-            debug=True, 
+            debug=False, 
             keyfile=key_file,
             certfile=cert_file
         )
     else:
         print("警告：未找到证书文件，将以普通的 HTTP 模式启动！")
-        socketio.run(app, host='0.0.0.0', port=8000, debug=True)
+        socketio.run(app, host='0.0.0.0', port=8000, debug=False)

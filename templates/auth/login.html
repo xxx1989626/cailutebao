@@ -1,35 +1,225 @@
+<!-- templates/auth/login.html -->
 {% extends "base.html" %}
 
 {% block title %}登录系统{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-4">
-            <div class="card shadow">
-                <div class="card-header bg-primary text-white text-center">
-                    <h4><i class="bi bi-shield-lock"></i> 系统登录</h4>
+<!-- 自定义样式 -->
+<style>
+    /* 登录卡片样式 */
+    .login-card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(149, 157, 165, 0.1);
+        transition: all 0.3s ease;
+        overflow: hidden;
+    }
+    
+    .login-card:hover {
+        box-shadow: 0 12px 30px rgba(149, 157, 165, 0.2);
+    }
+    
+    /* 头部样式 */
+    .login-header {
+        background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+        padding: 1.5rem;
+        border-radius: 12px 12px 0 0 !important;
+    }
+    
+    .login-header h4 {
+        font-weight: 500;
+        letter-spacing: 0.5px;
+    }
+    
+    /* 卡片主体样式 */
+    .login-body {
+        padding: 2rem;
+    }
+    
+    /* 表单控件样式 */
+    .form-control:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+    }
+    
+    .form-label {
+        font-weight: 500;
+        color: #212529;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* 密码切换按钮 */
+    .password-toggle {
+        cursor: pointer;
+        color: #6c757d;
+        transition: color 0.2s ease;
+    }
+    
+    .password-toggle:hover {
+        color: #0d6efd;
+    }
+    
+    /* 按钮样式 */
+    .btn-login {
+        background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+        border: none;
+        padding: 0.75rem 2rem;
+        font-weight: 500;
+        border-radius: 8px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .btn-login:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(13, 110, 253, 0.3);
+    }
+    
+    .btn-login:active {
+        transform: translateY(0);
+    }
+    
+    /* 页脚样式 */
+    .login-footer {
+        background-color: #f8f9fa;
+        border-top: 1px solid #e9ecef;
+        padding: 1rem;
+        font-size: 0.875rem;
+    }
+    
+    /* 输入框组样式 */
+    .input-group-text {
+        background-color: #f8f9fa;
+        border-right: none;
+    }
+    
+    .form-control:not(:last-child) {
+        border-left: none;
+    }
+    
+    /* 登录容器垂直居中优化 */
+    .login-container {
+        min-height: calc(100vh - 4rem);
+        display: flex;
+        align-items: center;
+        padding: 2rem 0;
+    }
+</style>
+
+<div class="container login-container">
+    <div class="row justify-content-center w-100">
+        <div class="col-md-4 col-sm-6">
+            <div class="card login-card">
+                <!-- 登录卡片头部 -->
+                <div class="card-header login-header text-white text-center">
+                    <h4 class="mb-0">
+                        <i class="bi bi-shield-lock me-2"></i> 系统登录
+                    </h4>
                 </div>
-                <div class="card-body">
-                    <form method="POST">
-                        <div class="mb-3">
+                
+                <!-- 登录表单主体 -->
+                <div class="card-body login-body">
+                    <form method="POST" id="loginForm">
+                        <!-- 用户名输入框 -->
+                        <div class="mb-4">
                             <label class="form-label">用户名（身份证号码）</label>
-                            <input type="text" name="username" class="form-control" required autofocus>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="bi bi-person"></i>
+                                </span>
+                                <input type="text" name="username" class="form-control" 
+                                       placeholder="请输入身份证号码" required autofocus>
+                            </div>
                         </div>
-                        <div class="mb-3">
+                        
+                        <!-- 密码输入框 -->
+                        <div class="mb-4">
                             <label class="form-label">密码（默认身份证后六位）</label>
-                            <input type="password" name="password" class="form-control" required>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="bi bi-key"></i>
+                                </span>
+                                <input type="password" name="password" id="password" class="form-control" 
+                                       placeholder="请输入登录密码" required>
+                                <span class="input-group-text password-toggle" onclick="togglePassword()">
+                                    <i class="bi bi-eye-slash" id="toggleIcon"></i>
+                                </span>
+                            </div>
+                            <div class="form-text text-muted mt-1">
+                                <small>默认密码为身份证号码后六位，请登录后及时修改</small>
+                            </div>
                         </div>
-                        <div class="text-center">
-                            <button type="submit" class="btn btn-primary btn-lg px-5">登录</button>
+                        
+                        <!-- 登录按钮 -->
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-login">
+                                <i class="bi bi-box-arrow-in-right me-1"></i> 登录
+                            </button>
                         </div>
                     </form>
                 </div>
-                <div class="card-footer text-center text-muted">
-                    <small>蔡路特保队队务管理系统</small>
+                
+                <!-- 卡片页脚 -->
+                <div class="card-footer login-footer text-center text-muted">
+                    <small>© 2026 蔡路特保队队务管理系统</small>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<!-- JavaScript 交互逻辑 -->
+<script>
+    // 切换密码可见性
+    function togglePassword() {
+        const passwordInput = document.getElementById('password');
+        const toggleIcon = document.getElementById('toggleIcon');
+        
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            toggleIcon.classList.remove('bi-eye-slash');
+            toggleIcon.classList.add('bi-eye');
+        } else {
+            passwordInput.type = 'password';
+            toggleIcon.classList.remove('bi-eye');
+            toggleIcon.classList.add('bi-eye-slash');
+        }
+    }
+    
+    // 表单提交处理
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
+        // 获取表单元素
+        const username = this.querySelector('input[name="username"]').value.trim();
+        const password = this.querySelector('input[name="password"]').value.trim();
+        
+        // 简单的客户端验证
+        if (!username) {
+            e.preventDefault();
+            alert('请输入身份证号码');
+            this.querySelector('input[name="username"]').focus();
+            return false;
+        }
+        
+        if (!password) {
+            e.preventDefault();
+            alert('请输入登录密码');
+            this.querySelector('input[name="password"]').focus();
+            return false;
+        }
+        
+        // 提交前禁用按钮防止重复提交
+        const submitBtn = this.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> 登录中...';
+    });
+    
+    // 回车提交表单
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            const activeElement = document.activeElement;
+            if (activeElement.tagName === 'INPUT') {
+                document.getElementById('loginForm').submit();
+            }
+        }
+    });
+</script>
 {% endblock %}

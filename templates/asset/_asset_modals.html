@@ -1,6 +1,116 @@
+<!-- templates/asset/_asset_modals.html -->
+<!-- 统一的模态框样式前置定义 -->
+<style>
+    /* 模态框通用样式优化 */
+    .modal-content {
+        border-radius: 10px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        border: none;
+        overflow: hidden;
+    }
+    
+    .modal-header {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .modal-body {
+        padding: 1.5rem;
+    }
+    
+    .modal-footer {
+        padding: 1rem 1.5rem;
+        border-top: 1px solid #e9ecef;
+    }
+    
+    /* 表单控件样式优化 */
+    .form-select, .form-control {
+        border-radius: 6px;
+        border: 1px solid #ced4da;
+        transition: all 0.2s ease;
+    }
+    
+    .form-select:focus, .form-control:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+        outline: none;
+    }
+    
+    /* 按钮样式统一 */
+    .modal-footer .btn {
+        border-radius: 6px;
+        padding: 0.5rem 1.25rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+    
+    .modal-footer .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* 提示信息样式优化 */
+    .alert {
+        border-radius: 6px;
+        border: none;
+        padding: 0.75rem 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    /* 标签样式 */
+    .form-label.fw-bold {
+        color: #212529;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* 禁用按钮样式 */
+    .btn:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+        transform: none !important;
+        box-shadow: none !important;
+    }
+    
+    /* 响应式优化 */
+    @media (max-width: 576px) {
+        .modal-dialog {
+            margin: 1rem;
+        }
+        
+        .modal-header, .modal-body, .modal-footer {
+            padding: 1rem;
+        }
+        
+        .form-control-lg {
+            font-size: 1rem;
+        }
+    }
+    
+    /* 不同类型模态框头部样式 */
+    .modal-header.bg-primary {
+        background-color: #0d6efd !important;
+    }
+    
+    .modal-header.bg-warning {
+        background-color: #ffc107 !important;
+    }
+    
+    .modal-header.bg-info {
+        background-color: #0dcaf0 !important;
+    }
+    
+    .modal-header.bg-danger {
+        background-color: #dc3545 !important;
+    }
+    
+    .modal-header.bg-success {
+        background-color: #198754 !important;
+    }
+</style>
+
 <!-- 子资产动态模态框 -->
 <div class="modal fade" id="subAssetDynamicModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <form id="subAssetForm" method="POST" class="modal-content">
             <div class="modal-header" id="subModalHeader">
                 <h5 class="modal-title" id="subModalTitle">子资产操作</h5>
@@ -8,13 +118,18 @@
             </div>
             <div class="modal-body">
                 <input type="hidden" name="sub_asset_id" id="hiddenSubId">
-                <p id="subModalMessage" class="fw-bold"></p>
+                <p id="subModalMessage" class="fw-bold text-dark mb-4"></p>
+                
                 <div class="mb-3">
-                    <label class="form-label" id="subNoteLabel">原因/备注 <span class="text-danger">*</span></label>
-                    <textarea name="note" class="form-control" rows="3" required placeholder="请详细说明情况..."></textarea>
+                    <label class="form-label fw-bold" id="subNoteLabel">原因/备注 <span class="text-danger">*</span></label>
+                    <textarea name="note" class="form-control" rows="3" required 
+                              placeholder="请详细说明情况..." style="resize: vertical;"></textarea>
+                    <div class="form-text text-muted">请尽可能详细描述，便于后续追溯</div>
                 </div>
+                
                 <div class="alert alert-warning small">
-                    <i class="bi bi-exclamation-triangle"></i> 注意：此操作仅针对选中的单个编号生效。
+                    <i class="bi bi-exclamation-triangle me-1"></i> 
+                    注意：此操作仅针对选中的单个编号生效。
                 </div>
             </div>
             <div class="modal-footer">
@@ -24,323 +139,480 @@
         </form>
     </div>
 </div>
+
 <!-- 发放模态框 -->
 {% if asset.type in ['装备', '服饰'] and asset.stock_quantity > 0 %}
-<div class="modal fade" id="issueModal">
-    <div class="modal-dialog">
+<div class="modal fade" id="issueModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">发放资产</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title"><i class="bi bi-person-plus-fill me-2"></i> 发放资产</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="POST" action="{{ url_for('asset.asset_issue', asset_id=asset.id) }}">
                 <div class="modal-body">
-                    <label class="form-label">选择使用人 <span class="text-danger">*</span></label>
-                    <select name="user_id" class="form-select" required>
-                        <option value="">-- 请选择在职队员 --</option>
-                        {# 1. 预计算每个人的持有量 #}
-                        {% set current_holdings = {} %}
-                        {% for a in asset.allocations if a.return_date is none %}
-                        {% set _ = current_holdings.update({a.user_id: (current_holdings.get(a.user_id, 0) +
-                        a.quantity)}) %}
-                        {% endfor %}
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">选择使用人 <span class="text-danger">*</span></label>
+                        <select name="user_id" class="form-select" required>
+                            <option value="">-- 请选择在职队员 --</option>
+                            {# 1. 预计算每个人的持有量 #}
+                            {% set current_holdings = {} %}
+                            {% for a in asset.allocations if a.return_date is none %}
+                                {% set _ = current_holdings.update({a.user_id: (current_holdings.get(a.user_id, 0) + a.quantity)}) %}
+                            {% endfor %}
 
-                        {# 2. 循环员工列表 #}
-                        {% for emp in in_service_employees %}
-                        {% set held_qty = current_holdings.get(emp.id, 0) %}
-                        <option value="{{ emp.id }}">
-                            {{ emp.name }}
-                            {# 3. 判断：只有持有量大于 0 才显示括号内容 #}
-                            {% if held_qty > 0 %}
-                            (当前持有: {{ held_qty }} 个)
-                            {% endif %}
-                        </option>
-                        {% endfor %}
-                    </select>
-                    <div class="mb-3 mt-3">
-                        <label class="form-label">发放数量</label>
+                            {# 2. 循环员工列表 #}
+                            {% for emp in in_service_employees %}
+                                {% set held_qty = current_holdings.get(emp.id, 0) %}
+                                <option value="{{ emp.id }}">
+                                    {{ emp.name }}
+                                    {# 3. 判断：只有持有量大于 0 才显示括号内容 #}
+                                    {% if held_qty > 0 %}
+                                        (当前持有: {{ held_qty }} 个)
+                                    {% endif %}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">发放数量 <span class="text-danger">*</span></label>
                         <input type="number" name="quantity" class="form-control" value="1" min="1"
-                            max="{{ asset.stock_quantity }}" required>
-                        <small class="text-muted">剩余库存：{{ asset.stock_quantity }}</small>
-                    </div>
-                    <label class="form-label">备注</label>
-                    <textarea name="note" class="form-control" rows="2" placeholder="可选"></textarea>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="submit" class="btn btn-primary">确认发放</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-{% endif %}
-<!-- 归还模态框 -->
-{% if asset.allocated_quantity > 0 %}
-<div class="modal fade" id="returnModal">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-warning text-dark">
-                <h5 class="modal-title">归还资产</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form method="POST" action="{{ url_for('asset.asset_return', asset_id=asset.id) }}">
-                <div class="modal-body">
-                    <p>确认归还 <strong>{{ asset.name }}</strong> 吗？</p>
-                    <label class="form-label">选择归还人 <span class="text-danger">*</span></label>
-                    <select name="user_id" class="form-select" required>
-                        <option value="">-- 请选择当前领用人 --</option>
-                        {% set summary = {} %}
-                        {% for a in asset.allocations if a.return_date is none %}
-                        {% set _ = summary.update({a.user_id: (summary.get(a.user_id, 0) + a.quantity)}) %}
-                        {% endfor %}
-                        {% for uid, qty in summary.items() %}
-                        {% set uname = (asset.allocations|selectattr('user_id', 'equalto', uid)|first).user.name %}
-                        <option value="{{ uid }}">{{ uname }} (当前持有: {{ qty }} 个)</option>
-                        {% endfor %}
-                    </select>
-                    <div class="mb-3 mt-3">
-                        <label class="form-label">归还数量</label>
-                        <input type="number" name="quantity" class="form-control" value="1" min="1"
-                            max="{{ asset.allocated_quantity }}" required>
-                    </div>
-                    <label class="form-label">备注</label>
-                    <textarea name="note" class="form-control" rows="2"></textarea>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="submit" class="btn btn-warning">确认归还</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-{% endif %}
-<!-- 更换模态框 -->
-{% if asset.allocated_quantity > 0 and asset.stock_quantity > 0 %}
-<div class="modal fade" id="exchangeModal">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-info text-white">
-                <h5 class="modal-title"><i class="bi bi-arrow-left-right"></i> 更换新装备</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form method="POST" action="{{ url_for('asset.asset_exchange', asset_id=asset.id) }}">
-                <div class="modal-body">
-                    <div class="alert alert-warning small">
-                        <strong>操作说明：</strong> 自动执行“旧物回收报废”与“新物发放”。请确保新装备库存充足。
-                    </div>
-
-                    <label class="form-label">选择更换人 <span class="text-danger">*</span></label>
-                    <select name="user_id" class="form-select" required>
-                        <option value="">-- 选择当前持有人 --</option>
-                        {% set summary = {} %}
-                        {% for a in asset.allocations if a.return_date is none %}
-                        {% set _ = summary.update({a.user_id: (summary.get(a.user_id, 0) + a.quantity)}) %}
-                        {% endfor %}
-                        {% for uid, qty in summary.items() %}
-                        {% set uname = (asset.allocations|selectattr('user_id', 'equalto', uid)|first).user.name %}
-                        <option value="{{ uid }}">{{ uname }} (持有: {{ qty }} 件)</option>
-                        {% endfor %}
-                    </select>
-
-                    <div class="mt-3">
-                        <label class="form-label">更换数量</label>
-                        <input type="number" name="quantity" class="form-control" value="1" min="1" required>
-                        <small class="text-muted">剩余库存（可供更换）：{{ asset.stock_quantity }}</small>
-                    </div>
-
-                    <div class="mt-3">
-                        <label class="form-label">更换原因</label>
-                        <textarea name="note" class="form-control" rows="2" placeholder="如：破损、尺寸不合等"></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="submit" class="btn btn-info text-white">确认更换</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-{% endif %}
-<!-- 消耗模态框（消耗品） -->
-{% if asset.type == '消耗品' %}
-<div class="modal fade" id="consumeModal">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title">消耗资产</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form method="POST" action="{{ url_for('asset.asset_consume', asset_id=asset.id) }}">
-                <div class="modal-body">
-                    <p>确认消耗 <strong>{{ asset.name }}</strong> 吗？</p>
-                    <div class="mb-3">
-                        <label class="form-label">消耗数量</label>
-                        <input type="number" name="quantity" class="form-control" value="1" min="1"
-                            max="{{ asset.stock_quantity }}" required>
-                        <small class="text-muted">当前库存：{{ asset.stock_quantity }}</small>
-                    </div>
-                    <label class="form-label">备注</label>
-                    <textarea name="note" class="form-control" rows="2" placeholder="如用于日常清洁"></textarea>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="submit" class="btn btn-danger">确认消耗</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-{% endif %}
-<!-- 补充库存模态框 -->
-<div class="modal fade" id="supplementModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content border-success">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title"><i class="bi bi-plus-lg"></i> 补充库存 - {{ asset.name }}</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <form method="POST" action="{{ url_for('asset.asset_supplement', asset_id=asset.id) }}">
-                <div class="modal-body">
-                    <div class="alert alert-info py-2">
-                        <small>当前库存：<strong>{{ asset.stock_quantity }}</strong>，当前总数：<strong>{{ asset.total_quantity
-                                }}</strong></small>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">补充数量 <span class="text-danger">*</span></label>
-                        <div class="input-group">
-                            <input type="number" name="quantity" id="supp_qty" class="form-control form-control-lg"
-                                value="1" min="1" required>
-                            <span class="input-group-text">个 / 套</span>
-                        </div>
-                        <div class="form-text text-success" id="supp_preview" data-total="{{ asset.total_quantity }}">
-                            补充后总数将变为: {{ asset.total_quantity + 1 }}
+                               max="{{ asset.stock_quantity }}" required>
+                        <div class="form-text text-muted">
+                            <i class="bi bi-box-seam me-1"></i> 剩余库存：{{ asset.stock_quantity }}
                         </div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">备注说明</label>
-                        <textarea name="note" class="form-control" rows="2" placeholder="备注内容"></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="submit" class="btn btn-success px-4">确认入库</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-<!-- 报废模态框 -->
-<div class="modal fade" id="scrapModal">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title">报废资产</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form method="POST" action="{{ url_for('asset.asset_scrap', asset_id=asset.id) }}">
-                <div class="modal-body">
-                    <div class="alert alert-warning py-2 small">
-                        <i class="bi bi-exclamation-triangle-fill"></i>
-                        注意：报废仅限从<strong>库存</strong>中扣除。若需报废队员已领用的物资，请先执行“归还”操作。
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">报废数量</label>
-                        <input type="number" name="quantity" class="form-control" value="1" min="1"
-                            max="{{ asset.stock_quantity }}" required>
-                        <div class="form-text text-danger">
-                            当前仓库可用库存：{{ asset.stock_quantity }}
-                            {% if asset.allocated_quantity > 0 %}
-                            (另有 {{ asset.allocated_quantity }} 个已分配在队员手中，不可直接报废)
-                            {% endif %}
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label">报废原因</label>
-                        <textarea name="reason" class="form-control" rows="3" placeholder="请详细说明资产损坏或报废的具体原因"
-                            required></textarea>
+                    
+                    <div class="mb-0">
+                        <label class="form-label fw-bold">备注</label>
+                        <textarea name="note" class="form-control" rows="2" placeholder="可选：填写发放原因、用途等" 
+                                  style="resize: vertical;"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="submit" class="btn btn-danger" {% if asset.stock_quantity <=0 %}disabled{% endif %}>
-                        确认报废
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle me-1"></i> 确认发放
                     </button>
                 </div>
             </form>
         </div>
     </div>
 </div>
-<!-- 维修模态框 -->
-<div class="modal fade" id="repairModal">
-    <div class="modal-dialog">
+{% endif %}
+
+<!-- 归还模态框 -->
+{% if asset.allocated_quantity > 0 %}
+<div class="modal fade" id="returnModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-warning text-dark">
-                <h5 class="modal-title"><i class="bi bi-wrench-adjustable"></i> 资产送修</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title"><i class="bi bi-box-arrow-in-left me-2"></i> 归还资产</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('asset.asset_return', asset_id=asset.id) }}">
+                <div class="modal-body">
+                    <div class="alert alert-info mb-4">
+                        <small>确认归还 <strong>{{ asset.name }}</strong> 到库存中</small>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">选择归还人 <span class="text-danger">*</span></label>
+                        <select name="user_id" class="form-select" required>
+                            <option value="">-- 请选择当前领用人 --</option>
+                            {% set summary = {} %}
+                            {% for a in asset.allocations if a.return_date is none %}
+                                {% set _ = summary.update({a.user_id: (summary.get(a.user_id, 0) + a.quantity)}) %}
+                            {% endfor %}
+                            {% for uid, qty in summary.items() %}
+                                {% set uname = (asset.allocations|selectattr('user_id', 'equalto', uid)|first).user.name %}
+                                <option value="{{ uid }}">{{ uname }} (当前持有: {{ qty }} 个)</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">归还数量 <span class="text-danger">*</span></label>
+                        <input type="number" name="quantity" class="form-control" value="1" min="1"
+                               max="{{ asset.allocated_quantity }}" required>
+                        <div class="form-text text-muted">
+                            <i class="bi bi-arrow-return-left me-1"></i> 最多可归还：{{ asset.allocated_quantity }} 个
+                        </div>
+                    </div>
+                    
+                    <div class="mb-0">
+                        <label class="form-label fw-bold">备注</label>
+                        <textarea name="note" class="form-control" rows="2" placeholder="可选：填写归还原因、资产状态等" 
+                                  style="resize: vertical;"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-check-circle me-1"></i> 确认归还
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- 更换模态框 -->
+{% if asset.allocated_quantity > 0 and asset.stock_quantity > 0 %}
+<div class="modal fade" id="exchangeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="bi bi-arrow-left-right me-2"></i> 更换新装备</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('asset.asset_exchange', asset_id=asset.id) }}">
+                <div class="modal-body">
+                    <div class="alert alert-warning small mb-4">
+                        <i class="bi bi-info-circle me-1"></i>
+                        <strong>操作说明：</strong> 自动执行“旧物回收报废”与“新物发放”。请确保新装备库存充足。
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">选择更换人 <span class="text-danger">*</span></label>
+                        <select name="user_id" class="form-select" required>
+                            <option value="">-- 选择当前持有人 --</option>
+                            {% set summary = {} %}
+                            {% for a in asset.allocations if a.return_date is none %}
+                                {% set _ = summary.update({a.user_id: (summary.get(a.user_id, 0) + a.quantity)}) %}
+                            {% endfor %}
+                            {% for uid, qty in summary.items() %}
+                                {% set uname = (asset.allocations|selectattr('user_id', 'equalto', uid)|first).user.name %}
+                                <option value="{{ uid }}">{{ uname }} (持有: {{ qty }} 件)</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">更换数量 <span class="text-danger">*</span></label>
+                        <input type="number" name="quantity" class="form-control" value="1" min="1" 
+                               max="{{ asset.stock_quantity }}" required>
+                        <div class="form-text text-muted">
+                            <i class="bi bi-box-seam me-1"></i> 剩余库存（可供更换）：{{ asset.stock_quantity }}
+                        </div>
+                    </div>
+
+                    <div class="mb-0">
+                        <label class="form-label fw-bold">更换原因 <span class="text-danger">*</span></label>
+                        <textarea name="note" class="form-control" rows="2" placeholder="如：破损、尺寸不合等" 
+                                  required style="resize: vertical;"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-info text-white">
+                        <i class="bi bi-check-circle me-1"></i> 确认更换
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- 消耗模态框（消耗品） -->
+{% if asset.type == '消耗品' %}
+<div class="modal fade" id="consumeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="bi bi-basket3-fill me-2"></i> 消耗资产</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('asset.asset_consume', asset_id=asset.id) }}">
+                <div class="modal-body">
+                    <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+                        <i class="bi bi-exclamation-circle me-1"></i>
+                        消耗操作将直接减少库存数量，且不可恢复！
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">消耗数量 <span class="text-danger">*</span></label>
+                        <input type="number" name="quantity" class="form-control" value="1" min="1"
+                               max="{{ asset.stock_quantity }}" required>
+                        <div class="form-text text-muted">
+                            <i class="bi bi-box-seam me-1"></i> 当前库存：{{ asset.stock_quantity }}
+                        </div>
+                    </div>
+                    
+                    <div class="mb-0">
+                        <label class="form-label fw-bold">消耗原因 <span class="text-danger">*</span></label>
+                        <textarea name="note" class="form-control" rows="2" placeholder="如用于日常清洁、项目使用等" 
+                                  required style="resize: vertical;"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-check-circle me-1"></i> 确认消耗
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- 补充库存模态框 -->
+<div class="modal fade" id="supplementModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-success">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-plus-lg me-2"></i> 补充库存 - {{ asset.name }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('asset.asset_supplement', asset_id=asset.id) }}">
+                <div class="modal-body">
+                    <div class="alert alert-info py-2 mb-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>当前库存：<strong>{{ asset.stock_quantity }}</strong></span>
+                            <span>当前总数：<strong>{{ asset.total_quantity }}</strong></span>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">补充数量 <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <input type="number" name="quantity" id="supp_qty" class="form-control form-control-lg"
+                                   value="1" min="1" required>
+                            <span class="input-group-text bg-light">个 / 套</span>
+                        </div>
+                        <div class="form-text text-success mt-2" id="supp_preview" data-total="{{ asset.total_quantity }}">
+                            <i class="bi bi-arrow-up-circle me-1"></i> 补充后总数将变为: {{ asset.total_quantity + 1 }}
+                        </div>
+                    </div>
+                    
+                    <div class="mb-0">
+                        <label class="form-label fw-bold">备注说明</label>
+                        <textarea name="note" class="form-control" rows="2" placeholder="如：采购入库、调拨入库等" 
+                                  style="resize: vertical;"></textarea>
+                        <div class="form-text text-muted">建议填写采购单号、供应商等信息便于追溯</div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-success px-4">
+                        <i class="bi bi-box-arrow-in-down me-1"></i> 确认入库
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 报废模态框 -->
+<div class="modal fade" id="scrapModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="bi bi-trash3-fill me-2"></i> 报废资产</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('asset.asset_scrap', asset_id=asset.id) }}">
+                <div class="modal-body">
+                    <div class="alert alert-warning py-2 small mb-4">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                        注意：报废仅限从<strong>库存</strong>中扣除。若需报废队员已领用的物资，请先执行“归还”操作。
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">报废数量 <span class="text-danger">*</span></label>
+                        <input type="number" name="quantity" class="form-control" value="1" min="1"
+                               max="{{ asset.stock_quantity }}" required>
+                        <div class="form-text text-danger">
+                            <i class="bi bi-box-seam me-1"></i> 当前仓库可用库存：{{ asset.stock_quantity }}
+                            {% if asset.allocated_quantity > 0 %}
+                                <br>(另有 {{ asset.allocated_quantity }} 个已分配在队员手中，不可直接报废)
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-0">
+                        <label class="form-label fw-bold">报废原因 <span class="text-danger">*</span></label>
+                        <textarea name="reason" class="form-control" rows="3" placeholder="请详细说明资产损坏或报废的具体原因"
+                                  required style="resize: vertical;"></textarea>
+                        <div class="form-text text-muted">如：自然损坏、无法维修、达到使用年限等</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-danger" {% if asset.stock_quantity <=0 %}disabled{% endif %}>
+                        <i class="bi bi-check-circle me-1"></i> 确认报废
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 维修模态框 -->
+<div class="modal fade" id="repairModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title"><i class="bi bi-wrench-adjustable me-2"></i> 资产送修</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="POST" action="{{ url_for('asset.asset_repair', asset_id=asset.id) }}">
                 <div class="modal-body">
-                    <p>确认将资产 <strong>{{ asset.name }}</strong> 标记为维修状态吗？</p>
-                    <div class="mb-3">
-                        <label class="form-label">故障描述 / 维修备注 <span class="text-danger">*</span></label>
-                        <textarea name="note" class="form-control" rows="3" placeholder="请填写具体故障原因" required></textarea>
+                    <div class="alert alert-warning mb-4">
+                        <small>确认将资产 <strong>{{ asset.name }}</strong> 标记为维修状态，维修期间不可领用</small>
+                    </div>
+                    
+                    <div class="mb-0">
+                        <label class="form-label fw-bold">故障描述 / 维修备注 <span class="text-danger">*</span></label>
+                        <textarea name="note" class="form-control" rows="3" placeholder="请填写具体故障原因、维修地点等信息" 
+                                  required style="resize: vertical;"></textarea>
+                        <div class="form-text text-muted">详细的故障描述有助于维修跟踪和成本核算</div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="submit" class="btn btn-warning">确认送修</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-check-circle me-1"></i> 确认送修
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
 <!-- 修复模态框 -->
-<div class="modal fade" id="completeRepairModal">
-    <div class="modal-dialog">
+<div class="modal fade" id="completeRepairModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-info text-white">
-                <h5 class="modal-title"><i class="bi bi-check-circle"></i> 维修完成确认</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title"><i class="bi bi-check-circle me-2"></i> 维修完成确认</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="POST" action="{{ url_for('asset.asset_complete_repair', asset_id=asset.id) }}">
                 <div class="modal-body">
-                    <p>确认该资产已修复，可以重新投入使用吗？</p>
-                    <div class="mb-3">
-                        <label class="form-label">维修结果说明</label>
-                        <textarea name="note" class="form-control" rows="2" placeholder="可选：填写维修花费、更换零件等信息"></textarea>
+                    <div class="alert alert-info mb-4">
+                        <small>确认该资产已修复完成，可以重新投入使用</small>
+                    </div>
+                    
+                    <div class="mb-0">
+                        <label class="form-label fw-bold">维修结果说明</label>
+                        <textarea name="note" class="form-control" rows="2" 
+                                  placeholder="可选：填写维修花费、更换零件、维修时长等信息" 
+                                  style="resize: vertical;"></textarea>
+                        <div class="form-text text-muted">这些信息将帮助评估资产维护成本和使用寿命</div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="submit" class="btn btn-info text-white">确认修复</button>
+                    <button type="submit" class="btn btn-info text-white">
+                        <i class="bi bi-check-circle me-1"></i> 确认修复
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
 <!-- 彻底删除资产模态框 -->
-<div class="modal fade" id="deleteModal" tabindex="-1">
-    <div class="modal-dialog">
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title"><i class="bi bi-exclamation-octagon"></i> 彻底删除资产</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title"><i class="bi bi-exclamation-octagon me-2"></i> 彻底删除资产</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body text-center">
-                <p class="text-danger fw-bold">此操作将永久删除该资产及其所有历史记录，无法恢复！</p>
-                <p>确认删除 <strong>{{ asset.name }}</strong> 吗？</p>
+                <div class="mb-3">
+                    <i class="bi bi-trash3 text-danger" style="font-size: 3rem;"></i>
+                </div>
+                <p class="text-danger fw-bold mb-2">此操作将永久删除该资产及其所有历史记录，无法恢复！</p>
+                <p class="text-dark mb-0">确认删除 <strong>{{ asset.name }}</strong> 吗？</p>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+            <div class="modal-footer justify-content-center gap-3">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">取消</button>
                 <form action="{{ url_for('asset.asset_delete', asset_id=asset.id) }}" method="POST" class="d-inline">
-                    <button type="submit" class="btn btn-danger">确认永久删除</button>
+                    <button type="submit" class="btn btn-danger px-4">
+                        <i class="bi bi-exclamation-triangle me-1"></i> 确认永久删除
+                    </button>
                 </form>
             </div>
         </div>
     </div>
 </div>
+
+<!-- 模态框交互增强脚本 -->
+<script>
+    // 模态框表单验证和交互增强
+    document.addEventListener('DOMContentLoaded', function() {
+        // 为所有模态框添加动画效果
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+            modal.addEventListener('show.bs.modal', function() {
+                this.querySelector('.modal-content').style.opacity = '0';
+                this.querySelector('.modal-content').style.transform = 'translateY(20px)';
+                
+                setTimeout(() => {
+                    this.querySelector('.modal-content').style.transition = 'all 0.3s ease';
+                    this.querySelector('.modal-content').style.opacity = '1';
+                    this.querySelector('.modal-content').style.transform = 'translateY(0)';
+                }, 10);
+            });
+            
+            modal.addEventListener('hide.bs.modal', function() {
+                this.querySelector('.modal-content').style.opacity = '0';
+                this.querySelector('.modal-content').style.transform = 'translateY(20px)';
+            });
+        });
+        
+        // 数量输入框值变化验证
+        const quantityInputs = document.querySelectorAll('input[name="quantity"]');
+        quantityInputs.forEach(input => {
+            input.addEventListener('input', function() {
+                // 确保输入值为有效数字且不小于最小值
+                const min = parseInt(this.min) || 1;
+                const max = parseInt(this.max) || Infinity;
+                let value = parseInt(this.value) || min;
+                
+                if (value < min) value = min;
+                if (value > max) value = max;
+                
+                this.value = value;
+                
+                // 更新补充库存预览
+                if (this.id === 'supp_qty') {
+                    const preview = document.getElementById('supp_preview');
+                    if (preview) {
+                        const currentTotal = parseInt(preview.dataset.total) || 0;
+                        preview.innerText = `<i class="bi bi-arrow-up-circle me-1"></i> 补充后总数将变为: ${currentTotal + value}`;
+                    }
+                }
+            });
+        });
+        
+        // 表单提交确认
+        const criticalForms = document.querySelectorAll('form[action*="scrap"], form[action*="consume"], form[action*="delete"]');
+        criticalForms.forEach(form => {
+            form.addEventListener('submit', function(e) {
+                let confirmMessage = '';
+                
+                if (this.action.includes('scrap')) {
+                    confirmMessage = '确认要执行报废操作吗？此操作不可逆！';
+                } else if (this.action.includes('consume')) {
+                    confirmMessage = '确认要消耗这些资产吗？消耗后库存将减少且不可恢复！';
+                } else if (this.action.includes('delete')) {
+                    confirmMessage = '确认要永久删除该资产吗？所有相关记录都将被删除且无法恢复！';
+                }
+                
+                if (confirmMessage && !confirm(confirmMessage)) {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+        });
+    });
+</script>

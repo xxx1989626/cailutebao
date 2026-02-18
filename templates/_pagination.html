@@ -1,61 +1,316 @@
+<!-- templates/_pagination.html -->
 {% macro render_pagination(pagination, endpoint) %}
     {% if pagination and pagination.pages > 1 %}
-    <div class="card-footer bg-white border-top-0 py-3">
-        <nav aria-label="Page navigation">
-            <ul class="pagination justify-content-center mb-0">
+    <div class="card-footer bg-white border-top-0 py-4">
+        <!-- 分页信息提示 -->
+        <div class="text-center text-muted mb-3">
+            <small>
+                共 <strong>{{ pagination.total }}</strong> 条记录，
+                当前第 <strong>{{ pagination.page }}</strong> 页 / 共 <strong>{{ pagination.pages }}</strong> 页
+            </small>
+        </div>
+        
+        <nav aria-label="Page navigation" class="pagination-container">
+            <ul class="pagination justify-content-center mb-0 pagination-custom">
+                {# 首页 #}
+                <li class="page-item {{ 'disabled' if pagination.page == 1 }}">
+                    <a class="page-link" href="{{ url_for(endpoint, page=1, **kwargs) if pagination.page > 1 else '#' }}" 
+                       aria-label="首页">
+                        <i class="bi bi-chevron-double-left"></i>
+                    </a>
+                </li>
+                
                 {# 上一页 #}
                 <li class="page-item {{ 'disabled' if not pagination.has_prev }}">
-                    <a class="page-link" href="{{ url_for(endpoint, page=pagination.prev_num, **kwargs) if pagination.has_prev else '#' }}">
+                    <a class="page-link" href="{{ url_for(endpoint, page=pagination.prev_num, **kwargs) if pagination.has_prev else '#' }}" 
+                       aria-label="上一页">
                         <i class="bi bi-chevron-left"></i>
                     </a>
                 </li>
                 
-                {# 页码逻辑 #}
-                {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=3) %}
+                {# 页码逻辑 - 优化显示范围 #}
+                {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
                     {% if page_num %}
                         <li class="page-item {{ 'active' if page_num == pagination.page }}">
-                            <a class="page-link" href="{{ url_for(endpoint, page=page_num, **kwargs) }}">{{ page_num }}</a>
+                            <a class="page-link" href="{{ url_for(endpoint, page=page_num, **kwargs) }}">
+                                {{ page_num }}
+                            </a>
                         </li>
                     {% else %}
-                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                        <li class="page-item disabled">
+                            <span class="page-link pagination-ellipsis">...</span>
+                        </li>
                     {% endif %}
                 {% endfor %}
                 
                 {# 下一页 #}
                 <li class="page-item {{ 'disabled' if not pagination.has_next }}">
-                    <a class="page-link" href="{{ url_for(endpoint, page=pagination.next_num, **kwargs) if pagination.has_next else '#' }}">
+                    <a class="page-link" href="{{ url_for(endpoint, page=pagination.next_num, **kwargs) if pagination.has_next else '#' }}" 
+                       aria-label="下一页">
                         <i class="bi bi-chevron-right"></i>
                     </a>
+                </li>
+                
+                {# 末页 #}
+                <li class="page-item {{ 'disabled' if pagination.page == pagination.pages }}">
+                    <a class="page-link" href="{{ url_for(endpoint, page=pagination.pages, **kwargs) if pagination.page < pagination.pages else '#' }}" 
+                       aria-label="末页">
+                        <i class="bi bi-chevron-double-right"></i>
+                    </a>
+                </li>
+                
+                {# 快速跳页（新增） #}
+                <li class="page-item d-none d-md-flex">
+                    <div class="px-2 d-flex align-items-center">
+                        <input type="number" id="jumpPageInput" 
+                               class="form-control form-control-sm text-center" 
+                               min="1" max="{{ pagination.pages }}" 
+                               value="{{ pagination.page }}" 
+                               style="width: 60px;">
+                        <span class="mx-1">/ {{ pagination.pages }}</span>
+                        <button type="button" id="jumpPageBtn" 
+                                class="btn btn-sm btn-outline-primary ms-1"
+                                data-endpoint="{{ endpoint }}"
+                                data-kwargs="{{ kwargs | tojson | urlencode }}">
+                            跳转
+                        </button>
+                    </div>
                 </li>
             </ul>
         </nav>
     </div>
+    
+    <!-- 分页样式和脚本 -->
+    <style>
+        /* 自定义分页样式 */
+        .pagination-custom {
+            --bs-pagination-color: #0d6efd;
+            --bs-pagination-active-color: #fff;
+            --bs-pagination-active-bg: #0d6efd;
+            --bs-pagination-active-border-color: #0d6efd;
+            --bs-pagination-hover-color: #0a58ca;
+            --bs-pagination-hover-bg: #e9f5ff;
+            --bs-pagination-hover-border-color: #bcdfff;
+        }
+        
+        .pagination-custom .page-link {
+            border-radius: 6px !important;
+            margin: 0 2px;
+            padding: 0.5rem 0.9rem;
+            transition: all 0.2s ease;
+            border: 1px solid #e2e8f0;
+        }
+        
+        /* 激活状态 */
+        .pagination-custom .page-item.active .page-link {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+            box-shadow: 0 2px 4px rgba(13, 110, 253, 0.2);
+        }
+        
+        /* 悬停效果 */
+        .pagination-custom .page-link:hover:not(.disabled):not(.active) {
+            background-color: var(--bs-pagination-hover-bg);
+            border-color: var(--bs-pagination-hover-border-color);
+            color: var(--bs-pagination-hover-color);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        /* 禁用状态 */
+        .pagination-custom .page-item.disabled .page-link {
+            color: #94a3b8;
+            pointer-events: none;
+            background-color: #f8fafc;
+            border-color: #e2e8f0;
+            opacity: 0.7;
+        }
+        
+        /* 省略号样式 */
+        .pagination-ellipsis {
+            background-color: transparent !important;
+            border: none !important;
+            pointer-events: none;
+            font-weight: 600;
+            color: #94a3b8;
+        }
+        
+        /* 焦点样式优化 */
+        .pagination-custom .page-link:focus {
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+            outline: none;
+        }
+        
+        /* 快速跳页输入框 */
+        #jumpPageInput {
+            border-radius: 4px;
+            border: 1px solid #e2e8f0;
+            transition: all 0.2s ease;
+        }
+        
+        #jumpPageInput:focus {
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+            outline: none;
+        }
+        
+        #jumpPageBtn {
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+        
+        #jumpPageBtn:hover {
+            background-color: #0d6efd;
+            color: white;
+            border-color: #0d6efd;
+        }
+        
+        /* 响应式优化 */
+        @media (max-width: 768px) {
+            .pagination-custom .page-link {
+                padding: 0.4rem 0.7rem;
+                font-size: 0.875rem;
+            }
+            
+            /* 移动端简化分页控件 */
+            .pagination-container {
+                overflow-x: auto;
+                padding-bottom: 0.5rem;
+            }
+            
+            .pagination-custom {
+                min-width: 500px;
+            }
+            
+            .pagination-sm .page-link {
+                padding: 0.3rem 0.6rem !important;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .pagination-custom .page-link {
+                padding: 0.35rem 0.65rem;
+            }
+            
+            /* 移动端隐藏页码信息，只保留关键按钮 */
+            .pagination-container .text-muted {
+                font-size: 0.75rem;
+            }
+        }
+    </style>
+    
+    <script>
+        // 确保DOM加载完成后执行
+        document.addEventListener('DOMContentLoaded', function() {
+            // 快速跳页功能
+            const jumpPageBtn = document.getElementById('jumpPageBtn');
+            const jumpPageInput = document.getElementById('jumpPageInput');
+            
+            if (jumpPageBtn && jumpPageInput) {
+                // 输入框回车触发跳转
+                jumpPageInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        jumpToPage();
+                    }
+                });
+                
+                // 按钮点击跳转
+                jumpPageBtn.addEventListener('click', jumpToPage);
+                
+                // 验证输入的页码
+                jumpPageInput.addEventListener('input', function() {
+                    let value = parseInt(this.value) || 1;
+                    const max = parseInt(this.max) || 1;
+                    
+                    if (value < 1) value = 1;
+                    if (value > max) value = max;
+                    
+                    this.value = value;
+                });
+                
+                // 跳转逻辑
+                function jumpToPage() {
+                    const targetPage = parseInt(jumpPageInput.value) || 1;
+                    const maxPage = parseInt(jumpPageInput.max) || 1;
+                    
+                    // 验证页码有效性
+                    if (targetPage < 1 || targetPage > maxPage || targetPage === {{ pagination.page }}) {
+                        if (targetPage === {{ pagination.page }}) {
+                            // 已经在目标页，给出提示
+                            showToast('已经在第 ' + targetPage + ' 页了');
+                        } else {
+                            showToast('请输入有效的页码 (1-' + maxPage + ')', 'warning');
+                        }
+                        jumpPageInput.focus();
+                        return;
+                    }
+                    
+                    // 解析参数并跳转
+                    const endpoint = jumpPageBtn.dataset.endpoint;
+                    const kwargs = JSON.parse(decodeURIComponent(jumpPageBtn.dataset.kwargs));
+                    
+                    // 添加目标页码
+                    kwargs.page = targetPage;
+                    
+                    // 构建URL并跳转
+                    const url = new URL(window.location.origin + '/' + endpoint);
+                    Object.keys(kwargs).forEach(key => {
+                        url.searchParams.append(key, kwargs[key]);
+                    });
+                    
+                    window.location.href = url.toString();
+                }
+                
+                // 简单的提示框函数
+                function showToast(message, type = 'info') {
+                    // 检查是否已有提示框
+                    let toast = document.querySelector('.pagination-toast');
+                    if (toast) {
+                        toast.remove();
+                    }
+                    
+                    // 创建新的提示框
+                    toast = document.createElement('div');
+                    toast.className = `pagination-toast alert alert-${type} alert-dismissible fade show position-fixed`;
+                    toast.style.cssText = `
+                        bottom: 20px;
+                        right: 20px;
+                        z-index: 9999;
+                        min-width: 200px;
+                        max-width: 300px;
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                        border-radius: 8px;
+                    `;
+                    toast.innerHTML = `
+                        ${message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    `;
+                    
+                    // 添加到页面
+                    document.body.appendChild(toast);
+                    
+                    // 3秒后自动关闭
+                    setTimeout(() => {
+                        toast.classList.remove('show');
+                        setTimeout(() => toast.remove(), 500);
+                    }, 3000);
+                }
+            }
+            
+            // 分页按钮点击动画
+            const paginationLinks = document.querySelectorAll('.pagination-custom .page-link');
+            paginationLinks.forEach(link => {
+                if (!link.closest('.page-item').classList.contains('disabled')) {
+                    link.addEventListener('click', function(e) {
+                        // 添加点击动画
+                        this.style.transform = 'scale(0.95)';
+                        setTimeout(() => {
+                            this.style.transform = 'scale(1)';
+                        }, 150);
+                    });
+                }
+            });
+        });
+    </script>
     {% endif %}
-<style>
-/* 鼠标悬停在页码上时的效果 */
-.pagination .page-link:hover {
-    background-color: rgba(13, 110, 253, 0.1); /* 淡淡的蓝色背景 */
-    color: #0a58ca; /* 深一点的蓝色文字 */
-    border-color: #dee2e6;
-}
-
-/* 禁用状态（比如已经在第一页时，“上一页”按钮的状态） */
-.pagination .page-item.disabled .page-link {
-    color: #adb5bd;
-    pointer-events: none; /* 禁止点击 */
-    background-color: #fff;
-    border-color: #dee2e6;
-}
-
-/* 移除点击时的蓝色阴影（可选，根据审美决定） */
-.pagination .page-link:focus {
-    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-}
-/* 针对手机的分页按钮优化 */
-@media (max-width: 576px) {
-    .pagination-sm .page-link {
-        padding: 0.5rem 0.75rem;
-    }
-}
-</style>
 {% endmacro %}

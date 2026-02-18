@@ -1,35 +1,337 @@
-<div class="row g-3">
+<!-- templates/fund/_partial_fund_form.html -->
+<div class="row g-3 finance-form-container">
+    <!-- 财务日期 -->
     <div class="col-md-6">
-        <label class="form-label fw-bold">财务日期 <span class="text-danger">*</span></label>
-        <input type="date" name="date" class="form-control" value="{{ default_date }}" required>
-    </div>
-
-    <div class="col-md-6">
-        <label class="form-label fw-bold">资方/付款人 <span class="text-danger">*</span></label>
-        <input type="text" name="payer" class="form-control" placeholder="如：特保队、某某公司" required>
-    </div>
-
-    <div class="col-md-12">
-        <label class="form-label fw-bold">费用项目 <span class="text-danger">*</span></label>
-        <input type="text" name="item" class="form-control" placeholder="如：采购资产支出、日常办公支出" required>
-    </div>
-
-    <div class="col-md-6">
-        <label class="form-label fw-bold text-danger">支出金额 (元) <span class="text-danger">*</span></label>
-        <div class="input-group">
-            <span class="input-group-text bg-danger text-white">¥</span>
-            <input type="number" step="0.01" name="amount" class="form-control border-danger" placeholder="支出请填写负数，如 -500" required>
+        <label class="form-label fw-bold">
+            财务日期 
+            <span class="text-danger">*</span>
+            <i class="bi bi-info-circle text-info ms-1" data-bs-toggle="tooltip" data-bs-title="交易发生的实际日期"></i>
+        </label>
+        <input type="date" name="date" class="form-control finance-form-control" value="{{ default_date }}" required>
+        <div class="invalid-feedback">
+            请选择财务日期
         </div>
-        <small class="text-muted">注意：购买资产属于支出，金额应为负值。</small>
     </div>
 
+    <!-- 资方/付款人 -->
     <div class="col-md-6">
-        <label class="form-label fw-bold">凭证上传 (发票/照片)</label>
-        <input type="file" name="attachment" class="form-control" accept="image/*,.pdf,.zip,.rar">
+        <label class="form-label fw-bold">
+            资方/付款人 
+            <span class="text-danger">*</span>
+            <i class="bi bi-info-circle text-info ms-1" data-bs-toggle="tooltip" data-bs-title="资金的来源方或实际付款人"></i>
+        </label>
+        <input type="text" name="payer" class="form-control finance-form-control" placeholder="如：特保队、某某公司" required>
+        <div class="invalid-feedback">
+            请输入资方/付款人信息
+        </div>
     </div>
 
+    <!-- 费用项目 -->
     <div class="col-md-12">
-        <label class="form-label fw-bold">财务备注</label>
-        <textarea name="note" class="form-control" rows="2" placeholder="填写相关的报销说明、流水号等备注..."></textarea>
+        <label class="form-label fw-bold">
+            费用项目 
+            <span class="text-danger">*</span>
+            <i class="bi bi-info-circle text-info ms-1" data-bs-toggle="tooltip" data-bs-title="详细描述费用用途，便于财务核算"></i>
+        </label>
+        <input type="text" name="item" class="form-control finance-form-control" placeholder="如：采购资产支出、日常办公支出" required>
+        <div class="invalid-feedback">
+            请输入费用项目说明
+        </div>
+        <div class="form-text">
+            <i class="bi bi-lightbulb text-warning me-1"></i> 建议详细描述，例如："采购电动自行车资产支出"
+        </div>
+    </div>
+
+    <!-- 支出金额 -->
+    <div class="col-md-6">
+        <label class="form-label fw-bold">
+            支出金额 (元) 
+            <span class="text-danger">*</span>
+            <i class="bi bi-exclamation-triangle text-warning ms-1" data-bs-toggle="tooltip" data-bs-title="支出金额请填写负数，收入填写正数"></i>
+        </label>
+        <div class="input-group">
+            <span class="input-group-text bg-danger text-white rounded-start-3">¥</span>
+            <input type="number" step="0.01" name="amount" id="finance_amount" 
+                   class="form-control finance-form-control border-danger rounded-end-3" 
+                   placeholder="支出请填写负数，如 -500" required>
+        </div>
+        <div class="invalid-feedback amount-invalid">
+            请输入有效的金额（支出请填写负数）
+        </div>
+        <div class="form-text text-danger fw-medium mt-1">
+            <i class="bi bi-exclamation-circle me-1"></i> 重要：购买资产属于支出，金额必须为负值！
+        </div>
+    </div>
+
+    <!-- 凭证上传 -->
+    <div class="col-md-6">
+        <label class="form-label fw-bold">
+            凭证上传 (发票/照片)
+            <i class="bi bi-info-circle text-info ms-1" data-bs-toggle="tooltip" data-bs-title="上传相关凭证，支持图片、PDF、压缩包格式"></i>
+        </label>
+        <input type="file" name="attachment" id="finance_attachment" class="form-control finance-form-control" 
+               accept="image/*,.pdf,.zip,.rar,.doc,.docx,.xls,.xlsx">
+        <div class="form-text">
+            支持格式：JPG、PNG、PDF、ZIP、RAR、Word、Excel，单文件最大10MB
+        </div>
+    </div>
+
+    <!-- 财务备注 -->
+    <div class="col-md-12">
+        <label class="form-label fw-bold">
+            财务备注
+            <i class="bi bi-info-circle text-info ms-1" data-bs-toggle="tooltip" data-bs-title="补充说明财务相关信息"></i>
+        </label>
+        <textarea name="note" class="form-control finance-form-control" rows="3" 
+                  placeholder="填写相关的报销说明、流水号、审批人等备注信息..."></textarea>
+        <div class="form-text">
+            建议填写：交易流水号、审批人、报销事由等详细信息
+        </div>
     </div>
 </div>
+
+<!-- 引入必要的JS库 -->
+
+<script>
+$(document).ready(function() {
+    // 统一表单控件样式
+    $('.finance-form-control').addClass('rounded-3').css({
+        'padding': '0.75rem 1rem',
+        'border': '1px solid #ced4da',
+        'transition': 'all 0.2s ease',
+        'font-size': '0.95rem'
+    });
+    
+    // 添加表单控件焦点效果
+    $('.finance-form-control').on('focus', function() {
+        // 金额输入框特殊处理
+        if ($(this).hasClass('border-danger')) {
+            $(this).css({
+                'border-color': '#bb2d3b',
+                'box-shadow': '0 0 0 4px rgba(220, 53, 69, 0.1)',
+                'outline': 'none'
+            });
+        } else {
+            $(this).css({
+                'border-color': '#0d6efd',
+                'box-shadow': '0 0 0 4px rgba(13, 110, 253, 0.1)',
+                'outline': 'none'
+            });
+        }
+    }).on('blur', function() {
+        // 金额输入框特殊处理
+        if ($(this).hasClass('border-danger')) {
+            $(this).css({
+                'border-color': '#dc3545',
+                'box-shadow': 'none'
+            });
+        } else {
+            $(this).css({
+                'border-color': '#ced4da',
+                'box-shadow': 'none'
+            });
+        }
+        
+        // 金额验证（失去焦点时）
+        if (this.id === 'finance_amount') {
+            validateAmountInput(this);
+        }
+    });
+    
+    // 初始化工具提示
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+    
+    // 金额输入验证
+    function validateAmountInput(input) {
+        const value = parseFloat(input.value);
+        
+        // 清空值处理
+        if (!input.value || isNaN(value)) {
+            $(input).addClass('is-invalid');
+            $('.amount-invalid').text('请输入有效的金额数字');
+            return false;
+        }
+        
+        // 检查是否为负数（支出）
+        if (value >= 0) {
+            $(input).addClass('is-invalid');
+            $('.amount-invalid').text('采购资产属于支出，金额必须为负值！');
+            return false;
+        }
+        
+        // 检查金额合理性
+        if (Math.abs(value) < 0.01) {
+            $(input).addClass('is-invalid');
+            $('.amount-invalid').text('金额不能小于0.01元');
+            return false;
+        }
+        
+        // 验证通过
+        $(input).removeClass('is-invalid').addClass('is-valid');
+        return true;
+    }
+    
+    // 监听金额输入
+    $('#finance_amount').on('input', function() {
+        validateAmountInput(this);
+        
+        // 格式化金额显示（保留两位小数）
+        if (this.value && !isNaN(this.value)) {
+            const value = parseFloat(this.value);
+            if (!isNaN(value)) {
+                // 保存光标位置
+                const cursorPos = this.selectionStart;
+                // 格式化值
+                this.value = value.toFixed(2);
+                // 恢复光标位置
+                this.setSelectionRange(cursorPos, cursorPos);
+            }
+        }
+    });
+    
+    // 文件上传验证
+    $('#finance_attachment').on('change', function() {
+        if (this.files && this.files[0]) {
+            const file = this.files[0];
+            const fileSize = (file.size / 1024 / 1024).toFixed(2);
+            
+            // 检查文件大小（限制10MB）
+            if (fileSize > 10) {
+                alert(`文件大小(${fileSize}MB)超过限制(10MB)，请选择更小的文件`);
+                this.value = '';
+                $(this).addClass('is-invalid');
+                return;
+            }
+            
+            // 检查文件格式
+            const fileName = file.name.toLowerCase();
+            const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.pdf', '.zip', '.rar', '.doc', '.docx', '.xls', '.xlsx'];
+            const fileExt = fileName.slice(fileName.lastIndexOf('.'));
+            
+            if (!allowedExtensions.includes(fileExt)) {
+                alert(`不支持的文件格式(${fileExt})，请上传：JPG、PNG、PDF、ZIP、RAR、Word、Excel格式文件`);
+                this.value = '';
+                $(this).addClass('is-invalid');
+                return;
+            }
+            
+            $(this).removeClass('is-invalid').addClass('is-valid');
+            
+            // 显示文件信息
+            alert(`文件已选择：${file.name}\n大小：${fileSize}MB`);
+        }
+    });
+    
+    // 表单提交验证
+    $('form').on('submit', function(e) {
+        // 验证金额
+        const amountInput = $('#finance_amount')[0];
+        if (!validateAmountInput(amountInput)) {
+            e.preventDefault();
+            amountInput.focus();
+            return false;
+        }
+        
+        // 验证必填项
+        const requiredFields = $(this).find('[required]');
+        let isValid = true;
+        
+        requiredFields.each(function() {
+            if (!this.value.trim()) {
+                $(this).addClass('is-invalid');
+                isValid = false;
+            }
+        });
+        
+        if (!isValid) {
+            e.preventDefault();
+            alert('请填写所有必填字段！');
+            // 滚动到第一个错误字段
+            $(this).find('.is-invalid:first')[0]?.scrollIntoView({ behavior: 'smooth' });
+            return false;
+        }
+        
+        // 确认提交（财务操作重要，添加确认）
+        if (!confirm('确认提交财务记录？该操作将生成资金流水记录！')) {
+            e.preventDefault();
+            return false;
+        }
+        
+        // 提交前禁用按钮防止重复提交
+        $(this).find('button[type="submit"]').prop('disabled', true).html(
+            '<i class="bi bi-hourglass-split me-2"></i> 提交中...'
+        );
+    });
+    
+    // 自动补全负号（如果用户忘记输入）
+    $('#finance_amount').on('blur', function() {
+        if (this.value && parseFloat(this.value) > 0) {
+            if (confirm('检测到金额为正数，采购资产应为支出（负数），是否自动转换为负数？')) {
+                this.value = '-' + Math.abs(parseFloat(this.value)).toFixed(2);
+                validateAmountInput(this);
+            }
+        }
+    });
+});
+
+// 添加自定义样式
+$('head').append(`
+    <style>
+        .finance-form-container {
+            padding: 1rem 0;
+        }
+        
+        .finance-form-control:focus {
+            transition: all 0.2s ease;
+        }
+        
+        .input-group-text {
+            padding: 0.75rem 1rem;
+            font-weight: 600;
+            border: 1px solid #dc3545;
+            border-right: none;
+        }
+        
+        .form-text {
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+        }
+        
+        .text-danger.fw-medium {
+            font-weight: 500;
+        }
+        
+        /* 验证状态样式增强 */
+        .form-control.is-valid {
+            border-color: #198754;
+            padding-right: calc(1.5em + 0.75rem);
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%23198754' d='M2.3 6.73.6 4.53c-.4-1.04.46-1.4 1.1-.8l1.1 1.4 3.4-3.8c.6-.63 1.6-.27 1.2.7l-4 4.6c-.43.5-.8.4-1.1.1z'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right calc(0.375em + 0.1875rem) center;
+            background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+        }
+        
+        .form-control.is-invalid {
+            border-color: #dc3545;
+            padding-right: calc(1.5em + 0.75rem);
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right calc(0.375em + 0.1875rem) center;
+            background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
+        }
+        
+        /* 响应式优化 */
+        @media (max-width: 768px) {
+            .finance-form-control {
+                padding: 0.65rem 0.9rem;
+                font-size: 0.9rem;
+            }
+            
+            .input-group-text {
+                padding: 0.65rem 0.9rem;
+            }
+        }
+    </style>
+`);
+</script>

@@ -1,72 +1,252 @@
+<!-- templates/fund/list.html -->
 {% extends "base.html" %}
 
 {% block title %}资金管理{% endblock %}
 
 {% block content %}
+<!-- 自定义样式 -->
+<style>
+    /* 页面整体样式 */
+    .fund-table th {
+        font-weight: 600;
+        color: #212529;
+        border-top: none;
+    }
+    
+    .fund-table td {
+        vertical-align: middle;
+        border-color: #f1f3f5;
+    }
+    
+    .fund-table tr:hover {
+        background-color: #f8f9fa;
+        transition: background-color 0.2s ease;
+    }
+    
+    /* 金额样式 */
+    .amount-income {
+        color: #198754;
+        font-weight: 600;
+    }
+    
+    .amount-expense {
+        color: #dc3545;
+        font-weight: 600;
+    }
+    
+    /* 按钮样式优化 */
+    .btn-action {
+        transition: all 0.2s ease;
+    }
+    
+    .btn-action:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* 排序链接样式 */
+    .sort-link {
+        position: relative;
+        padding-right: 15px;
+    }
+    
+    .sort-link:after {
+        content: "";
+        position: absolute;
+        right: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 0;
+        height: 0;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        opacity: 0.5;
+    }
+    
+    .sort-link.asc:after {
+        border-bottom: 5px solid #212529;
+    }
+    
+    .sort-link.desc:after {
+        border-top: 5px solid #212529;
+    }
+    
+    /* 余额卡片样式 */
+    .balance-card {
+        border-radius: 8px;
+        background: linear-gradient(135deg, #e8f4f8 0%, #f0f8fb 100%);
+        border: 1px solid #dee2e6;
+    }
+    
+    /* 附件按钮样式 */
+    .attachment-btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+    
+    /* 空状态样式 */
+    .empty-state {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        border: 1px solid #e9ecef;
+    }
+    
+    /* 响应式优化 */
+    @media (max-width: 768px) {
+        .card-header .btn {
+            padding: 0.375rem 0.5rem;
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .filter-row {
+            gap: 0.5rem !important;
+        }
+        
+        .fund-table th, .fund-table td {
+            font-size: 0.875rem;
+        }
+        
+        .text-truncate {
+            max-width: 100px !important;
+        }
+    }
+    
+    /* 加载状态（预留） */
+    .loading-overlay {
+        display: none;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.8);
+        z-index: 10;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* 导出/导入按钮组 */
+    .btn-group-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+</style>
+
 <div class="container mt-4">
-    <div class="card shadow">
-        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-            <h4 class="mb-0"><i class="bi bi-currency-exchange"></i> 资金收支记录</h4>
-            <div>
-                <a href="{{ url_for('fund.fund_export', date=date_filter, payer=payer_filter, item=item_filter) }}" class="btn btn-light me-2">
-                    <i class="bi bi-download"></i> 导出数据
+    <!-- 资金管理主卡片 -->
+    <div class="card shadow-sm border-0">
+        <!-- 卡片头部 -->
+        <div class="card-header bg-success text-white d-flex flex-wrap justify-content-between align-items-center gap-3 py-3">
+            <h4 class="mb-0 d-flex align-items-center">
+                <i class="bi bi-currency-exchange me-2"></i> 资金收支记录
+            </h4>
+            <div class="btn-group-actions">
+                <a href="{{ url_for('fund.fund_export', date=date_filter, payer=payer_filter, item=item_filter) }}" 
+                   class="btn btn-light btn-action">
+                    <i class="bi bi-download me-1"></i> 导出数据
                 </a>
-                <a href="{{ url_for('fund.fund_import') }}" class="btn btn-light me-2">
-                    <i class="bi bi-upload"></i> 导入数据
+                <a href="{{ url_for('fund.fund_import') }}" 
+                   class="btn btn-light btn-action">
+                    <i class="bi bi-upload me-1"></i> 导入数据
                 </a>
-                <a href="{{ url_for('fund.fund_add') }}" class="btn btn-light">
-                    <i class="bi bi-plus-circle"></i> 新增数据
+                <a href="{{ url_for('fund.fund_add') }}" 
+                   class="btn btn-light btn-action">
+                    <i class="bi bi-plus-circle me-1"></i> 新增数据
                 </a>
             </div>
         </div>
-        <div class="card-body">
-            <form method="GET" class="row g-3 mb-4">
+        
+        <!-- 卡片主体 -->
+        <div class="card-body p-4">
+            <!-- 筛选表单 -->
+            <form method="GET" class="row g-3 mb-4 filter-row">
                 <div class="col-md-3">
-                    <input type="date" name="date" class="form-control" value="{{ date_filter or '' }}" placeholder="日期筛选">
+                    <label class="form-label small text-muted mb-1">日期筛选</label>
+                    <input type="date" name="date" class="form-control rounded" 
+                           value="{{ date_filter or '' }}" placeholder="日期筛选">
                 </div>
                 <div class="col-md-3">
-                    <input type="text" name="payer" class="form-control" value="{{ payer_filter or '' }}" placeholder="资方筛选">
+                    <label class="form-label small text-muted mb-1">资方筛选</label>
+                    <input type="text" name="payer" class="form-control rounded" 
+                           value="{{ payer_filter or '' }}" placeholder="请输入资方名称">
                 </div>
                 <div class="col-md-3">
-                    <input type="text" name="item" class="form-control" value="{{ item_filter or '' }}" placeholder="项目筛选">
+                    <label class="form-label small text-muted mb-1">项目筛选</label>
+                    <input type="text" name="item" class="form-control rounded" 
+                           value="{{ item_filter or '' }}" placeholder="请输入项目名称">
                 </div>
-                <div class="col-md-3">
-                    <button type="submit" class="btn btn-outline-secondary w-100">筛选</button>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-outline-secondary w-100 rounded btn-action">
+                        <i class="bi bi-funnel me-1"></i> 筛选
+                    </button>
                 </div>
             </form>
 
-            <div class="alert alert-info mb-4 d-flex justify-content-between align-items-center">
-                <span><strong>当前账户总余额：</strong> {{ "%.2f" % total_balance }} 元</span>
-                <small class="text-muted text-uppercase">实时计算</small>
+            <!-- 余额信息卡片 -->
+            <div class="alert balance-card mb-4 d-flex flex-wrap justify-content-between align-items-center p-3">
+                <div>
+                    <span class="text-muted small">当前账户总余额：</span>
+                    <span class="h5 fw-bold ms-1">{{ "%.2f" | format(total_balance) }} 元</span>
+                </div>
+                <small class="text-muted text-uppercase">
+                    <i class="bi bi-clock me-1"></i> 实时计算
+                </small>
             </div>
 
-            <div class="table-responsive">
-                <table class="table table-hover align-middle">
+            <!-- 表格区域 -->
+            <div class="table-responsive rounded shadow-sm overflow-hidden">
+                <table class="table table-hover align-middle mb-0 fund-table">
                     <thead class="table-light">
                         <tr>
+                            <!-- 排序表头 - 日期 -->
                             <th>
-                                <a href="{{ url_for('fund.fund_list', sort='date_asc' if sort == 'date_desc' else 'date_desc', date=date_filter, payer=payer_filter, item=item_filter) }}" class="text-dark text-decoration-none">
-                                    日期 {% if sort.startswith('date_') %}↕{% endif %}
+                                <a href="{{ url_for('fund.fund_list', 
+                                       sort='date_asc' if sort == 'date_desc' else 'date_desc', 
+                                       date=date_filter, payer=payer_filter, item=item_filter) }}" 
+                                   class="text-dark text-decoration-none sort-link 
+                                   {% if sort == 'date_asc' %}asc{% elif sort == 'date_desc' %}desc{% endif %}">
+                                    日期
                                 </a>
                             </th>
+                            <!-- 排序表头 - 资方 -->
                             <th>
-                                <a href="{{ url_for('fund.fund_list', sort='payer_asc' if sort == 'payer_desc' else 'payer_desc', date=date_filter, payer=payer_filter, item=item_filter) }}" class="text-dark text-decoration-none">
-                                    资方 {% if sort.startswith('payer_') %}↕{% endif %}
+                                <a href="{{ url_for('fund.fund_list', 
+                                       sort='payer_asc' if sort == 'payer_desc' else 'payer_desc', 
+                                       date=date_filter, payer=payer_filter, item=item_filter) }}" 
+                                   class="text-dark text-decoration-none sort-link 
+                                   {% if sort == 'payer_asc' %}asc{% elif sort == 'payer_desc' %}desc{% endif %}">
+                                    资方
                                 </a>
                             </th>
+                            <!-- 排序表头 - 项目 -->
                             <th>
-                                <a href="{{ url_for('fund.fund_list', sort='item_asc' if sort == 'item_desc' else 'item_desc', date=date_filter, payer=payer_filter, item=item_filter) }}" class="text-dark text-decoration-none">
-                                    项目 {% if sort.startswith('item_') %}↕{% endif %}
+                                <a href="{{ url_for('fund.fund_list', 
+                                       sort='item_asc' if sort == 'item_desc' else 'item_desc', 
+                                       date=date_filter, payer=payer_filter, item=item_filter) }}" 
+                                   class="text-dark text-decoration-none sort-link 
+                                   {% if sort == 'item_asc' %}asc{% elif sort == 'item_desc' %}desc{% endif %}">
+                                    项目
                                 </a>
                             </th>
+                            <!-- 排序表头 - 交易金额 -->
                             <th>
-                                <a href="{{ url_for('fund.fund_list', sort='amount_asc' if sort == 'amount_desc' else 'amount_desc', date=date_filter, payer=payer_filter, item=item_filter) }}" class="text-dark text-decoration-none">
-                                    交易金额 {% if sort.startswith('amount_') %}↕{% endif %}
+                                <a href="{{ url_for('fund.fund_list', 
+                                       sort='amount_asc' if sort == 'amount_desc' else 'amount_desc', 
+                                       date=date_filter, payer=payer_filter, item=item_filter) }}" 
+                                   class="text-dark text-decoration-none sort-link 
+                                   {% if sort == 'amount_asc' %}asc{% elif sort == 'amount_desc' %}desc{% endif %}">
+                                    交易金额
                                 </a>
                             </th>
+                            <!-- 排序表头 - 余额 -->
                             <th>
-                                <a href="{{ url_for('fund.fund_list', sort='balance_asc' if sort == 'balance_desc' else 'balance_desc', date=date_filter, payer=payer_filter, item=item_filter) }}" class="text-dark text-decoration-none">
-                                    余额 {% if sort.startswith('balance_') %}↕{% endif %}
+                                <a href="{{ url_for('fund.fund_list', 
+                                       sort='balance_asc' if sort == 'balance_desc' else 'balance_desc', 
+                                       date=date_filter, payer=payer_filter, item=item_filter) }}" 
+                                   class="text-dark text-decoration-none sort-link 
+                                   {% if sort == 'balance_asc' %}asc{% elif sort == 'balance_desc' %}desc{% endif %}">
+                                    余额
                                 </a>
                             </th>
                             <th>类型</th>
@@ -82,22 +262,34 @@
                                 <td>{{ format_datetime(r.date) }}</td>
                                 <td>{{ r.payer or '-' }}</td>
                                 <td>{{ r.item or '-' }}</td>
-                                <td class="{% if r.amount < 0 %}text-danger{% else %}text-success{% endif %} fw-bold">
-                                    {{ "%.2f" % r.amount }}
+                                <!-- 交易金额 - 区分收入/支出 -->
+                                <td class="{% if r.amount >= 0 %}amount-income{% else %}amount-expense{% endif %}">
+                                    {{ "%.2f" | format(r.amount) }}
                                 </td>
-                                <td class="fw-bold">{{ "%.2f" % r.balance }}</td>
+                                <td class="fw-bold">{{ "%.2f" | format(r.balance) }}</td>
+                                <!-- 交易类型标签 -->
                                 <td>
-                                    <span class="badge {% if r.amount >= 0 %}bg-success{% else %}bg-danger{% endif %}">
-                                        {% if r.amount >= 0 %}收入{% else %}支出{% endif %}
+                                    <span class="badge rounded-pill {% if r.amount >= 0 %}bg-success{% else %}bg-danger{% endif %}">
+                                        {% if r.amount >= 0 %}
+                                            <i class="bi bi-arrow-up me-1"></i> 收入
+                                        {% else %}
+                                            <i class="bi bi-arrow-down me-1"></i> 支出
+                                        {% endif %}
                                     </span>
                                 </td>
                                 <td>{{ r.operator.name if r.operator else '系统' }}</td>
-                                                                
-                                <td class="text-truncate" style="max-width: 150px;">{{ r.note or '-' }}</td>
+                                <!-- 备注 - 悬停显示完整内容 -->
+                                <td class="text-truncate" style="max-width: 150px;" 
+                                    title="{{ r.note or '无备注信息' }}">
+                                    {{ r.note or '-' }}
+                                </td>
+                                <!-- 凭证附件 -->
                                 <td>
                                     {% if r.attachment %}
-                                    <a href="/{{ r.attachment }}" target="_blank" class="btn btn-sm btn-outline-primary" title="点击查看附件">
-                                        <i class="bi bi-file-earmark-text"></i> 查看
+                                    <a href="/{{ r.attachment }}" target="_blank" 
+                                       class="btn btn-sm btn-outline-primary attachment-btn btn-action" 
+                                       title="点击查看附件">
+                                        <i class="bi bi-file-earmark-text me-1"></i> 查看
                                     </a>
                                     {% else %}
                                     <span class="text-muted small">无</span>
@@ -106,14 +298,90 @@
                             </tr>
                             {% endfor %}
                         {% else %}
+                        <!-- 空状态 -->
                         <tr>
-                            <td colspan="9" class="text-center text-muted py-5">暂无财务收支记录</td>
+                            <td colspan="9" class="empty-state">
+                                <div class="text-center py-5">
+                                    <i class="bi bi-file-earmark-text text-muted" style="font-size: 3rem;"></i>
+                                    <p class="text-muted mt-3 mb-0">暂无财务收支记录</p>
+                                    <p class="text-secondary small mt-1">点击"新增数据"添加第一条记录</p>
+                                </div>
+                            </td>
                         </tr>
                         {% endif %}
                     </tbody>
                 </table>
             </div>
+            <!-- 分页控件 -->
+            {% from "_pagination.html" import render_pagination %}
+            {{ render_pagination(pagination, 'fund.fund_list') }}
         </div>
     </div>
 </div>
+
+<!-- 交互增强脚本 -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 筛选表单提交优化
+        const filterForm = document.querySelector('form[method="GET"]');
+        if (filterForm) {
+            filterForm.addEventListener('submit', function(e) {
+                // 移除空的筛选条件，优化URL
+                const inputs = this.querySelectorAll('input');
+                inputs.forEach(input => {
+                    if (!input.value.trim()) {
+                        input.disabled = true;
+                    }
+                });
+                
+                // 添加加载状态提示
+                const submitBtn = this.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> 筛选中...';
+                }
+            });
+        }
+        
+        // 金额单元格悬停效果
+        const amountCells = document.querySelectorAll('.amount-income, .amount-expense');
+        amountCells.forEach(cell => {
+            cell.style.transition = 'all 0.2s ease';
+            cell.addEventListener('mouseenter', function() {
+                this.style.transform = 'scale(1.05)';
+                this.style.textShadow = '0 1px 2px rgba(0,0,0,0.1)';
+            });
+            cell.addEventListener('mouseleave', function() {
+                this.style.transform = 'scale(1)';
+                this.style.textShadow = 'none';
+            });
+        });
+        
+        // 附件链接新窗口打开
+        const attachmentLinks = document.querySelectorAll('.attachment-btn');
+        attachmentLinks.forEach(link => {
+            link.setAttribute('target', '_blank');
+            link.addEventListener('click', function(e) {
+                // 可添加下载/查看的日志记录逻辑
+                console.log(`查看附件: ${this.href}`);
+            });
+        });
+        
+        // 响应式优化 - 小屏幕下调整表格
+        function adjustTableForMobile() {
+            if (window.innerWidth < 768) {
+                const tableHeaders = document.querySelectorAll('.fund-table th');
+                tableHeaders.forEach((header, index) => {
+                    if (index >= 7) { // 备注和凭证列
+                        header.style.fontSize = '0.75rem';
+                    }
+                });
+            }
+        }
+        
+        // 初始化响应式调整
+        adjustTableForMobile();
+        window.addEventListener('resize', adjustTableForMobile);
+    });
+</script>
 {% endblock %}
