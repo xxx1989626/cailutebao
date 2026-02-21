@@ -106,3 +106,30 @@ def get_unread_count():
     
     # 返回总和。只要这个数字 > 0，网页就会嘀嘀嘀
     return {"unread_count": notice_count + pending_hr_count}
+
+# 前端告诉后端：我已打开页面，有新消息记得推我
+@notification_bp.route('/client_ready')
+@login_required
+def client_ready():
+    # 这里只是标记客户端在线，实际推送用前端轮询替代版
+    return {"ok": True}
+
+# 后端告诉前端：你有新消息了
+@notification_bp.route('/has_new_notice')
+@login_required
+def has_new_notice():
+    from models import Notification, EmploymentCycle
+    from utils import perm
+
+    notice_count = Notification.query.filter_by(
+        user_id=current_user.id, is_read=False
+    ).count()
+
+    pending_hr = 0
+    if perm.can('hr.view'):
+        pending_hr = EmploymentCycle.query.filter_by(status='待审核').count()
+
+    return {
+        "has_new": (notice_count + pending_hr) > 0,
+        "count": notice_count + pending_hr
+    }

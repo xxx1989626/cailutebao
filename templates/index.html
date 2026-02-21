@@ -266,10 +266,10 @@
     <!-- 地图和值班信息区域 -->
     <div class="row g-4">
         <!-- 中国地图 -->
-        <div class="col-lg-8">
+        <div class="col-lg-6">
             <div class="card map-card h-100">
                 <div class="card-header">
-                    <h5 class="mb-0"><i class="bi bi-geo-alt me-2"></i> 在职人员户籍地分布（全国地图）</h5>
+                    <h5 class="mb-0"><i class="bi bi-geo-alt me-2"></i> 在职人员户籍地分布</h5>
                 </div>
                 <div class="card-body p-0">
                     <div id="chinaMap" style="width:100%; height:500px;"></div>
@@ -277,68 +277,64 @@
             </div>
         </div>
 
-        <!-- 值班信息 -->
-        <div class="col-lg-4">
-            <div class="row g-4">
-                <!-- 今日值班 -->
-                <div class="col-12">
-                    <div class="card duty-card border-0 border-start border-primary border-4">
-                        <div class="card-header d-flex justify-content-between align-items-center py-3">
-                            <h6 class="mb-0 fw-bold text-primary"><i class="bi bi-calendar-check me-2"></i> 今日值班</h6>
-                            <span class="badge bg-primary rounded-pill small px-3 py-1" id="today_label"></span>
-                        </div>
-                        <div class="card-body p-0" style="max-height: 250px; overflow-y: auto;">
-                            <div class="table-responsive">
-                                <table class="table table-sm table-hover mb-0 align-middle" style="font-size: 0.9rem;">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th class="ps-3">姓名</th>
-                                            <th>岗位</th>
-                                            <th>电话</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="today_duty_list">
-                                        <tr>
-                                            <td colspan="3" class="text-center py-4 text-muted">
-                                                <div class="loading-spinner mx-auto mb-2"></div>
-                                                加载中...
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
+    <!-- 今日值班 -->
+    <div class="col-lg-3">
+        <div class="card duty-card border-0 border-start border-primary border-4">
+            <div class="card-header d-flex justify-content-between align-items-center py-3">
+                <h6 class="mb-0 fw-bold text-primary"><i class="bi bi-calendar-check me-2"></i> 今日值班</h6>
+                    <span class="badge bg-primary rounded-pill small px-3 py-1" id="today_label"></span>
+            </div>
+            <div class="card-body p-0" style="max-height: 500px; overflow-y: auto;">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0 align-middle" style="font-size: 0.85rem;">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-3">姓名</th>
+                                <th>岗位</th>
+                                <th>电话</th>
+                            </tr>
+                        </thead>
+                        <tbody id="today_duty_list">
+                            <tr>
+                                <td colspan="3" class="text-center py-4 text-muted">
+                                    <div class="loading-spinner mx-auto mb-2"></div>
+                                    加载中...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
+            </div>
+        </div>
+    </div>
 
-                <!-- 明日预告 -->
-                <div class="col-12">
-                    <div class="card duty-card border-0 border-start border-success border-4">
-                        <div class="card-header d-flex justify-content-between align-items-center py-3">
-                            <h6 class="mb-0 fw-bold text-success"><i class="bi bi-calendar-plus me-2"></i> 明日预告</h6>
-                            <span class="badge bg-success rounded-pill small px-3 py-1" id="tomorrow_label"></span>
-                        </div>
-                        <div class="card-body p-0" style="max-height: 250px; overflow-y: auto;">
-                            <div class="table-responsive">
-                                <table class="table table-sm table-hover mb-0 align-middle" style="font-size: 0.9rem;">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th class="ps-3">姓名</th>
-                                            <th>岗位</th>
-                                            <th>电话</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tomorrow_duty_list">
-                                        <tr>
-                                            <td colspan="3" class="text-center py-4 text-muted">
-                                                <div class="loading-spinner mx-auto mb-2"></div>
-                                                加载中...
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+
+    <!-- 明日预告 -->
+        <div class="col-lg-3">
+            <div class="card duty-card border-0 border-start border-success border-4">
+                <div class="card-header d-flex justify-content-between align-items-center py-3">
+                    <h6 class="mb-0 fw-bold text-success"><i class="bi bi-calendar-plus me-2"></i> 明日预告</h6>
+                        <span class="badge bg-success rounded-pill small px-3 py-1" id="tomorrow_label"></span>
+                </div>
+                <div class="card-body p-0" style="max-height: 500px; overflow-y: auto;">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0 align-middle" style="font-size: 0.85rem;">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-3">姓名</th>
+                                    <th>岗位</th>
+                                    <th>电话</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tomorrow_duty_list">
+                                <tr>
+                                    <td colspan="3" class="text-center py-4 text-muted">
+                                        <div class="loading-spinner mx-auto mb-2"></div>
+                                        加载中...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -363,7 +359,7 @@
         var option = {
             backgroundColor: '#fff',
             title: {
-                text: '在职人员户籍地分布',
+                text: ' ',
                 left: 'center',
                 top: 20,
                 textStyle: {
@@ -406,7 +402,7 @@
                 name: '人数',
                 type: 'map',
                 map: 'china',
-                roam: true,  // 允许缩放和拖拽
+                roam: false,  // 允许缩放和拖拽
                 zoom: 1.1,   // 初始缩放比例
                 label: {
                     show: true,

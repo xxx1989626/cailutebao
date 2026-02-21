@@ -6,12 +6,7 @@
 <style>
     /* 全局滚动条美化 */
     .sticky-sidebar::-webkit-scrollbar { width: 6px; }
-    .sticky-sidebar::-webkit-scrollbar-thumb { 
-        background: #ced4da; 
-        border-radius: 10px; 
-        transition: background 0.2s ease;
-    }
-    .sticky-sidebar::-webkit-scrollbar-thumb:hover { background: #adb5bd; }
+    .sticky-sidebar::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
 
     /* 侧边栏样式增强 */
     .sticky-sidebar {
@@ -22,386 +17,103 @@
         padding: 1.2rem;
         background: #ffffff;
         border-radius: 12px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         border: 1px solid #e9ecef;
-        transition: all 0.3s ease;
-    }
-    
-    .sticky-sidebar:hover {
-        box-shadow: 0 6px 20px rgba(0,0,0,0.07);
     }
 
     /* 顶部 Tabs 导航美化 */
-    .hr-tabs { 
-        border-bottom: 1px solid #e9ecef; 
-        margin-bottom: 25px; 
-        display: flex; 
-        gap: 30px;
-        flex-wrap: wrap;
-    }
-    
+    .hr-tabs { border-bottom: 1px solid #dee2e6; margin-bottom: 25px; display: flex; gap: 30px; }
     .hr-tabs a { 
-        text-decoration: none; 
-        color: #6c757d; 
-        padding: 12px 15px; 
-        font-weight: 500; 
-        position: relative; 
-        transition: all 0.3s ease;
-        border-radius: 6px 6px 0 0;
+        text-decoration: none; color: #6c757d; padding: 12px 5px; 
+        font-weight: 500; position: relative; transition: all 0.3s;
     }
-    
-    .hr-tabs a:hover { 
-        color: #0d6efd;
-        background-color: rgba(13, 110, 253, 0.05);
-    }
-    
-    .hr-tabs a.active { 
-        color: #0d6efd; 
-        font-weight: 600;
-        background-color: rgba(13, 110, 253, 0.05);
-    }
-    
+    .hr-tabs a:hover { color: #007bff; }
+    .hr-tabs a.active { color: #007bff; font-weight: 600; }
     .hr-tabs a.active::after {
-        content: ""; 
-        position: absolute; 
-        bottom: -1px; 
-        left: 0; 
-        width: 100%; 
-        height: 3px; 
-        background: #0d6efd; 
-        border-radius: 3px;
+        content: ""; position: absolute; bottom: -1px; left: 0; 
+        width: 100%; height: 3px; background: #007bff; border-radius: 3px;
     }
 
     /* 极速模式 & 状态样式 */
     .mode-indicator {
-        position: fixed; 
-        top: 20px; 
-        left: 50%; 
-        transform: translateX(-50%);
-        z-index: 2000; 
-        display: none; 
-        padding: 12px 35px;
-        border-radius: 50px; 
-        background: rgba(255, 193, 7, 0.95);
-        backdrop-filter: blur(8px); 
-        box-shadow: 0 8px 32px rgba(0,0,0,0.15);
-        animation: slideDown 0.3s ease forwards;
-    }
-    
-    @keyframes slideDown {
-        from { opacity: 0; transform: translate(-50%, -20px); }
-        to { opacity: 1; transform: translate(-50%, 0); }
+        position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+        z-index: 2000; display: none; padding: 10px 30px;
+        border-radius: 50px; background: rgba(255, 193, 7, 0.95);
+        backdrop-filter: blur(5px); box-shadow: 0 8px 32px rgba(0,0,0,0.15);
     }
     
     .emp-tag { 
-        padding: 12px 15px; 
-        margin-bottom: 10px; 
-        background: #fff; 
-        border: 1px solid #e9ecef; 
-        border-radius: 10px; 
-        cursor: grab; 
-        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        padding: 10px 12px; margin-bottom: 8px; background: #fff; 
+        border: 1px solid #eee; border-radius: 8px; cursor: grab; 
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         user-select: none;
-        position: relative;
-        overflow: hidden;
     }
-    
-    .emp-tag::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(13, 110, 253, 0.05), transparent);
-        transition: left 0.5s ease;
-    }
-    
     .emp-tag:hover { 
-        transform: translateY(-3px); 
-        border-color: #0d6efd; 
-        box-shadow: 0 6px 12px rgba(13, 110, 253, 0.1); 
-    }
-    
-    .emp-tag:hover::before {
-        left: 100%;
+        transform: translateY(-2px); border-color: #007bff; 
+        box-shadow: 0 4px 8px rgba(0,123,255,0.15); 
     }
 
     /* 状态颜色标记 */
-    .away-status { 
-        background-color: #fffef0 !important; 
-        border: 1.5px dashed #ffc107 !important; 
-        position: relative;
-    }
-    
-    .away-status::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 8px;
-        height: 100%;
-        background: #ffc107;
-    }
-    
-    .leave-status { 
-        background-color: #fff5f5 !important; 
-        border: 1.5px dotted #dc3545 !important;
-        position: relative;
-    }
-    
-    .leave-status::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 8px;
-        height: 100%;
-        background: #dc3545;
-    }
+    .away-status { background-color: #fffef0 !important; border: 1.5px dashed #ffc107 !important; }
+    .leave-status { background-color: #fff5f5 !important; border: 1.5px dotted #dc3545 !important; }
 
     /* 按钮组质感 */
-    .btn-export-a { 
-        background: #e7f1ff; 
-        color: #0056b3; 
-        border: 1px solid #b6d4fe;
-        transition: all 0.2s ease;
-        border-radius: 6px 0 0 6px;
-    }
-    
-    .btn-export-a:hover { 
-        background: #0d6efd; 
-        color: white;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(13, 110, 253, 0.2);
-    }
-    
-    .btn-export-b { 
-        background: #f8f9fa; 
-        color: #333; 
-        border: 1px solid #ddd;
-        transition: all 0.2s ease;
-        border-radius: 0 6px 6px 0;
-    }
-    
-    .btn-export-b:hover { 
-        background: #333; 
-        color: white;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-    }
+    .btn-export-a { background: #e7f1ff; color: #0056b3; border: 1px solid #b6d4fe; }
+    .btn-export-a:hover { background: #0d6efd; color: white; }
+    .btn-export-b { background: #f8f9fa; color: #333; border: 1px solid #ddd; }
+    .btn-export-b:hover { background: #333; color: white; }
 
     /* 日历事件微调 */
-    .fc-event { 
-        border-radius: 6px !important; 
-        margin: 2px 0 !important; 
-        cursor: pointer;
-        transition: all 0.2s ease;
-        border: none !important;
-    }
-    
-    .fc-event:hover {
-        transform: scale(1.02);
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-    
-    .fc-day-today { 
-        background: #f8f9ff !important;
-        border: 2px solid #0d6efd !important;
-    }
-    
-    .fc-daygrid-day-number {
-        font-weight: 600;
-        color: #495057;
-    }
-    
-    /* 极速模式状态样式 */
-    .fast-mode-active {
-        filter: brightness(1.02);
-    }
-    
-    .copy-mode-active .fc-day:not(.fc-day-disabled) {
-        cursor: crosshair;
-        transition: background 0.2s ease;
-    }
-    
-    .copy-mode-active .fc-day:not(.fc-day-disabled):hover {
-        background: rgba(13, 110, 253, 0.1) !important;
-    }
-    
-    /* 开关样式优化 */
-    .form-switch .form-check-input {
-        height: 1.2rem;
-        width: 2.2rem;
-    }
-    
-    .form-switch .form-check-input:checked {
-        background-color: #0d6efd;
-        border-color: #0d6efd;
-    }
-    
-    /* 模态框样式优化 */
-    .modal-content {
-        border-radius: 12px !important;
-    }
-    
-    .modal-body {
-        padding: 1.5rem !important;
-    }
-    
-    /* 按钮通用样式 */
-    .btn {
-        border-radius: 8px;
-        transition: all 0.2s ease;
-    }
-    
-    .btn:hover {
-        transform: translateY(-2px);
-    }
-    
-    .btn-sm {
-        padding: 0.375rem 0.75rem;
-    }
-    
-    /* 响应式优化 */
-    @media (max-width: 992px) {
-        .sticky-sidebar {
-            height: auto;
-            position: static;
-            margin-bottom: 20px;
-        }
-        
-        .col-md-2, .col-md-10 {
-            width: 100%;
-        }
-        
-        .mode-indicator {
-            padding: 10px 20px;
-            font-size: 0.875rem;
-        }
-    }
-    
-    @media (max-width: 768px) {
-        .hr-tabs {
-            gap: 10px;
-        }
-        
-        .hr-tabs a {
-            padding: 8px 12px;
-            font-size: 0.875rem;
-        }
-        
-        .d-flex.gap-3 {
-            flex-direction: column;
-            gap: 1rem !important;
-        }
-        
-        .btn-group {
-            width: 100%;
-        }
-        
-        .btn-export-a, .btn-export-b {
-            border-radius: 6px;
-            flex: 1;
-        }
-        
-        .btn-export-a {
-            border-radius: 6px 0 0 6px;
-        }
-        
-        .btn-export-b {
-            border-radius: 0 6px 6px 0;
-        }
-    }
-    
-    @media (max-width: 576px) {
-        .mode-indicator {
-            width: 90%;
-            text-align: center;
-            padding: 8px 15px;
-            font-size: 0.75rem;
-        }
-        
-        .emp-tag {
-            padding: 10px 12px;
-        }
-        
-        .fc-toolbar-title {
-            font-size: 1rem !important;
-        }
-    }
+    .fc-event { border-radius: 4px !important; margin: 1px 0 !important; cursor: pointer; }
+    .fc-day-today { background: #f8f9ff !important; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-3 px-4">
-    <!-- 导航标签 -->
+<div class="container-fluid mt-2">
     <div class="hr-tabs mb-4">
-        <a href="{{ url_for('scheduling.schedule_list') }}" class="{% if request.endpoint == 'scheduling.schedule_list' %}active{% endif %}">
-            <i class="bi bi-calendar-week me-1"></i> 排班视图
-        </a>
-        <a href="{{ url_for('posts.list') }}" class="{% if request.endpoint == 'posts.list' %}active{% endif %}">
-            <i class="bi bi-briefcase me-1"></i> 岗位设置
-        </a>
-        <a href="{{ url_for('trip.trip_list') }}" class="{% if request.endpoint == 'trip.trip_list' %}active{% endif %}">
-            <i class="bi bi-airplane me-1"></i> 出差设置
-        </a>
-        <a href="{{ url_for('leave.leave_list') }}" class="{% if request.endpoint == 'leave.leave_list' %}active{% endif %}">
-            <i class="bi bi-person-slash me-1"></i> 请假管理
-        </a>
+        <a href="{{ url_for('scheduling.schedule_list') }}" class="{% if request.endpoint == 'scheduling.schedule_list' %}active{% endif %}">📅 排班视图</a>
+        <a href="{{ url_for('posts.list') }}" class="{% if request.endpoint == 'posts.list' %}active{% endif %}">🛠️ 岗位设置</a>
+        <a href="{{ url_for('trip.trip_list') }}" class="{% if request.endpoint == 'trip.trip_list' %}active{% endif %}">💼 出差设置</a>
+        <a href="{{ url_for('leave.leave_list') }}" class="{% if request.endpoint == 'leave.leave_list' %}active{% endif %}">📝 请假管理</a>
     </div>
 
-    <!-- 极速模式提示 -->
     <div id="modeIndicator" class="mode-indicator text-dark fw-bold">
-        <i class="bi bi-lightning-fill me-1"></i> <span id="modeText"></span>
+        <i class="bi bi-lightning-fill"></i> <span id="modeText"></span>
     </div>
 
-    <!-- 操作工具栏 -->
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3 p-3 bg-white rounded-3 shadow-sm">
-        <div class="d-flex flex-wrap align-items-center gap-3">
-            <!-- 极速模式开关 -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-3">
+        <div class="d-flex align-items-center gap-3">
             <div class="form-check form-switch p-2 bg-white rounded border shadow-sm px-3 ps-0 d-flex align-items-center justify-content-center">
-                <input class="form-check-input ms-0" type="checkbox" id="fastModeToggle" style="cursor: pointer;">
-                <label class="form-check-label small fw-bold ms-2 mb-0" for="fastModeToggle" style="cursor: pointer;">
-                    <i class="bi bi-rocket-takeoff me-1"></i> 极速盖章模式
-                </label>
-            </div>
-            
-            <!-- 提示信息 -->
+    <input class="form-check-input ms-0" type="checkbox" id="fastModeToggle" style="cursor: pointer;">
+    <label class="form-check-label small fw-bold ms-2 mb-0" for="fastModeToggle" style="cursor: pointer;">🚀 极速盖章模式</label>
+</div>
             <span class="text-muted small d-none d-lg-inline">
-                <i class="bi bi-info-circle text-primary me-1"></i> 右键“取样”已有班次，点击空白日期直接“盖章”
+                <i class="bi bi-info-circle"></i> 右键“取样”已有班次，点击空白日期直接“盖章”
             </span>
         </div>
         
-        <!-- 功能按钮组 -->
         <div class="d-flex gap-2">
             <button class="btn btn-sm btn-outline-primary" onclick="document.getElementById('excelImportInput').click()">
-                <i class="bi bi-file-earmark-arrow-up me-1"></i> 导入排班
+                <i class="bi bi-file-earmark-arrow-up"></i> 导入排班
             </button>
             <button class="btn btn-sm btn-outline-danger" onclick="clearCurrentMonth()">
-                <i class="bi bi-trash3 me-1"></i> 清空本月
+                <i class="bi bi-trash3"></i> 清空本月
             </button>
             <input type="file" id="excelImportInput" hidden onchange="importExcelSchedule(this)">
 
             <div class="btn-group btn-group-sm">
-                <a href="{{ url_for('scheduling.export_attendance', table_type='A') }}" class="btn btn-export-a">
-                    <i class="bi bi-file-earmark-excel me-1"></i> 导出 A表
-                </a>
-                <a href="{{ url_for('scheduling.export_attendance', table_type='B') }}" class="btn btn-export-b">
-                    <i class="bi bi-file-earmark-spreadsheet me-1"></i> 导出 B表
-                </a>
+                <a href="{{ url_for('scheduling.export_attendance', table_type='A') }}" class="btn btn-export-a">导出 A表</a>
+                <a href="{{ url_for('scheduling.export_attendance', table_type='B') }}" class="btn btn-export-b">导出 B表</a>
             </div>
         </div>
     </div>
 
-    <!-- 主要内容区域 -->
-    <div class="row g-4">
-        <!-- 侧边栏：待排人员 -->
-        <div class="col-lg-2 col-md-3">
+    <div class="row g-3">
+        <div class="col-md-2">
             <div class="sticky-sidebar">
-                <div class="small text-secondary mb-3 fw-bold border-bottom pb-2 d-flex align-items-center">
-                    <i class="bi bi-people me-2 text-primary"></i> 待排人员
-                    <span class="badge bg-light text-dark ms-2">{{ employees|length }}</span>
+                <div class="small text-secondary mb-3 fw-bold border-bottom pb-2">
+                    <i class="bi bi-people"></i> 待排人员
                 </div>
                 <div id="external-events">
                     {% for emp in employees %}
@@ -410,87 +122,65 @@
                         <div class="emp-tag fc-event-draggable {% if is_away %}away-status{% endif %} {% if is_on_leave %}leave-status{% endif %}" 
                              data-user-id="{{ emp.id }}" 
                              data-user-name="{{ emp.name }}">
-                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <div class="d-flex justify-content-between align-items-center">
                                 <strong>{{ emp.name }}</strong>
-                                <div class="d-flex gap-1 flex-wrap">
-                                    {% if is_away %}
-                                        <span class="badge bg-warning text-dark d-inline-flex align-items-center" style="font-size: 0.65rem;" title="出差中">
-                                            <i class="bi bi-airplane me-1"></i>出差中
-                                        </span>
-                                    {% endif %}
-                                    
-                                    {% if is_on_leave %}
-                                        <span class="badge bg-danger d-inline-flex align-items-center" style="font-size: 0.65rem;" title="请假中">
-                                            <i class="bi bi-calendar-x me-1"></i>请假中
-                                        </span>
-                                    {% endif %}
-                                </div>
+                                <div class="d-flex gap-1 flex-wrap"> {% if is_away %}
+        <span class="badge bg-warning text-dark d-inline-flex align-items-center" style="font-size: 0.65rem;" title="出差中">
+            <i class="bi bi-airplane me-1"></i>出差中
+        </span>
+    {% endif %}
+    
+    {% if is_on_leave %}
+        <span class="badge bg-danger d-inline-flex align-items-center" style="font-size: 0.65rem;" title="请假中">
+            <i class="bi bi-calendar-x me-1"></i>请假中
+        </span>
+    {% endif %}
+</div>
                             </div>
                         </div>
                     {% endfor %}
-                    
-                    {% if employees|length == 0 %}
-                        <div class="text-center text-muted py-4">
-                            <i class="bi bi-person-x fs-3 mb-2 opacity-50"></i>
-                            <p class="mb-0">暂无待排人员</p>
-                        </div>
-                    {% endif %}
                 </div>
             </div>
         </div>
 
-        <!-- 主区域：日历视图 -->
-        <div class="col-lg-10 col-md-9">
-            <div id="calendar" class="shadow-sm border bg-white p-4 rounded-3"></div>
+        <div class="col-md-10">
+            <div id="calendar" class="shadow-sm border bg-white p-3 rounded-3"></div>
         </div>
     </div>
 </div>
 
-<!-- 排班模态框 -->
-<div class="modal fade" id="shiftModal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="shiftModal" tabindex="-1">
     <div class="modal-dialog modal-sm modal-dialog-centered">
-        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-            <div class="modal-header bg-primary text-white border-0">
-                <h5 class="modal-title fw-bold">
-                    <i class="bi bi-calendar-plus me-1"></i> 排班设置
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
+        <div class="modal-content border-0 shadow-lg rounded-4">
             <div class="modal-body p-4">
-                <div class="text-center mb-4">
-                    <h6 class="fw-bold text-dark mb-1" id="display_info"></h6>
-                    <small class="text-muted">请选择岗位和班次类型</small>
+                <div class="text-center mb-3">
+                    <div class="text-primary small fw-bold text-uppercase mb-1">正在排班</div>
+                    <h5 class="fw-bold" id="display_info"></h5>
                 </div>
                 <form id="shiftForm">
                     <input type="hidden" id="post_user_id">
                     <input type="hidden" id="post_date">
-                    
-                    <div class="mb-4">
-                        <label class="small text-muted mb-1 d-block">岗位分配</label>
-                        <select id="post_id" class="form-select border-2 rounded">
-                            {% for p in posts %}
-                                <option value="{{p.id}}">{{p.name}}</option>
-                            {% endfor %}
+                    <div class="mb-3">
+                        <label class="small text-muted mb-1">岗位分配</label>
+                        <select id="post_id" class="form-select border-2">
+                            {% for p in posts %}<option value="{{p.id}}">{{p.name}}</option>{% endfor %}
                         </select>
-                    </div>
-                    
-                    <div class="row g-2 mb-4">
-                        <div class="col-6">
-                            <div class="form-check border rounded p-2 ps-0 d-flex align-items-center justify-content-center w-100" style="cursor: pointer;">
-                                <input class="form-check-input" type="checkbox" id="is_night_toggle">
-                                <label class="form-check-label ms-2 mb-0" for="is_night_toggle" style="cursor: pointer;">夜班</label>
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <div class="form-check border rounded p-2 ps-0 d-flex align-items-center justify-content-center w-100" style="cursor: pointer;">
-                                <input class="form-check-input" type="checkbox" id="is_overtime_toggle">
-                                <label class="form-check-label ms-2 mb-0" for="is_overtime_toggle" style="cursor: pointer;">加班</label>
-                            </div>
-                        </div>
-                    </div>
-                    
+<div class="row g-2 mb-4">
+    <div class="col-6">
+        <div class="form-check border rounded p-2 ps-0 d-flex align-items-center justify-content-center w-100" style="cursor: pointer;">
+            <input class="form-check-input" type="checkbox" id="is_night_toggle">
+            <label class="form-check-label ms-2 mb-0" for="is_night_toggle" style="cursor: pointer;">夜班</label>
+        </div>
+    </div>
+    <div class="col-6">
+        <div class="form-check border rounded p-2 ps-0 d-flex align-items-center justify-content-center w-100" style="cursor: pointer;">
+            <input class="form-check-input" type="checkbox" id="is_overtime_toggle">
+            <label class="form-check-label ms-2 mb-0" for="is_overtime_toggle" style="cursor: pointer;">加班</label>
+        </div>
+    </div>
+</div>
                     <button type="button" class="btn btn-primary w-100 py-2 fw-bold" onclick="submitShift()">
-                        <i class="bi bi-check-circle me-1"></i> 确认提交
+                        确认提交
                     </button>
                 </form>
             </div>
@@ -505,9 +195,7 @@
 let calendar;
 let copyData = null; 
 let isFastMode = false;
-let shiftModal; // 模态框实例
 
-// 初始化函数
 function initCalendar() {
     const calendarEl = document.getElementById('calendar');
     if (!calendarEl) return;
@@ -523,47 +211,36 @@ function initCalendar() {
         }
     });
 
-    // 初始化日历
     calendar = new FullCalendar.Calendar(calendarEl, {
         locale: 'zh-cn',
-        headerToolbar: { 
-            left: 'prev,next today', 
-            center: 'title', 
-            right: 'dayGridMonth,dayGridWeek,dayGridDay' 
-        },
+        headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,dayGridWeek,dayGridDay' },
         
         buttonText: {
             today: '今天',
             month: '月视图',
             week: '周视图',
             day: '日视图',
-            prev: '<i class="bi bi-chevron-left"></i>',
-            next: '<i class="bi bi-chevron-right"></i>'
+            prev: '上一月',
+            next: '下一月'
         },
         firstDay: 1,
         initialView: 'dayGridMonth',
         editable: true,
         droppable: true,
         views: {
-            dayGridMonth: {dayMaxEvents: 6},
-            dayGridWeek: {dayMaxEvents: false},
-            dayGridDay: {dayMaxEvents: false}
+        dayGridMonth: {dayMaxEvents: 6,},
+        dayGridWeek: {dayMaxEvents: false,},
+        dayGridDay: {dayMaxEvents: false,},
         },
         // 拖拽释放
         drop: function(info) {
-            handleDrop(info.draggedEl.getAttribute('data-user-id'), 
-                       info.draggedEl.getAttribute('data-user-name'), 
-                       info.dateStr);
+            handleDrop(info.draggedEl.getAttribute('data-user-id'), info.draggedEl.getAttribute('data-user-name'), info.dateStr);
         },
         // 点击排班：极速模式下左键点击删除
         eventClick: function(info) {
             if (isFastMode) {
-                if (confirm(`确定要删除【${info.event.title}】的这个排班吗？`)) {
-                    deleteShiftDirectly(info.event.extendedProps.shiftId);
+                 {deleteShiftDirectly(info.event.extendedProps.shiftId);
                 }
-            } else {
-                // 非极速模式下点击事件显示详情
-                alert(`员工：${info.event.title}\n日期：${info.dateStr}\n岗位：${info.event.extendedProps.postName || '未设置'}`);
             }
         },
         // 核心：右键取样功能
@@ -571,22 +248,12 @@ function initCalendar() {
             info.el.addEventListener('contextmenu', function(e) {
                 if (!isFastMode) return;
                 e.preventDefault();
-                
-                // 添加选中效果
-                document.querySelectorAll('.fc-event').forEach(el => {
-                    el.style.border = 'none';
-                    el.style.transform = 'scale(1)';
-                });
-                info.el.style.border = '2px solid #0d6efd';
-                info.el.style.transform = 'scale(1.05)';
-                
                 const props = info.event.extendedProps;
                 copyData = {
                     user_id: props.empId,
                     user_name: info.event.title.split('-')[0],
                     post_id: props.postId,
-                    shift_type: info.event.title.includes('夜') ? '夜' : '白',
-                    post_name: props.postName || '默认岗位'
+                    shift_type: info.event.title.includes('夜') ? '夜' : '白'
                 };
                 enterCopyMode();
             });
@@ -595,17 +262,11 @@ function initCalendar() {
         dateClick: function(info) {
             if (isFastMode && copyData) {
                 quickSave(copyData.user_id, info.dateStr, copyData.post_id, copyData.shift_type);
-            } else if (isFastMode && !copyData) {
-                showToast('请先右键点击已有班次进行取样', 'warning');
             }
         },
         events: "{{ url_for('scheduling.get_shifts') }}"
     });
-    
     calendar.render();
-    
-    // 初始化模态框
-    shiftModal = new bootstrap.Modal(document.getElementById('shiftModal'));
 
     // 绑定极速模式开关
     const toggle = document.getElementById('fastModeToggle');
@@ -613,92 +274,38 @@ function initCalendar() {
         toggle.addEventListener('change', function(e) {
             isFastMode = e.target.checked;
             const indicator = document.getElementById('modeIndicator');
-            
             if (isFastMode) {
                 document.getElementById('calendar').classList.add('fast-mode-active');
                 indicator.style.display = 'block';
-                document.getElementById('modeText').innerText = "极速盖章中：左键删除 / 右键取样 / 点击空白日期盖章";
-                showToast('已进入极速排班模式', 'success');
+                document.getElementById('modeText').innerText = "🚀 极速盖章中：左键删 / 右键取样 / 点击空白日期盖章";
             } else {
                 document.getElementById('calendar').classList.remove('fast-mode-active');
                 indicator.style.display = 'none';
                 exitCopyMode();
-                showToast('已退出极速排班模式', 'info');
             }
         });
     }
 }
 
-// 显示提示框
-function showToast(message, type = 'success') {
-    // 创建toast元素
-    const toastContainer = document.createElement('div');
-    toastContainer.className = `toast-container position-fixed bottom-0 end-0 p-3`;
-    
-    const toast = document.createElement('div');
-    toast.className = `toast align-items-center text-white bg-${type} border-0`;
-    toast.setAttribute('role', 'alert');
-    
-    toast.innerHTML = `
-        <div class="d-flex">
-            <div class="toast-body d-flex align-items-center">
-                <i class="bi bi-${type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'info-circle'} me-2"></i>
-                ${message}
-            </div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-    `;
-    
-    toastContainer.appendChild(toast);
-    document.body.appendChild(toastContainer);
-    
-    // 显示toast
-    const bsToast = new bootstrap.Toast(toast);
-    bsToast.show();
-    
-    // 自动移除
-    setTimeout(() => {
-        toastContainer.remove();
-    }, 3000);
-}
-
 // 盖章模式逻辑
 function enterCopyMode() {
     document.getElementById('calendar').classList.add('copy-mode-active');
-    document.getElementById('modeText').innerText = `正在为【${copyData.user_name}】排班：${copyData.post_name}(${copyData.shift_type}班)，点击日期快速排班`;
+    document.getElementById('modeText').innerText = `盖章模式：正在为 [${copyData.user_name}] 连续排班... (点哪排哪)`;
 }
 
 function exitCopyMode() {
     copyData = null;
     document.getElementById('calendar').classList.remove('copy-mode-active');
-    
-    // 重置事件样式
-    document.querySelectorAll('.fc-event').forEach(el => {
-        el.style.border = 'none';
-        el.style.transform = 'scale(1)';
-    });
-    
-    if (isFastMode) {
-        document.getElementById('modeText').innerText = "极速盖章中：左键删除 / 右键取样 / 点击空白日期盖章";
-    }
+    if (isFastMode) document.getElementById('modeText').innerText = "🚀 极速编辑模式中...";
 }
-
 // 导入 Excel 排班表 (正则解析版)
 function importExcelSchedule(input) {
     if (!input.files[0]) return;
-    
-    // 验证文件类型
-    const file = input.files[0];
-    const fileExt = file.name.split('.').pop().toLowerCase();
-    if (!['xlsx', 'xls'].includes(fileExt)) {
-        showToast('请上传Excel格式的文件 (.xlsx, .xls)', 'warning');
-        return;
-    }
-    
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', input.files[0]);
     
-    indicatorShow(`正在解析 ${file.name} 并匹配岗位...`);
+    const btn = event.target;
+    indicatorShow("正在正则解析 Excel 并匹配岗位...");
 
     fetch("{{ url_for('scheduling.import_schedule_data') }}", { 
         method: 'POST', 
@@ -706,24 +313,14 @@ function importExcelSchedule(input) {
     })
     .then(res => res.json())
     .then(data => {
-        if (data.success) {
-            showToast(data.message, 'success');
-            calendar.refetchEvents();
-        } else {
-            showToast(data.message || '导入失败', 'warning');
-        }
-        // 重置文件输入
-        input.value = '';
+        alert(data.message);
+        location.reload();
     })
-    .catch(err => {
-        showToast("导入失败，请检查文件格式或联系管理员", 'danger');
-        input.value = '';
-    });
+    .catch(err => alert("导入失败，请检查文件格式"));
 }
-
 // 清空本月排班数据 - 动态获取日历当前月份版
 function clearCurrentMonth() {
-    // 1. 动态获取当前月份
+    // 1. 动态获取当前月份 (假设使用 FullCalendar)
     let targetMonth = '2026-01'; // 默认值
     if (typeof calendar !== 'undefined') {
         const date = calendar.getDate();
@@ -731,120 +328,67 @@ function clearCurrentMonth() {
     }
 
     // 2. 确认提示显示动态月份
-    if (!confirm(`⚠️ 警告：确定要清空 ${targetMonth} 月的所有排班数据吗？\n此操作不可恢复！`)) {
+    if (!confirm(`确定要清空 ${targetMonth} 的所有排班数据吗？此操作不可恢复！`)) {
         return;
     }
 
-    indicatorShow(`正在清空 ${targetMonth} 月排班数据...`);
-    
     fetch('/scheduling/clear_month', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ month: targetMonth })
+        body: JSON.stringify({ month: targetMonth }) // 使用动态变量
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showToast(data.message, 'success');
-            calendar.refetchEvents();
+            alert(data.message);
+            typeof calendar !== 'undefined' ? calendar.refetchEvents() : location.reload();
         } else {
-            showToast("错误: " + data.message, 'danger');
+            alert("错误: " + data.message);
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showToast("操作失败，请重试", 'danger');
+        alert("请求失败");
     });
 }
 
-// 显示顶部提示
 function indicatorShow(text) {
     const indicator = document.getElementById('modeIndicator');
     indicator.style.display = 'block';
     document.getElementById('modeText').innerText = text;
-    
-    // 10秒后自动隐藏（除非是极速模式）
-    if (!isFastMode) {
-        setTimeout(() => {
-            if (document.getElementById('modeText').innerText === text) {
-                indicator.style.display = 'none';
-            }
-        }, 10000);
-    }
 }
 
 // 基础 API 调用
 function deleteShiftDirectly(id) {
     fetch(`/scheduling/api/delete_shift/${id}`, { method: 'POST' })
-    .then(res => res.json())
-    .then(data => { 
-        if(data.success) {
-            calendar.refetchEvents();
-            showToast('排班已删除', 'success');
-        } else {
-            showToast('删除失败：' + data.message, 'danger');
-        }
-    })
-    .catch(err => {
-        showToast('操作失败，请重试', 'danger');
-    });
+    .then(res => res.json()).then(data => { if(data.success) calendar.refetchEvents(); });
 }
 
-// 处理拖拽排班
 function handleDrop(id, name, date) {
     // 检查被拖拽的元素是否带有出差样式
     const empTag = document.querySelector(`.emp-tag[data-user-id="${id}"]`);
     const isAway = empTag && empTag.classList.contains('away-status');
 
     if (isAway) {
-        if (!confirm(`⚠️ 排班预警\n员工 ${name} 目前标记为“出差中”。\n确定要给正在出差的员工排班吗？`)) {
-            return; // 取消操作
+        if (!confirm(`【排班预警】\n员工 ${name} 目前标记为“出差中”。\n你确定要给正在出差的员工排本岗位吗？`)) {
+            location.reload(); // 用户点取消，刷新页面撤销操作
+            return;
         }
     }
-    
-    // 设置模态框内容
-    document.getElementById('display_info').innerText = `${name} | ${date}`;
+    document.getElementById('display_info').innerText = `${name} @ ${date}`;
     document.getElementById('post_user_id').value = id;
     document.getElementById('post_date').value = date;
-    
-    // 重置开关状态
-    document.getElementById('is_night_toggle').checked = false;
-    document.getElementById('is_overtime_toggle').checked = false;
-    
-    // 显示模态框
-    shiftModal.show();
+    new bootstrap.Modal(document.getElementById('shiftModal')).show();
 }
 
-// 快速保存排班
 function quickSave(userId, date, postId, type) {
     fetch("{{ url_for('scheduling.save_shift') }}", {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            user_id: userId, 
-            date: date, 
-            post_id: postId, 
-            shift_type: type 
-        })
-    })
-    .then(res => res.json())
-    .then(data => { 
-        if (data.success) {
-            calendar.refetchEvents();
-            // 极速模式下不显示toast，避免干扰
-            if (!isFastMode) {
-                showToast('排班已保存', 'success');
-            }
-        } else {
-            showToast('保存失败：' + data.message, 'danger');
-        }
-    })
-    .catch(err => {
-        showToast('操作失败，请重试', 'danger');
-    });
+        body: JSON.stringify({ user_id: userId, date: date, post_id: postId, shift_type: type })
+    }).then(res => res.json()).then(data => { if (data.success) calendar.refetchEvents(); });
 }
 
-// 提交排班表单
 function submitShift() {
     const payload = {
         user_id: document.getElementById('post_user_id').value,
@@ -854,46 +398,22 @@ function submitShift() {
         is_night: document.getElementById('is_night_toggle').checked,
         is_overtime: document.getElementById('is_overtime_toggle').checked
     };
-    
     fetch("{{ url_for('scheduling.save_shift') }}", {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
-    })
-    .then(res => res.json())
-    .then(data => { 
-        if (data.success) {
-            shiftModal.hide();
-            calendar.refetchEvents();
-            showToast('排班已保存', 'success');
-        } else {
-            showToast('保存失败：' + data.message, 'danger');
-        }
-    })
-    .catch(err => {
-        showToast('操作失败，请重试', 'danger');
-    });
+    }).then(res => res.json()).then(data => { if (data.success) location.reload(); });
 }
 
-// 页面加载完成初始化
-document.addEventListener('DOMContentLoaded', function() {
-    initCalendar();
-    
-    // 为所有按钮添加加载状态
-    document.querySelectorAll('.btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            if (!this.disabled) {
-                this.disabled = true;
-                const originalText = this.innerHTML;
-                this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>处理中...';
-                
-                setTimeout(() => {
-                    this.disabled = false;
-                    this.innerHTML = originalText;
-                }, 3000);
-            }
-        });
-    });
-});
+document.addEventListener('DOMContentLoaded', initCalendar);
 </script>
+<style>
+/* 保持与你的排班系统一致的风格 */
+.hr-tabs { border-bottom: 2px solid #eee; display: flex; gap: 20px; }
+.hr-tabs a { text-decoration: none; color: #666; padding: 10px 5px; border-bottom: 3px solid transparent; transition: all 0.3s; font-weight: 500; }
+.hr-tabs a:hover { color: #0d6efd; }
+.hr-tabs a.active { color: #0d6efd; border-bottom-color: #0d6efd; }
+.form-control-color { padding: 0.2rem; cursor: pointer; }
+.table-hover tbody tr:hover { background-color: rgba(13, 110, 253, 0.02); }
+</style>
 {% endblock %}

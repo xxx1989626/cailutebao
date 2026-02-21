@@ -1,14 +1,14 @@
-# app.py - 主入口，保持极简
+# cailutebao/app.py.py
 from flask_migrate import Migrate
-from flask import Flask,jsonify,request,send_from_directory
+from flask import Flask, jsonify, request, send_from_directory
 from flask_login import LoginManager, current_user
-from utils import today_str,perm,format_date,format_datetime,validate_id_card,get_gender_from_id_card, get_birthday_from_id_card,get_unreturned_assets, register_module_permissions
-from config import Config,SECRET_KEY, DATABASE_PATH, UPLOAD_FOLDER,SALARY_MODES, POSITIONS, POSTS
-from models import db, Asset, User, Permission, ChatMessage
+from utils import today_str, perm, format_date, format_datetime, validate_id_card, get_gender_from_id_card, get_birthday_from_id_card, get_unreturned_assets, register_module_permissions
+from config import Config, SECRET_KEY, DATABASE_PATH, UPLOAD_FOLDER, SALARY_MODES, POSITIONS, POSTS
+from models import db, Asset, User, Permission, ChatMessage  # 如需彻底清理可删除 ChatMessage
 from routes import register_blueprints
 import json, os
 from sqlalchemy import func
-from flask_socketio import SocketIO, emit
+
 app = Flask(__name__)
 app.config.update(
     SECRET_KEY=SECRET_KEY,
@@ -21,7 +21,6 @@ app.config.update(
 db.init_app(app)
 register_blueprints(app)
 migrate = Migrate(app, db, render_as_batch=True)
-socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Flask-Login 初始化
 login_manager = LoginManager()
@@ -30,62 +29,8 @@ login_manager.login_message = '请先登录系统'
 login_manager.login_message_category = 'warning'
 login_manager.init_app(app)
 
-
-online_users = {} # 维护在线状态
-# --- Socket 实时通信逻辑 ---
-@socketio.on('send_msg')
-def handle_msg(data):
-    if not current_user.is_authenticated: return
-    
-    recipient_id = data.get('recipient_id')
-    if recipient_id != 'group':
-        if current_user.role != 'admin' and not perm.can('chat.send_private'):
-            return False
-    content = data.get('content')
-    is_group = recipient_id == 'group'
-    
-    # 1. 存入数据库
-    msg_obj = ChatMessage(
-        sender_id=current_user.id,
-        recipient_id=None if is_group else int(recipient_id),
-        content=content,
-        is_group=is_group
-    )
-    db.session.add(msg_obj)
-    db.session.commit()
-
-    # 2. 推送
-    payload = {
-        'sender_id': current_user.id,
-        'sender_name': current_user.name,
-        'content': data.get('content'),
-        'timestamp': datetime.now().strftime('%H:%M'),
-        'full_date': datetime.now().strftime('%Y-%m-%d'),
-        'is_group': data.get('recipient_id') == 'group'
-    }
-    emit('receive_msg', payload, broadcast=True) # 简单起见全部广播，前端通过逻辑过滤
-
-@app.context_processor
-def inject_keys():
-    # 这样所有模板都能直接使用 {{ TENCENT_KEY_GLOBAL }}
-    return dict(TENCENT_KEY_GLOBAL=Config.TENCENT_KEY)
-
-@app.route('/uploads/<path:filename>')
-def serve_uploads(filename):
-    # 这里非常关键！
-    # 如果数据库存的是 "uploads/asset/xxx.jpg"
-    # 浏览器请求的是 "/uploads/asset/xxx.jpg"
-    # 那么这里的 filename 接收到的就是 "asset/xxx.jpg"
-    # 我们应该去 "D:\cailu\uploads" 下面找这个 filename
-    return send_from_directory(r"D:\cailu\uploads", filename)
-
-# 新增：允许访问根目录下的文件（用于微信验证）
-@app.route('/<filename>')
-def serve_root_file(filename):
-    # 直接从项目根目录返回文件（微信验证文件放在根目录）
-    return send_from_directory(app.root_path, filename)
 # ==================== Jinja2 自定义过滤器 ====================
-from datetime import datetime , date # 确保导入（已在上文）
+from datetime import datetime, date  # 确保导入
 
 @app.template_filter('to_date')
 def to_date_filter(value):
@@ -163,22 +108,12 @@ def fromjson_filter(value):
 def inject_global_variables():
     return {
         'today_str': today_str,
-        'format_date': format_date
-    }
-@app.context_processor
-def inject_global_variables():
-    return {
-        'today_str': today_str,
         'format_date': format_date,
-        'format_datetime': format_datetime  # <--- 添加这一行
+        'format_datetime': format_datetime,
+        'perm': perm
     }
 
-# 或者如果你想单独写一个函数（更清晰），就放在这里：
-@app.context_processor
-def inject_perm_manager():
-    return dict(perm=perm) # <--- 关键点 2：确保这里的 key 叫 'perm'
-
-#全局通知和待审核数量
+# 全局通知和待审核数量
 @app.context_processor
 def inject_global_data():
     if current_user.is_authenticated:
@@ -281,6 +216,7 @@ def inject_equipped_assets():
         return results
     
     return dict(get_equipped_assets=get_equipped_assets)
+
 # ==================== 查询该员工未归还的装备 ====================
 @app.context_processor
 def inject_unreturned_assets():
@@ -316,8 +252,6 @@ def inject_unreturned_assets():
     
     return dict(get_unreturned_assets=get_unreturned_assets)
 
-
-
 # ====================登录路由====================
 @login_manager.user_loader
 def load_user(user_id):
@@ -342,11 +276,28 @@ def validate_id_card_ajax():
         'birthday': format_date(get_birthday_from_id_card(id_card))
     })
 
+@app.context_processor
+def inject_keys():
+    # 这样所有模板都能直接使用 {{ TENCENT_KEY_GLOBAL }}
+    return dict(TENCENT_KEY_GLOBAL=Config.TENCENT_KEY)
+
+@app.route('/uploads/<path:filename>')
+def serve_uploads(filename):
+    # 这里非常关键！
+    # 如果数据库存的是 "uploads/asset/xxx.jpg"
+    # 浏览器请求的是 "/uploads/asset/xxx.jpg"
+    # 那么这里的 filename 接收到的就是 "asset/xxx.jpg"
+    # 我们应该去 "D:\cailu\uploads" 下面找这个 filename
+    return send_from_directory(r"D:\cailu\uploads", filename)
+
+# 新增：允许访问根目录下的文件（用于微信验证）
+@app.route('/<filename>')
+def serve_root_file(filename):
+    # 直接从项目根目录返回文件（微信验证文件放在根目录）
+    return send_from_directory(app.root_path, filename)
 
 if __name__ == '__main__':
     with app.app_context():
-        # 创建表
-        #db.create_all()
 
         # 新增：启动定时备份服务（项目启动时自动运行）
         from utils import start_backup_scheduler, start_notification_cleanup_scheduler
@@ -354,8 +305,6 @@ if __name__ == '__main__':
             start_backup_scheduler(interval=86400)  # 86400秒=24小时，可修改间隔
         start_notification_cleanup_scheduler(weekday=0, hour=3, minute=33, retention_days=30)  # weekly 03:33 cleanup
         
-        
-
         # 动态注册所有模块权限（必须在 context 内）
         try:
             from routes.hr import HR_PERMISSIONS
@@ -365,7 +314,6 @@ if __name__ == '__main__':
             from routes.dorm import DORM_PERMISSIONS
             from routes.trip import TRIP_PERMISSIONS
             from routes.leave import LEAVE_PERMISSIONS
-            from routes.chat import CHAT_PERMISSIONS
             
             register_module_permissions('hr', HR_PERMISSIONS)
             register_module_permissions('asset', ASSET_PERMISSIONS)
@@ -374,7 +322,6 @@ if __name__ == '__main__':
             register_module_permissions('dorm', DORM_PERMISSIONS)
             register_module_permissions('trip', TRIP_PERMISSIONS)
             register_module_permissions('leave', LEAVE_PERMISSIONS)
-            register_module_permissions('chat', CHAT_PERMISSIONS)
         except ImportError:
             pass  # 模块未定义权限列表，跳过
         
@@ -401,15 +348,12 @@ if __name__ == '__main__':
     # 启动服务器
     if os.path.exists(cert_file) and os.path.exists(key_file):
         print("检测到安全证书，正在以 HTTPS 模式启动服务器...")
-        # 核心修改：注入 ssl_context
-        socketio.run(
-            app, 
+        app.run(
             host='0.0.0.0', 
             port=8000, 
             debug=False, 
-            keyfile=key_file,
-            certfile=cert_file
+            ssl_context=(cert_file, key_file)
         )
     else:
         print("警告：未找到证书文件，将以普通的 HTTP 模式启动！")
-        socketio.run(app, host='0.0.0.0', port=8000, debug=False)
+        app.run(host='0.0.0.0', port=8000, debug=False)

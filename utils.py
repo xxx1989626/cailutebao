@@ -118,11 +118,8 @@ def parse_date(date_input) -> Optional[date]:
 
     return None
 
-def format_date(date_obj, fmt='%Y年%m月%d日') -> str:
-    """
-    【核心修改点】将日期对象格式化为中文显示
-    如果你想要 2023-11-11，就把上面的 fmt 改为 '%Y-%m-%d'
-    """
+def format_date(date_obj, fmt='%Y-%m-%d') -> str:
+
     if not date_obj:
         return ''
     
@@ -138,7 +135,7 @@ def format_date(date_obj, fmt='%Y年%m月%d日') -> str:
     except:
         return str(date_obj)
 
-def today_str(fmt='%Y年%m月%d日') -> str:
+def today_str(fmt='%Y-%m-%d') -> str:
     """获取今天的格式化字符串"""
     return datetime.today().strftime(fmt)
 

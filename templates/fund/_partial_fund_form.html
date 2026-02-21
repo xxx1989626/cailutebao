@@ -7,7 +7,7 @@
             <span class="text-danger">*</span>
             <i class="bi bi-info-circle text-info ms-1" data-bs-toggle="tooltip" data-bs-title="交易发生的实际日期"></i>
         </label>
-        <input type="date" name="date" class="form-control finance-form-control" value="{{ default_date }}" required>
+        <input type="date" name="date" class="form-control finance-form-control" value="{{ default_date }}">" required>
         <div class="invalid-feedback">
             请选择财务日期
         </div>
@@ -89,9 +89,7 @@
         </div>
     </div>
 </div>
-
-<!-- 引入必要的JS库 -->
-
+{% block scripts %}
 <script>
 $(document).ready(function() {
     // 统一表单控件样式
@@ -335,3 +333,4 @@ $('head').append(`
     </style>
 `);
 </script>
+{% endblock %}
