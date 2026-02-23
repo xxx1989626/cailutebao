@@ -8,6 +8,16 @@ from models import db, Asset, User, Permission, ChatMessage  # 如需彻底清�
 from routes import register_blueprints
 import json, os
 from sqlalchemy import func
+import logging
+import traceback
+
+
+# 配置详细日志（记录到文件，包含错误堆栈）
+logging.basicConfig(
+    filename='D:/cailu/log/error.log',  # 错误日志单独存放
+    level=logging.ERROR,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 app = Flask(__name__)
 app.config.update(
@@ -17,6 +27,13 @@ app.config.update(
     UPLOAD_FOLDER=UPLOAD_FOLDER,
     MAX_CONTENT_LENGTH=50 * 1024 * 1024
 )
+
+# 全局异常捕获装饰器
+@app.errorhandler(Exception)
+def handle_all_exceptions(e):
+    # 记录完整错误堆栈
+    logging.error(f"未捕获异常: {str(e)}\n{traceback.format_exc()}")
+    return {"code": 500, "msg": "服务器内部错误"}, 500
 
 db.init_app(app)
 register_blueprints(app)

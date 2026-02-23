@@ -1,6 +1,4 @@
 # routes/hr.py
-# 人事管理模块所有路由（已模块化）
-
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, json, send_file
 from flask_login import login_required, current_user
 from models import Asset, db, EmploymentCycle, User, AssetHistory
@@ -25,22 +23,13 @@ hr_bp = Blueprint('hr', __name__, url_prefix='/hr')
 @hr_bp.route('/list')
 @login_required
 def hr_list():
-    # 逻辑：如果没有【人事管理钥匙】，说明是普通队员，直接踢到他自己的详情页
     if not perm.can('hr.view'):
         return redirect(url_for('hr.hr_detail', id_card=current_user.username))
-    # 标签页
     status_filter = request.args.get('status', '在职')
     if status_filter not in ['待审核', '在职', '离职']:
         status_filter = '在职'
-    # 2. 统计所有待审核人数（无论当前在哪个标签页都统计，用于红点显示）
     pending_count = EmploymentCycle.query.filter_by(status='待审核').count()
-
-    # 搜索
     search = request.args.get('search', '').strip()
-    sort = request.args.get('sort', 'hire_date_desc')
-    
-
-    # 排序
     sort = request.args.get('sort', 'hire_date_desc')
     valid_sorts = {
         'name_asc': EmploymentCycle.name.asc(),
@@ -59,15 +48,10 @@ def hr_list():
         'salary_mode_desc': EmploymentCycle.salary_mode.desc()
     }
     order = valid_sorts.get(sort, EmploymentCycle.hire_date.desc())
-
-    
-   
-        # 其他角色显示所有人最新周期
     subquery = db.session.query(
             EmploymentCycle.id_card,
             db.func.max(EmploymentCycle.hire_date).label('max_hire_date')
         ).group_by(EmploymentCycle.id_card).subquery()
-        
     query = EmploymentCycle.query.join(
             subquery,
             db.and_(
@@ -75,18 +59,12 @@ def hr_list():
                 EmploymentCycle.hire_date == subquery.c.max_hire_date
             )
         )
-        
-    # 5. 【核心修改：状态严格过滤】
-    # 这里的 status_filter 必须是互斥的
     if status_filter == '待审核':
         query = query.filter(EmploymentCycle.status == '待审核')
     elif status_filter == '离职':
         query = query.filter(EmploymentCycle.status == '离职')
     else:
-        # 默认 '在职' 模式下，坚决不显示 '待审核' 的人
         query = query.filter(EmploymentCycle.status == '在职')
-
-    # 6. 搜索过滤
     if search:
         query = query.filter(
             db.or_(
@@ -95,7 +73,6 @@ def hr_list():
                 EmploymentCycle.phone.ilike(f'%{search}%')
             )
         )
-            # 字段显示控制（默认全部显示）
     show_fields = request.args.getlist('show')
     if not show_fields:
         show_fields = [
@@ -104,20 +81,8 @@ def hr_list():
         'education', 'household_address', 'residence_address', 'military', 
         'license', 'security_license', 'emergency', 'uniform'
     ]
-
-
-    # 搜索过滤
-    if search:
-        query = query.filter(
-            db.or_(
-                EmploymentCycle.name.ilike(f'%{search}%'),
-                EmploymentCycle.id_card.ilike(f'%{search}%'),
-                EmploymentCycle.phone.ilike(f'%{search}%')
-            )
-        )
-
+    
     employees = query.order_by(order).all()
-
     return render_template('hr/list.html',
                            employees=employees,
                            search=search,

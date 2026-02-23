@@ -15,22 +15,27 @@ trip_bp = Blueprint('trip', __name__, url_prefix='/trip')
 @login_required
 @perm.require('trip.view')
 def trip_list():
+
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
     # 获取用户选择的年份，默认为当前年
     selected_year = request.args.get('year', datetime.now().year, type=int)
     
     # 1. 获取所有存在记录的年份，用于前端下拉菜单
     all_dates = db.session.query(BusinessTrip.start_date).all()
-    years = sorted(list(set(d[0].year for d in all_dates if d[0])), reverse=True)
+    years = sorted(list(set(d[0].year for d in all_dates if d[0])), reverse=True) if all_dates else [datetime.now().year]
 
     # 2. 按照选定年份筛选，并保持“最新大序号在顶”的倒序排列
-    trips = BusinessTrip.query.filter(
+    pagination = BusinessTrip.query.filter(
         db.extract('year', BusinessTrip.start_date) == selected_year
-    ).order_by(BusinessTrip.id.desc()).all()
+    ).order_by(BusinessTrip.id.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    trips = pagination.items
 
     return render_template('trip/list.html', 
                            trips=trips, 
                            years=years, 
-                           selected_year=selected_year)
+                           selected_year=selected_year,
+                           pagination=pagination)
 
 # ==================== 新增出差 ====================
 @trip_bp.route('/add', methods=['GET', 'POST'])

@@ -8,7 +8,7 @@
         <a href="{{ url_for('scheduling.schedule_list') }}" class="{% if request.endpoint == 'scheduling.schedule_list' %}active{% endif %}">
             <i class="bi bi-calendar-week me-1"></i> 排班视图
         </a>
-        <a href="{{ url_for('posts.list') }}" class="{% if request.endpoint == 'posts.list' %}active{% endif %}">
+        <a href="{{ url_for('posts.posts_list') }}" class="{% if request.endpoint == 'posts.posts_list' %}active{% endif %}">
             <i class="bi bi-briefcase me-1"></i> 岗位设置
         </a>
         <a href="{{ url_for('trip.trip_list') }}" class="{% if request.endpoint == 'trip.trip_list' %}active{% endif %}">

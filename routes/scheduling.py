@@ -41,7 +41,10 @@ def schedule_list():
     # 获取请假人员
     active_leaves = LeaveRecord.query.filter(
         LeaveRecord.status == '请假中',
-        LeaveRecord.start_date <= today, LeaveRecord.end_date >= today
+        db.or_(
+            db.and_(LeaveRecord.start_date <= today, LeaveRecord.end_date >= today),
+            LeaveRecord.end_date < today
+        )
     ).all()
     on_leave_ids = {leave.user_id for leave in active_leaves}
 

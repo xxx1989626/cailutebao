@@ -228,6 +228,7 @@
                     <div class="col-md-10 col-9">
                         <input type="text" name="search" class="form-control search-input" 
                                placeholder="搜索姓名/身份证/手机号" value="{{ search or '' }}">
+                        <input type="hidden" name="status" value="{{ status_filter }}">
                     </div>
                     <div class="col-md-2 col-3">
                         <button type="submit" class="btn btn-primary search-btn w-100">

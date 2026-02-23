@@ -1,0 +1,500 @@
+<!-- templates/posts/list.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4 mb-5">
+    <!-- 导航标签 -->
+    <div class="hr-tabs mb-4">
+        <a href="{{ url_for('scheduling.schedule_list') }}" class="{% if request.endpoint == 'scheduling.schedule_list' %}active{% endif %}">
+            <i class="bi bi-calendar-week me-1"></i> 排班视图
+        </a>
+        <a href="{{ url_for('posts.posts_list') }}" class="{% if request.endpoint == 'posts.posts_list' %}active{% endif %}">
+            <i class="bi bi-briefcase me-1"></i> 岗位设置
+        </a>
+        <a href="{{ url_for('trip.trip_list') }}" class="{% if request.endpoint == 'trip.trip_list' %}active{% endif %}">
+            <i class="bi bi-airplane me-1"></i> 出差设置
+        </a>
+        <a href="{{ url_for('leave.leave_list') }}" class="{% if request.endpoint == 'leave.leave_list' %}active{% endif %}">
+            <i class="bi bi-person-slash me-1"></i> 请假管理
+        </a>
+    </div>
+
+    <!-- 主要内容区域 -->
+    <div class="row g-4">
+        <!-- 新增岗位卡片 -->
+        <div class="col-lg-4 col-md-6">
+            <div class="card shadow-sm border-0 rounded-3 overflow-hidden hover-card">
+                <div class="card-header bg-gradient bg-primary text-white py-3 px-4">
+                    <h5 class="mb-0 d-flex align-items-center">
+                        <i class="bi bi-plus-circle me-2"></i>新增岗位
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <form method="POST" action="{{ url_for('posts.posts_list') }}" id="addPostForm">
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-secondary mb-1">岗位名称</label>
+                            <input type="text" name="name" class="form-control form-control-lg shadow-sm border-2" 
+                                   placeholder="如：安全巡检 / 机动岗" required 
+                                   oninput="this.classList.remove('is-invalid')">
+                            <div class="invalid-feedback">请输入有效的岗位名称</div>
+                        </div>
+                        
+                        <div class="row mb-4">
+                            <div class="col">
+                                <label class="small text-muted mb-1">上班时间</label>
+                                <input type="time" name="default_start" class="form-control shadow-sm border-2" 
+                                       value="08:00" id="startTime">
+                            </div>
+                            <div class="col">
+                                <label class="small text-muted mb-1">下班时间</label>
+                                <input type="time" name="default_end" class="form-control shadow-sm border-2" 
+                                       value="20:00" id="endTime">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="form-label fw-bold text-secondary mb-1">显示颜色</label>
+                            <div class="d-flex align-items-center gap-3 flex-wrap">
+                                <input type="color" name="color" class="form-control form-control-color shadow-sm" 
+                                       value="#007bff" style="width: 70px; height: 40px;" id="colorPicker">
+                                <div class="color-preview d-flex align-items-center">
+                                    <div class="rounded-circle me-2" id="colorDisplay" 
+                                         style="width: 24px; height: 24px; background-color: #007bff; border: 2px solid #fff; box-shadow: 0 0 0 1px #ddd;"></div>
+                                    <small class="text-muted">用于排班表颜色区分</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm py-2 btn-hover-lift" id="saveBtn">
+                            <i class="bi bi-save me-1"></i> 保存岗位
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- 现有岗位列表 -->
+        <div class="col-lg-8 col-md-6">
+            <div class="card shadow-sm border-0 rounded-3 overflow-hidden">
+                <div class="card-header bg-gradient bg-dark text-white d-flex flex-wrap justify-content-between align-items-center gap-3 py-3 px-4">
+                    <h5 class="mb-0 d-flex align-items-center">
+                        <i class="bi bi-list-stars me-2"></i>现有岗位列表
+                        <span class="badge bg-primary ms-2">{{ posts|length }}</span>
+                    </h5>
+                    
+                    <div class="btn-group shadow-sm">
+                        <input type="file" id="postImportInput" style="display: none;" accept=".xlsx, .xls" onchange="handlePostImport(this)">
+                        
+                        <button class="btn btn-outline-light btn-sm px-3 btn-action" onclick="document.getElementById('postImportInput').click()">
+                            <i class="bi bi-file-earmark-arrow-up me-1"></i> 导入岗位
+                        </button>
+                        <a href="{{ url_for('posts.export_config') }}" class="btn btn-outline-light btn-sm px-3 btn-action">
+                            <i class="bi bi-file-earmark-arrow-down me-1"></i> 导出配置
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr class="small text-secondary">
+                                    <th class="ps-4" width="100">颜色</th>
+                                    <th>岗位名称</th>
+                                    <th>默认时间段</th>
+                                    <th class="text-center pe-4" width="180">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for post in posts %}
+                                <tr class="post-row">
+                                    <td class="ps-4">
+                                        <div class="rounded-circle shadow-sm color-dot" 
+                                             style="width: 28px; height: 28px; background-color: {{ post.color }}; border: 2px solid #fff;"
+                                             title="当前颜色: {{ post.color }}"></div>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <strong class="text-dark">{{ post.name }}</strong>
+                                        </div>
+                                    </td>
+                                    <td class="text-muted small">
+                                        <i class="bi bi-clock me-1"></i>{{ post.default_start }} - {{ post.default_end }}
+                                    </td>
+                                    <td class="text-center pe-4">
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{{ url_for('posts.delete', id=post.id) }}" 
+                                               class="btn btn-outline-danger btn-sm border-0 action-btn delete-btn" 
+                                               onclick="return confirm('⚠️ 确认删除【{{ post.name }}】吗？\n若该岗位已有排班数据将无法删除！')">
+                                                <i class="bi bi-trash me-1"></i> 删除
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-5 text-muted">
+                                        <div class="empty-state">
+                                            <i class="bi bi-inbox fs-2 d-block mb-2 opacity-50"></i>
+                                            <p class="mb-0">暂未设置任何岗位</p>
+                                            <button class="btn btn-sm btn-primary mt-2" onclick="document.querySelector('input[name=name]').focus()">
+                                                <i class="bi bi-plus-circle me-1"></i> 立即添加
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- 提示框容器 -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer">
+        <div id="notificationToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body d-flex align-items-center">
+                    <i class="bi bi-check-circle me-2"></i>
+                    <span id="toastMessage">操作成功！</span>
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 脚本部分 -->
+<script>
+// 初始化Toast
+let toast;
+document.addEventListener('DOMContentLoaded', function() {
+    const toastEl = document.getElementById('notificationToast');
+    if (toastEl && window.bootstrap) {
+        toast = new bootstrap.Toast(toastEl, {
+            delay: 3000
+        });
+    }
+});
+
+// 颜色选择器实时预览
+document.addEventListener('DOMContentLoaded', function() {
+    // 新增岗位颜色预览
+    const colorPicker = document.getElementById('colorPicker');
+    const colorDisplay = document.getElementById('colorDisplay');
+    
+    if (colorPicker && colorDisplay) {
+        colorPicker.addEventListener('input', function() {
+            colorDisplay.style.backgroundColor = this.value;
+        });
+    }
+    
+    
+    // 表单验证
+    const addForm = document.getElementById('addPostForm');
+    if (addForm) {
+        addForm.addEventListener('submit', function(e) {
+            const nameInput = this.querySelector('input[name=name]');
+            if (!nameInput.value.trim()) {
+                e.preventDefault();
+                nameInput.classList.add('is-invalid');
+                showToast('请输入岗位名称', 'warning');
+            }
+            
+            // 验证时间逻辑
+            const startTime = document.getElementById('startTime').value;
+            const endTime = document.getElementById('endTime').value;
+            if (startTime && endTime && startTime >= endTime) {
+                e.preventDefault();
+                showToast('下班时间必须晚于上班时间', 'warning');
+            }
+        });
+    }
+    
+    
+    // 为所有按钮添加加载状态
+    document.querySelectorAll('.btn-action').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (!this.disabled) {
+                this.disabled = true;
+                const originalText = this.innerHTML;
+                this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>处理中...';
+                
+                setTimeout(() => {
+                    this.disabled = false;
+                    this.innerHTML = originalText;
+                }, 3000);
+            }
+        });
+    });
+});
+
+/**
+ * 处理岗位 Excel 导入
+ */
+function handlePostImport(input) {
+    if (!input.files || input.files.length === 0) return;
+    
+    const file = input.files[0];
+    
+    // 验证文件类型
+    const fileExt = file.name.split('.').pop().toLowerCase();
+    if (!['xlsx', 'xls'].includes(fileExt)) {
+        showToast('请上传Excel格式的文件 (.xlsx, .xls)', 'warning');
+        input.value = '';
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    // 显示加载提示
+    showToast(`正在导入 ${file.name}...`, 'info');
+
+    fetch("{{ url_for('posts.import_config') }}", {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message || '岗位导入成功！');
+            setTimeout(() => {
+                window.location.reload(); // 刷新页面显示新岗位
+            }, 1500);
+        } else {
+            showToast('导入失败：' + data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('网络请求失败，请检查后端接口', 'danger');
+    })
+    .finally(() => {
+        input.value = ''; // 清除选择的文件
+    });
+}
+
+/**
+ * 显示提示框
+ */
+function showToast(message, type = "success") {
+    const toastMessage = document.getElementById('toastMessage');
+    const toastEl = document.getElementById('notificationToast');
+    
+    // 更新提示内容和样式
+    let icon = 'check-circle';
+    let bgColor = 'success';
+    
+    if (type === 'warning') {
+        icon = 'exclamation-triangle';
+        bgColor = 'warning';
+    } else if (type === 'danger') {
+        icon = 'x-circle';
+        bgColor = 'danger';
+    } else if (type === 'info') {
+        icon = 'info-circle';
+        bgColor = 'info';
+    }
+    
+    toastMessage.innerHTML = `<i class="bi bi-${icon} me-2"></i>${message}`;
+    toastEl.className = `toast align-items-center text-white bg-${bgColor} border-0`;
+    
+    // 显示提示框
+    toast.show();
+}
+
+// 监听表单提交成功
+document.addEventListener('submit', function(e) {
+    if (e.target.id === 'addPostForm') {
+        // 表单提交成功后的提示（实际项目中可根据后端返回调整）
+        setTimeout(() => {
+            showToast(e.target.id === 'addPostForm' ? '岗位添加成功！' : '岗位更新成功！');
+        }, 500);
+    }
+});
+</script>
+
+<!-- 样式部分 -->
+<style>
+/* 导航标签样式 */
+.hr-tabs { 
+    border-bottom: 2px solid #eee; 
+    display: flex; 
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.hr-tabs a { 
+    text-decoration: none; 
+    color: #666; 
+    padding: 10px 15px; 
+    border-bottom: 3px solid transparent; 
+    transition: all 0.3s; 
+    font-weight: 500;
+    border-radius: 4px 4px 0 0;
+}
+
+.hr-tabs a:hover { 
+    color: #0d6efd;
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+.hr-tabs a.active { 
+    color: #0d6efd; 
+    border-bottom-color: #0d6efd;
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+/* 渐变背景 */
+.bg-gradient {
+    background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+}
+
+.bg-dark.bg-gradient {
+    background: linear-gradient(135deg, #212529 0%, #343a40 100%);
+}
+
+/* 卡片悬停效果 */
+.hover-card {
+    transition: all 0.3s ease;
+}
+
+.hover-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
+}
+
+/* 按钮交互效果 */
+.btn-hover-lift {
+    transition: all 0.2s ease;
+}
+
+.btn-hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.2);
+}
+
+.action-btn {
+    transition: all 0.2s ease;
+    border-radius: 6px;
+}
+
+.action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.delete-btn:hover {
+    background-color: #dc3545;
+    color: white;
+    border-color: #dc3545;
+}
+
+/* 表格样式优化 */
+.table-hover tbody tr:hover { 
+    background-color: rgba(13, 110, 253, 0.03);
+}
+
+.post-row {
+    transition: all 0.2s ease;
+}
+
+.post-row:hover {
+    transform: scale(1.005);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* 颜色圆点样式 */
+.color-dot {
+    transition: all 0.2s ease;
+}
+
+.color-dot:hover {
+    transform: scale(1.2);
+}
+
+/* 空状态样式 */
+.empty-state {
+    padding: 2rem 1rem;
+}
+
+/* 表单控件优化 */
+.form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+.form-control-color {
+    cursor: pointer;
+}
+
+/* 响应式优化 */
+@media (max-width: 992px) {
+    .row.g-4 {
+        gap: 2rem !important;
+    }
+    
+    .btn-group {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .btn-group .btn {
+        flex: 1;
+        text-align: center;
+    }
+}
+
+@media (max-width: 768px) {
+    .hr-tabs {
+        gap: 10px;
+    }
+    
+    .hr-tabs a {
+        padding: 8px 10px;
+        font-size: 0.875rem;
+    }
+    
+    .card-header {
+        padding: 1rem !important;
+    }
+    
+    .card-body {
+        padding: 1.5rem !important;
+    }
+    
+    .color-preview {
+        margin-top: 0.5rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .card-header .d-flex {
+        flex-direction: column;
+        align-items: flex-start !important;
+    }
+    
+    .btn-group {
+        width: 100%;
+        margin-top: 0.5rem;
+    }
+    
+    .modal-dialog {
+        margin: 1rem;
+    }
+    
+    .empty-state {
+        padding: 1.5rem 0.5rem;
+    }
+    
+    /* 移动端表格优化 */
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+}
+</style>
+{% endblock %}

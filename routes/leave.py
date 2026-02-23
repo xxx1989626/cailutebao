@@ -49,8 +49,14 @@ def calculate_continuous_leave_count(user_id):
 def leave_list():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
+    selected_year = request.args.get('year', datetime.now().year, type=int)
+    all_dates = db.session.query(LeaveRecord.start_date).all()
+    years = sorted(list(set(d[0].year for d in all_dates if d[0])), reverse=True) if all_dates else [datetime.now().year]
+
     
-    pagination = LeaveRecord.query.order_by(
+    pagination = LeaveRecord.query.filter(
+        db.extract('year', LeaveRecord.start_date) == selected_year
+        ).order_by(
         LeaveRecord.status.desc(), 
         LeaveRecord.start_date.desc()
     ).paginate(page=page, per_page=per_page, error_out=False)
@@ -58,7 +64,9 @@ def leave_list():
     
     user_leave_stats = {}
     
-    active_user_ids = db.session.query(LeaveRecord.user_id).distinct().all()
+    active_user_ids = db.session.query(LeaveRecord.user_id).filter(
+        db.extract('year', LeaveRecord.start_date) == selected_year
+        ).distinct().all()
     
     for (u_id,) in active_user_ids:
         emp_obj = EmploymentCycle.query.get(u_id)
@@ -88,7 +96,9 @@ def leave_list():
         'leave/list.html', 
         leaves=leaves,
         pagination=pagination,
-        user_leave_stats=sorted_stats 
+        user_leave_stats=sorted_stats,
+        years=years,
+        selected_year=selected_year
     )
 
 @leave_bp.route('/add', methods=['GET', 'POST'])
@@ -227,10 +237,12 @@ def finish_leave(id):
             
         actual_end_date = datetime.strptime(actual_end_str, '%Y-%m-%d').date()
         
+        actual_days = (actual_end_date - leave.start_date).days + 1
+        leave.total_days = actual_days  
         leave.status = '已销假'
         leave.actual_end_date = actual_end_date
         
-        desc = f"{leave.user.name} 已办理销假，实际结束日期：{actual_end_date}"
+        desc = f"{leave.user.name} 已办理销假，实际结束日期：{actual_end_date}，实际请假天数：{actual_days} 天"
         log_action(
             action_type="办理销假",
             target_type="LeaveRecord",
@@ -240,7 +252,7 @@ def finish_leave(id):
         )
         
         db.session.commit()
-        flash(f'{leave.user.name} 的销假手续已完成。', 'success')
+        flash(f'{leave.user.name} 的销假手续已完成，实际请假天数已更新为 {actual_days} 天。', 'success')
         return redirect(url_for('leave.leave_list'))
 
     return render_template('leave/finish_confirm.html', leave=leave, today=date.today())

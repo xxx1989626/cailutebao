@@ -2,30 +2,64 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container mt-4">
+<div class="container mt-4 mb-5">
+    <!-- 导航标签 -->
     <div class="hr-tabs mb-4">
-        <a href="{{ url_for('scheduling.schedule_list') }}" class="{% if request.endpoint == 'scheduling.schedule_list' %}active{% endif %}">📅 排班视图</a>
-        <a href="{{ url_for('posts.list') }}" class="{% if request.endpoint == 'posts.list' %}active{% endif %}">🛠️ 岗位设置</a>
-        <a href="{{ url_for('trip.trip_list') }}" class="{% if request.endpoint == 'trip.trip_list' %}active{% endif %}">💼 出差设置</a>
-        <a href="{{ url_for('leave.leave_list') }}" class="{% if request.endpoint == 'leave.leave_list' %}active{% endif %}">📝 请假管理</a>
+        <a href="{{ url_for('scheduling.schedule_list') }}" class="{% if request.endpoint == 'scheduling.schedule_list' %}active{% endif %}">
+            <i class="bi bi-calendar-week me-1"></i> 排班视图
+        </a>
+        <a href="{{ url_for('posts.posts_list') }}" class="{% if request.endpoint == 'posts.posts_list' %}active{% endif %}">
+            <i class="bi bi-briefcase me-1"></i> 岗位设置
+        </a>
+        <a href="{{ url_for('trip.trip_list') }}" class="{% if request.endpoint == 'trip.trip_list' %}active{% endif %}">
+            <i class="bi bi-airplane me-1"></i> 出差设置
+        </a>
+        <a href="{{ url_for('leave.leave_list') }}" class="{% if request.endpoint == 'leave.leave_list' %}active{% endif %}">
+            <i class="bi bi-person-slash me-1"></i> 请假管理
+        </a>
     </div>
 
-    
-
-    <div class="card card-custom">
-        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center py-3">
-            <h4 class="mb-0"><i class="bi bi-calendar-check me-2"></i>请假记录管理</h4>
-            <a href="{{ url_for('leave.add_leave') }}" class="btn btn-light fw-bold shadow-sm">
-                <i class="bi bi-plus-lg text-success"></i> 登记请假记录
-            </a>
+    <!-- 请假管理主卡片 -->
+    <div class="card card-custom border-0 shadow-sm rounded-3 overflow-hidden">
+        <!-- 卡片头部 -->
+        <div class="card-header bg-gradient bg-success text-white d-flex flex-wrap justify-content-between align-items-center gap-3 py-3 px-4">
+            <h4 class="mb-0 d-flex align-items-center">
+                <i class="bi bi-calendar-check me-2"></i>{{ selected_year }}年度 请假记录管理
+            </h4>
+            
+            <div class="d-flex gap-2">
+                <!-- 年份切换 -->
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-calendar3 me-1"></i> 切换年份
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        {% for y in years %}
+                        <li>
+                            <a class="dropdown-item {% if y == selected_year %}active bg-primary{% endif %} hover-effect" 
+                               href="{{ url_for('leave.leave_list', year=y) }}">
+                               {{ y }}年
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                
+                <!-- 新增请假记录 -->
+                <a href="{{ url_for('leave.add_leave') }}" class="btn btn-light fw-bold shadow-sm btn-hover-lift">
+                    <i class="bi bi-plus-lg text-success me-1"></i> 登记请假记录
+                </a>
+            </div>
         </div>
         
+        <!-- 卡片主体 -->
         <div class="card-body p-0"> 
+            <!-- 表格区域 -->
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light text-secondary small">
                         <tr>
-                            <th class="ps-3">姓名</th>
+                            <th class="ps-4">姓名</th>
                             <th>请假类型</th>
                             <th>开始时间</th>
                             <th>预计结束</th>
@@ -34,13 +68,18 @@
                             <th>状态</th>
                             <th>是否上报</th>
                             <th>附件</th>
-                            <th class="text-center pe-3">操作</th>
+                            <th class="text-center pe-4">操作</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for leave in leaves %}
-                        <tr>
-                            <td class="ps-3"><strong>{{ leave.user.name }}</strong></td>
+                        <tr class="leave-row {% if leave.status == '请假中' %}table-warning-light{% endif %}">
+                            <td class="ps-4">
+                                <div class="d-flex align-items-center">
+                                    <strong>{{ leave.user.name }}</strong>
+                                </div>
+                            </td>
+                            
                             <td>
                                 {% set leave_type_colors = {
                                     '事假': 'bg-primary bg-opacity-10 text-primary border border-primary-subtle',
@@ -52,37 +91,73 @@
                                     '其他': 'bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle',
                                 } %}
                                 {% set default_color = 'bg-info bg-opacity-10 text-info border border-info-subtle' %}
-                                <span class="badge {{ leave_type_colors.get(leave.leave_type, default_color) }}">{{ leave.leave_type }}</span>
+                                <span class="badge {{ leave_type_colors.get(leave.leave_type, default_color) }} py-1 px-2">
+                                    {{ leave.leave_type }}
+                                </span>
                             </td>
-                            <td>{{ leave.start_date }}</td>
+                            
+                            <td>
+                                <span class="d-block">
+                                    <i class="bi bi-calendar-start text-muted me-1"></i>{{ leave.start_date }}
+                                </span>
+                            </td>
+                            
                             <td>{{ leave.end_date }}</td>
-                            <td>{{ leave.actual_end_date or '-' }}</td>
-                            <td class="fw-bold">{{ leave.total_days }}</td>
+                            
+                            <td>
+                                {% if leave.actual_end_date %}
+                                    <span class="text-success fw-medium">{{ leave.actual_end_date }}</span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            
+                            <td class="fw-bold text-dark">
+                                <span class="badge bg-light text-dark border px-2">
+                                    {{ leave.total_days }} 天
+                                </span>
+                            </td>
+                            
                             <td>
                                 {% if leave.status == '请假中' %}
-                                    <span class="badge rounded-pill bg-warning text-dark"><i class="bi bi-clock-history me-1"></i>请假中</span>
+                                    <span class="badge rounded-pill bg-warning text-dark d-flex align-items-center justify-content-center py-1 px-2">
+                                        <i class="bi bi-clock-history me-1"></i>请假中
+                                    </span>
                                 {% else %}
-                                    <span class="badge rounded-pill bg-light text-secondary border">已销假</span>
+                                    <span class="badge rounded-pill bg-success text-white d-flex align-items-center justify-content-center py-1 px-2">
+                                        <i class="bi bi-check-circle me-1"></i>已销假
+                                    </span>
                                 {% endif %}
                             </td>
+                            
                             <td>
                                 {% if leave.is_reported %}
-                                    <span class="badge bg-success"><i class="bi bi-check"></i> 已上报</span>
+                                    <span class="badge bg-success d-flex align-items-center py-1">
+                                        <i class="bi bi-check me-1"></i> 已上报
+                                    </span>
                                 {% else %}
-                                    <span class="badge bg-secondary"><i class="bi bi-x"></i> 未上报</span>
+                                    <span class="badge bg-secondary d-flex align-items-center py-1">
+                                        <i class="bi bi-x me-1"></i> 未上报
+                                    </span>
                                 {% endif %}
                             </td>
+                            
                             <td>
                                 {% if leave.attachments %}
                                 <div class="d-flex flex-wrap gap-1">
                                     {% for path in leave.attachments %}
-                                    <a href="/{{ path }}" target="_blank" class="thumb-link rounded overflow-hidden" style="width: 32px; height: 32px;">
+                                    <a href="/{{ path }}" target="_blank" class="thumb-link rounded overflow-hidden shadow-sm hover-scale" 
+                                       style="width: 36px; height: 36px; display: inline-block;"
+                                       title="查看附件">
                                         {% if path.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp')) %}
-                                        <img src="/{{ path }}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                                        <i class="bi bi-file-earmark-image text-muted" style="display: none; font-size: 14px; line-height: 32px; text-align: center;"></i>
+                                        <img src="/{{ path }}" style="width: 100%; height: 100%; object-fit: cover;" 
+                                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                        <i class="bi bi-file-earmark-image text-muted" 
+                                           style="display: none; font-size: 16px; line-height: 36px; text-align: center; 
+                                                  width: 100%; height: 100%; display: none; align-items: center; justify-content: center;"></i>
                                         {% else %}
                                         <div class="bg-light d-flex align-items-center justify-content-center h-100">
-                                            <i class="bi bi-file-pdf text-danger" style="font-size: 16px;"></i>
+                                            <i class="bi bi-file-pdf text-danger" style="font-size: 18px;"></i>
                                         </div>
                                         {% endif %}
                                     </a>
@@ -92,24 +167,32 @@
                                 <span class="text-muted small">无</span>
                                 {% endif %}
                             </td>
-                            <td>
+                            
+                            <td class="text-center">
                                 <div class="btn-group btn-group-sm">
-                                    <button class="btn btn-sm btn-outline-info"
-                                        onclick="copyLeaveMsg('{{ leave.user.name }}', '{{ leave.leave_type }}', '{{ leave.reason }}', '{{ leave.start_date }}', '{{ leave.end_date }}', '{{ leave.total_days }}', '蔡路派出所')">
-                                        <i class="bi bi-share"></i> 复制报备
+                                    <!-- 复制报备 -->
+                                    <button class="btn btn-sm btn-outline-info btn-action"
+                                        onclick="copyLeaveMsg('{{ leave.user.name }}', '{{ leave.leave_type }}', '{{ leave.reason or '' }}', '{{ leave.start_date }}', '{{ leave.end_date }}', '{{ leave.total_days }}', '蔡路派出所')">
+                                        <i class="bi bi-share me-1"></i> 复制报备
                                     </button>
+                                    
+                                    <!-- 销假按钮 -->
                                     {% if leave.status == '请假中' %}
-                                    <a href="{{ url_for('leave.finish_leave', id=leave.id) }}" class="btn btn-outline-success">
-                                        <i class="bi bi-check-circle"></i> 销假
+                                    <a href="{{ url_for('leave.finish_leave', id=leave.id) }}" class="btn btn-outline-success btn-action">
+                                        <i class="bi bi-check-circle me-1"></i> 销假
                                     </a>
-                                    <a href="{{ url_for('leave.edit_leave', id=leave.id) }}" class="btn btn-sm btn-outline-primary">
-                                        <i class="bi bi-calendar-plus"></i> 延期/修改
+                                    
+                                    <!-- 编辑按钮 -->
+                                    <a href="{{ url_for('leave.edit_leave', id=leave.id) }}" class="btn btn-sm btn-outline-primary btn-action">
+                                        <i class="bi bi-calendar-plus me-1"></i> 延期/修改
                                     </a>
                                     {% endif %}
+                                    
+                                    <!-- 删除按钮 -->
                                     {% if current_user.username == 'admin' %}
-                                    <a href="{{ url_for('leave.delete_leave', id=leave.id) }}" class="btn btn-outline-danger"
-                                        onclick="return confirm('确认删除该记录吗？')">
-                                        <i class="bi bi-trash"></i>
+                                    <a href="{{ url_for('leave.delete_leave', id=leave.id) }}" class="btn btn-outline-danger btn-action delete-btn"
+                                        onclick="return confirm('⚠️ 确认删除该请假记录吗？删除后将无法恢复！')">
+                                        <i class="bi bi-trash me-1"></i>
                                     </a>
                                     {% endif %}
                                 </div>
@@ -117,61 +200,374 @@
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="10" class="text-center py-4 text-muted">
-                                <i class="bi bi-inbox me-2"></i>暂无请假记录
+                            <td colspan="10" class="text-center py-5 text-muted">
+                                <div class="empty-state">
+                                    <i class="bi bi-inbox fs-3 mb-2 opacity-50"></i>
+                                    <p class="mb-0">暂无请假记录</p>
+                                    <a href="{{ url_for('leave.add_leave') }}" class="btn btn-sm btn-success mt-2">
+                                        <i class="bi bi-plus-circle me-1"></i> 新增请假记录
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
+            
+            <!-- 分页控件 -->
             {% from "_pagination.html" import render_pagination %}
-            {{ render_pagination(pagination, 'leave.leave_list') }}
+            {{ render_pagination(pagination, 'leave.leave_list', year=selected_year) }}
+        </div>
+            <!-- 统计信息卡片 -->
+    {% if user_leave_stats %}
+    <div class="alert alert-info mb-4 shadow-sm border-0 rounded-3" style="background-color: #e3f2fd;">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="fw-bold text-primary mb-0">
+                <i class="bi bi-bar-chart-fill me-2"></i>{{ selected_year }}年度请假频次统计
+            </h6>
+            <span class="badge bg-primary text-white">
+                总计 {{ user_leave_stats|length }} 人
+            </span>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            {% for uid, stats in user_leave_stats.items() %}
+            <span class="badge rounded-pill bg-white text-dark border px-3 py-2 shadow-sm hover-scale">
+                <span class="text-primary fw-bold">{{ stats.name }}</span>: 
+                <span class="badge bg-primary ms-1">{{ stats.count }} 次</span>
+            </span>
+            {% endfor %}
         </div>
     </div>
-    <!-- 请假统计信息 -->
-    {% if user_leave_stats %}
-<div class="alert alert-info mb-4 shadow-sm border-0" style="background-color: #e3f2fd;">
-    <h6 class="fw-bold text-primary mb-2">
-        <i class="bi bi-bar-chart-fill me-2"></i>请假频次统计
-    </h6>
-    <div class="d-flex flex-wrap gap-2">
-        {% for uid, stats in user_leave_stats.items() %}
-        <span class="badge rounded-pill bg-white text-dark border px-3 py-2">
-            <span class="text-primary fw-bold">{{ stats.name }}</span>: 
-            <span class="badge bg-primary ms-1">{{ stats.count }} 次</span>
-        </span>
-        {% endfor %}
+    {% endif %}
     </div>
 </div>
-{% endif %}
+
+<!-- 复制成功提示框 -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer">
+    <div id="copyToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body d-flex align-items-center">
+                <i class="bi bi-check-circle me-2"></i>
+                <span id="toastMessage">报备内容已成功复制到剪贴板！</span>
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
 </div>
 
-<script>
-function copyLeaveMsg(name, type, reason, startDate, endDate, totalDays, post) {
-    const today = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
-    const text = `上报日期：${today}\n驻　　点：${post || '蔡路派出所'}\n请 假 人：${name}\n请假类型：${type}\n请假时长：${totalDays}天\n请假周期：${startDate} 至 ${endDate}\n事　　由：${reason}`;
+<!-- 样式部分 -->
+<style>
+/* 导航标签样式 */
+.hr-tabs { 
+    border-bottom: 2px solid #eee; 
+    display: flex; 
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.hr-tabs a { 
+    text-decoration: none; 
+    color: #666; 
+    padding: 10px 15px; 
+    border-bottom: 3px solid transparent; 
+    transition: all 0.3s; 
+    font-weight: 500;
+    border-radius: 4px 4px 0 0;
+}
+
+.hr-tabs a:hover { 
+    color: #0d6efd;
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+.hr-tabs a.active { 
+    color: #0d6efd; 
+    border-bottom-color: #0d6efd;
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+/* 渐变背景 */
+.bg-gradient {
+    background: linear-gradient(135deg, #198754 0%, #157347 100%);
+}
+
+/* 表格行样式 */
+.table-hover tbody tr:hover { 
+    background-color: rgba(25, 135, 84, 0.03);
+}
+
+.leave-row {
+    transition: all 0.2s ease;
+}
+
+.table-warning-light {
+    background-color: rgba(255, 193, 7, 0.05);
+}
+
+.table-warning-light:hover {
+    background-color: rgba(255, 193, 7, 0.1);
+}
+
+/* 按钮交互效果 */
+.btn-action {
+    transition: all 0.2s ease;
+    border-radius: 6px;
+}
+
+.btn-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.btn-hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(25, 135, 84, 0.2);
+}
+
+.delete-btn:hover {
+    background-color: #dc3545;
+    color: white;
+    border-color: #dc3545;
+}
+
+/* 头像样式 */
+.user-avatar {
+    transition: all 0.2s ease;
+}
+
+.user-avatar:hover {
+    background-color: rgba(13, 110, 253, 0.1);
+}
+
+/* 悬停缩放效果 */
+.hover-scale {
+    transition: all 0.2s ease;
+}
+
+.hover-scale:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 下拉菜单hover效果 */
+.dropdown-item.hover-effect {
+    transition: all 0.2s ease;
+}
+
+.dropdown-item.hover-effect:hover {
+    background-color: rgba(25, 135, 84, 0.1);
+}
+
+/* 空状态样式 */
+.empty-state {
+    padding: 2rem 1rem;
+}
+
+/* 自定义颜色扩展 */
+.bg-pink {
+    background-color: rgba(236, 72, 153, 0.1);
+}
+
+.text-pink {
+    color: #ec4899;
+}
+
+.border-pink-subtle {
+    border-color: rgba(236, 72, 153, 0.2);
+}
+
+.bg-purple {
+    background-color: rgba(168, 85, 247, 0.1);
+}
+
+.text-purple {
+    color: #a855f7;
+}
+
+.border-purple-subtle {
+    border-color: rgba(168, 85, 247, 0.2);
+}
+
+/* 响应式优化 */
+@media (max-width: 992px) {
+    .btn-group {
+        flex-wrap: wrap;
+    }
     
-    if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(text).then(() => alert("✅ 标准报备格式已复制到剪贴板！"));
-    } else {
-        const textArea = document.createElement("textarea");
-        textArea.value = text;
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand('copy');
-        alert("✅ 标准报备格式已复制！");
-        document.body.removeChild(textArea);
+    .btn-group .btn {
+        flex: 1 1 auto;
+        margin-bottom: 5px;
+    }
+    
+    table th, table td {
+        font-size: 0.875rem;
+    }
+    
+    .badge {
+        font-size: 0.75rem;
     }
 }
-</script>
-<style>
-/* 保持与你的排班系统一致的风格 */
-.hr-tabs { border-bottom: 2px solid #eee; display: flex; gap: 20px; }
-.hr-tabs a { text-decoration: none; color: #666; padding: 10px 5px; border-bottom: 3px solid transparent; transition: all 0.3s; font-weight: 500; }
-.hr-tabs a:hover { color: #0d6efd; }
-.hr-tabs a.active { color: #0d6efd; border-bottom-color: #0d6efd; }
-.form-control-color { padding: 0.2rem; cursor: pointer; }
-.table-hover tbody tr:hover { background-color: rgba(13, 110, 253, 0.02); }
+
+@media (max-width: 768px) {
+    .hr-tabs {
+        gap: 10px;
+    }
+    
+    .hr-tabs a {
+        padding: 8px 10px;
+        font-size: 0.875rem;
+    }
+    
+    .card-header {
+        padding: 1rem !important;
+    }
+    
+    .card-body {
+        padding: 1rem !important;
+    }
+    
+    .thumb-link {
+        width: 32px !important;
+        height: 32px !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .card-header .d-flex {
+        flex-direction: column;
+        align-items: flex-start !important;
+    }
+    
+    .card-header .btn-group {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .table-responsive {
+        font-size: 0.75rem;
+    }
+    
+    .empty-state {
+        padding: 1.5rem 0.5rem;
+    }
+    
+    /* 移动端表格优化 */
+    table th:nth-child(8), table td:nth-child(8),
+    table th:nth-child(9), table td:nth-child(9) {
+        display: none;
+    }
+}
 </style>
+
+<!-- 脚本部分 -->
+<script>
+// 初始化Toast
+const toastEl = document.getElementById('copyToast');
+const toast = new bootstrap.Toast(toastEl, {
+    delay: 3000
+});
+
+/**
+ * 复制请假报备信息
+ */
+function copyLeaveMsg(name, type, reason, startDate, endDate, totalDays, post) {
+    const today = new Date().toLocaleDateString('zh-CN', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    });
+    
+    const text = `上报日期：${today}
+驻　　点：${post || '蔡路派出所'}
+请 假 人：${name}
+请假类型：${type}
+请假时长：${totalDays}天
+请假周期：${startDate} 至 ${endDate}
+事　　由：${reason || '个人原因'}`;
+    
+    // 现代浏览器剪贴板API
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text)
+            .then(() => showToast("标准报备格式已复制到剪贴板！"))
+            .catch(() => fallbackCopy(text));
+    } else {
+        fallbackCopy(text);
+    }
+}
+
+/**
+ * 降级复制方案
+ */
+function fallbackCopy(text) {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed"; // 避免滚动到页面外
+    document.body.appendChild(textArea);
+    textArea.select();
+    
+    try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+            showToast("标准报备格式已复制！");
+        } else {
+            showToast("复制失败，请手动复制", "warning");
+        }
+    } catch (err) {
+        showToast("无法自动复制，请手动选择文字复制", "danger");
+    }
+    
+    document.body.removeChild(textArea);
+}
+
+/**
+ * 显示提示框
+ */
+function showToast(message, type = "success") {
+    const toastMessage = document.getElementById('toastMessage');
+    const toastEl = document.getElementById('copyToast');
+    
+    // 更新提示内容和样式
+    toastMessage.innerHTML = `<i class="bi bi-${type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'x-circle'} me-2"></i>${message}`;
+    toastEl.className = `toast align-items-center text-white bg-${type} border-0`;
+    
+    // 显示提示框
+    toast.show();
+}
+
+// 页面加载完成后的初始化
+document.addEventListener('DOMContentLoaded', function() {
+    // 为删除按钮添加确认提示
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            if (!confirm('⚠️ 确认删除该请假记录吗？删除后将无法恢复！')) {
+                e.preventDefault();
+            }
+        });
+    });
+    
+    // 为表格行添加悬停动画
+    document.querySelectorAll('.leave-row').forEach(row => {
+        row.style.transition = 'all 0.2s ease';
+    });
+    
+    // 年份选择下拉菜单优化
+    document.querySelectorAll('.dropdown-item').forEach(item => {
+        item.addEventListener('click', function() {
+            // 添加加载状态
+            document.body.style.cursor = 'wait';
+        });
+    });
+    
+    // 附件预览点击效果
+    document.querySelectorAll('.thumb-link').forEach(link => {
+        link.addEventListener('click', function(e) {
+            this.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                this.style.transform = 'scale(1)';
+            }, 150);
+        });
+    });
+});
+</script>
 {% endblock %}
