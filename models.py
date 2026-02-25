@@ -165,7 +165,7 @@ class FundsRecord(db.Model):
     amount = db.Column(db.Float, nullable=False)  # 金额
     note = db.Column(db.Text)  # 备注
     balance = db.Column(db.Float, nullable=False)  # 余额（自动计算）
-    attachment = db.Column(db.String(255), nullable=True)  # 附件路径
+    attachment = db.Column(db.JSON, default=[])  # 附件路径
     operator_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # 操作人ID（外键）
     operator = db.relationship('User', foreign_keys=[operator_id])  # 建立与 User 模型的关联关系
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 记录创建时间

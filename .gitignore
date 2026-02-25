@@ -7,6 +7,7 @@ __pycache__/
 migrations/
 *.py[cod]
 *$py.class
+nginx-1.28.2/
 
 # --- IDE 与 系统文件 ---
 .vscode/

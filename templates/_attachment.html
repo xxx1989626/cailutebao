@@ -1,0 +1,161 @@
+<!-- cailutebao\templates\_attachment.html 路径必须保留 -->
+{% set name = name|default('files') %}
+{% set existing_attachments = existing_attachments|default([]) %}
+{% set accept = accept|default('image/*,.pdf') %}
+
+<input type="hidden" name="delete_attachments" id="deleteAttachmentsInput_{{ name }}" value="">
+
+<div class="mb-3">
+    <label class="form-label fw-bold">附件</label>
+    <div id="dropZone_{{ name }}" class="border border-2 border-dashed rounded p-4 text-center bg-light" style="cursor: pointer;">
+        <i class="bi bi-cloud-arrow-up fs-2 text-primary"></i>
+        <p class="mb-0">将文件拖拽至此处，或点击上传</p>
+        <input type="file" name="{{ name }}" id="fileInput_{{ name }}" class="form-control d-none" multiple accept="{{ accept }}">
+    </div>
+    <div id="imagePreview_{{ name }}" class="mt-2 d-flex flex-wrap gap-2">
+        {% for path in existing_attachments %}
+        <div class="thumb-remove-wrapper position-relative" data-path="{{ path }}" data-name="{{ name }}" style="cursor: pointer;" title="点击删除">
+            {% if path.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp')) %}
+                <img src="/{{ path }}" class="img-thumbnail" style="width: 100px; height: 100px; object-fit: cover;">
+            {% else %}
+                <div class="alert alert-secondary p-2 m-0"><i class="bi bi-file-pdf"></i> PDF文件</div>
+            {% endif %}
+            <div class="remove-overlay">
+                <i class="bi bi-x-circle-fill text-danger"></i>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    <small class="text-muted">文件预览。</small>
+</div>
+
+<style>
+    #dropZone_{{ name }} {
+        transition: all 0.3s ease;
+        border-style: dashed !important;
+    }
+    #dropZone_{{ name }}:hover {
+        border-color: #0d6efd !important;
+        background-color: #f8f9fa !important;
+    }
+    .bi-cloud-arrow-up {
+        opacity: 0.6;
+    }
+    .remove-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.2s;
+        border-radius: 0.25rem;
+    }
+    .thumb-remove-wrapper:hover .remove-overlay, 
+    .new-preview:hover .remove-overlay {
+        opacity: 1;
+    }
+    .remove-overlay i {
+        font-size: 1.5rem;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 为每个实例创建独立的删除文件数组
+    window.deletedFiles_{{ name }} = window.deletedFiles_{{ name }} || [];
+    
+    // 初始化现有附件删除事件
+    const initExistingAttachments = () => {
+        document.querySelectorAll(`.thumb-remove-wrapper[data-name="{{ name }}"]`).forEach(wrapper => {
+            wrapper.onclick = function() {
+                const path = this.getAttribute('data-path');
+                if (path) {
+                    window.deletedFiles_{{ name }}.push(path);
+                    document.getElementById('deleteAttachmentsInput_{{ name }}').value = JSON.stringify(window.deletedFiles_{{ name }});
+                }
+                this.remove(); // 从界面移除
+            };
+        });
+    };
+
+    // 文件选择预览逻辑
+    const fileInput = document.getElementById('fileInput_{{ name }}');
+    const previewContainer = document.getElementById('imagePreview_{{ name }}');
+    const dropZone = document.getElementById('dropZone_{{ name }}');
+
+    fileInput.addEventListener('change', function(e) {
+        // 移除新增的预览项（保留原有附件）
+        previewContainer.querySelectorAll('.new-preview[data-name="{{ name }}"]').forEach(el => el.remove());
+
+        for (const file of e.target.files) {
+            const reader = new FileReader();
+            const isImg = file.type.startsWith('image/');
+            
+            reader.onload = function(event) {
+                const div = document.createElement('div');
+                div.className = `new-preview position-relative`;
+                div.setAttribute('data-name', '{{ name }}');
+                div.style.cursor = 'pointer';
+                div.title = '点击移除';
+                
+                let content = isImg 
+                    ? `<img src="${event.target.result}" class="img-thumbnail" style="width: 100px; height: 100px; object-fit: cover;">`
+                    : `<div class="alert alert-secondary p-2 m-0"><i class="bi bi-file-pdf"></i> PDF</div>`;
+                
+                div.innerHTML = `
+                    ${content}
+                    <div class="remove-overlay">
+                        <i class="bi bi-x-circle-fill text-danger"></i>
+                    </div>
+                `;
+                
+                div.onclick = () => {
+                    div.remove();
+                };
+                previewContainer.appendChild(div);
+            }
+            if (isImg) reader.readAsDataURL(file);
+            else reader.onload({target: {result: ''}});
+        }
+    });
+
+    // 拖拽上传逻辑
+    // 点击拖拽框触发文件选择
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    // 阻止浏览器默认行为
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, e => {
+            e.preventDefault();
+            e.stopPropagation();
+        }, false);
+    });
+
+    // 拖拽高亮效果
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.add('border-primary', 'bg-white'), false);
+    });
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.remove('border-primary', 'bg-white'), false);
+    });
+
+    // 处理拖拽释放
+    dropZone.addEventListener('drop', e => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        
+        if (files.length > 0) {
+            fileInput.files = files;
+            fileInput.dispatchEvent(new Event('change'));
+        }
+    });
+
+    // 初始化
+    initExistingAttachments();
+});
+</script>

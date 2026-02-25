@@ -433,7 +433,7 @@
                                                 {{ asset.name }} <br>
                                                 SN: {{ asset.number }}
                                             </p>
-                                            <button class="btn btn-sm btn-outline-primary w-100 print-btn" onclick="window.print()">
+                                            <button class="btn btn-sm btn-outline-primary w-100 print-btn">
                                                 <i class="bi bi-printer me-1"></i> 打印标签
                                             </button>
                                         </div>
@@ -466,62 +466,46 @@
 {% include "asset/_asset_js.html" %}
 
 <script>
-    // 子资产选择功能 - 仅保留单选逻辑（二维码生成复用_asset_js.html的initQRCode）
     let selectedSubAssets = [];
     
-    // 确保assetState对象初始化（兼容_asset_js.html）
+    // 确保 assetState 对象初始化
     if (typeof assetState === 'undefined') {
         assetState = {
             elements: {
                 qrcodeContainer: document.getElementById('qrcode'),
                 qrSnDisplay: document.getElementById('qr-sn-display')
             },
-            assetNumber: '{{ asset.number or "" }}',
-            assetName: '{{ asset.name or "未知资产" }}'
+            // 这里确保从 Jinja2 模板拿到的值即使为空也是空字符串而非 null
+            assetNumber: "{{ asset.number or '' }}",
+            assetName: "{{ asset.name or '未知资产' }}"
         };
     }
     
-    // 子资产单选核心函数
     function selectSubAsset(id, sn, element) {
-        // 1. 清空所有已有选中（单选逻辑）
         clearSubSelect(false);
-        
-        // 2. 选中当前子资产
         selectedSubAssets.push({ id, sn });
         element.classList.add('selected');
-        
-        // 3. 更新选中提示 + 调用_asset_js.html的二维码函数
         updateSelectedAlert();
-        initQRCode(sn); // 直接复用已有函数，无需重复写二维码逻辑
+        if (typeof initQRCode === 'function') initQRCode(sn); 
     }
     
-    // 清空子资产选中
     function clearSubSelect(restoreQrcode = true) {
-        // 1. 清除选中状态
         selectedSubAssets = [];
         document.querySelectorAll('.sub-asset-item').forEach(item => {
             item.classList.remove('selected');
         });
-        
-        // 2. 隐藏提示
         const alertEl = document.getElementById('subSelectAlert');
         if (alertEl) alertEl.style.display = 'none';
-        
-        // 3. 恢复父资产二维码（复用已有函数）
-        if (restoreQrcode) {
-            initQRCode(); // 不传参自动用父资产编号
+        if (restoreQrcode && typeof initQRCode === 'function') {
+            initQRCode(); 
         }
     }
     
-    // 更新选中提示（仅保留单选逻辑，删除多选相关）
     function updateSelectedAlert() {
         const alertEl = document.getElementById('subSelectAlert');
         const textEl = document.getElementById('selectedSnText');
-        
         if (!alertEl || !textEl) return;
-        
         if (selectedSubAssets.length > 0) {
-            // 单选：只显示当前选中的子资产SN
             textEl.textContent = selectedSubAssets[0].sn;
             alertEl.style.display = 'block';
         } else {
@@ -529,66 +513,81 @@
         }
     }
     
-    // 页面初始化（仅保留必要功能）
     document.addEventListener('DOMContentLoaded', function() {
-        // 1. 资产图片点击放大（非核心，可保留）
-        const assetPhoto = document.querySelector('.asset-photo-container img');
-        if (assetPhoto) {
-            assetPhoto.style.cursor = 'pointer';
-            assetPhoto.addEventListener('click', function() {
-                window.open(this.src, '_blank', 'width=800,height=600');
-            });
-        }
-        
-        // 2. 初始化父资产二维码（复用_asset_js.html的函数）
-        initQRCode();
-        
-        // 3. 打印功能（兼容子资产/父资产，二维码逻辑复用参数）
+        // 初始化二维码
+        if (typeof initQRCode === 'function') initQRCode();
+
         const printBtn = document.querySelector('.print-btn');
         if (printBtn) {
             printBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 
-                // 获取当前要打印的内容（子资产优先）
-                let printQrText = assetState.assetNumber;
-                let printName = assetState.assetName;
-                let printSn = assetState.assetNumber;
-                
-                if (selectedSubAssets.length > 0) {
-                    printQrText = selectedSubAssets[0].sn;
-                    printSn = selectedSubAssets[0].sn;
+                // --- 修复开始：严格校验数据 ---
+                let finalName = "资产标签";
+                if (assetState && assetState.assetName && assetState.assetName !== 'None') {
+                    finalName = assetState.assetName;
                 }
+
+                let finalSn = (assetState && assetState.assetNumber) ? assetState.assetNumber : "";
                 
-                // 打印窗口（二维码参数和_asset_js.html保持一致）
+                // 子资产逻辑
+                if (selectedSubAssets && selectedSubAssets.length > 0) {
+                    finalSn = selectedSubAssets[0].sn;
+                }
+
+                // 最终防御：防止字符串 "undefined" 出现
+                if (finalSn === "undefined") finalSn = "";
+                if (finalName === "undefined") finalName = "资产标签";
+                // --- 修复结束 ---
+
                 const printWindow = window.open('', '_blank');
+                if (!printWindow) {
+                    alert('打印窗口被浏览器拦截，请允许弹窗后重试');
+                    return;
+                }
+
                 printWindow.document.write(`
                     <html>
                         <head>
-                            <title>资产标签 - ${printName}</title>
+                            <title>打印 - ${finalSn}</title>
                             <style>
-                                body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-                                .qr-container { margin: 0 auto; width: 200px; }
-                                .asset-info { margin-top: 15px; font-weight: bold; }
-                                .asset-sn { color: #0d6efd; font-size: 0.9rem; }
+                                @page { size: 50mm 30mm; margin: 0; }
+                                html, body { 
+                                    margin: 0; padding: 0; width: 50mm; height: 30mm; 
+                                    display: flex; flex-direction: column; 
+                                    align-items: center; justify-content: center;
+                                    overflow: hidden; background: white;
+                                }
+                                .asset-info { 
+                                    font-family: "Microsoft YaHei", sans-serif;
+                                    font-size: 8pt; font-weight: bold; 
+                                    margin-bottom: 0.5mm; width: 95%;
+                                    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+                                    text-align: center;
+                                }
+                                canvas { width: 18mm !important; height: 18mm !important; display: block; }
+                                .asset-sn { font-family: Arial, sans-serif; font-size: 7pt; color: #333; margin-top: 0.5mm; }
                             </style>
                         </head>
                         <body>
-                            <div class="qr-container" id="print-qrcode"></div>
-                            <div class="asset-info">${printName}</div>
-                            <div class="asset-sn">SN: ${printSn || '无编号'}</div>
-                            <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"><` + `/script>
+                            <div class="asset-info">${finalName}</div>
+                            <canvas id="print-qrcode"></canvas>
+                            <div class="asset-sn">SN: ${finalSn}</div>
+
+                            <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"><\/script>
                             <script>
-                                // 复用和initQRCode一致的参数（纠错等级、尺寸等）
-                                QRCode.toCanvas(document.getElementById('print-qrcode'), '${printQrText}', {
-                                    width: 200,
-                                    margin: 2,
-                                    errorCorrectionLevel: 'H',
-                                    color: { dark: "#000000", light: "#ffffff" }
+                                const canvas = document.getElementById('print-qrcode');
+                                QRCode.toCanvas(canvas, '${finalSn}', {
+                                    width: 100, margin: 0, errorCorrectionLevel: 'H'
                                 }, function (error) {
-                                    if (!error) window.print();
-                                    setTimeout(() => window.close(), 1000);
+                                    if (!error) {
+                                        setTimeout(() => {
+                                            window.print();
+                                            window.close();
+                                        }, 300); 
+                                    }
                                 });
-                            <` + `/script>
+                            <\/script>
                         </body>
                     </html>
                 `);

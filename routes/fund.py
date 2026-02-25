@@ -88,17 +88,26 @@ def perform_fund_save(form_data, operator_id, files=None):
         record_datetime = datetime.now()
 
     # 4. 附件/凭证上传逻辑
-    attachment_path = None
+    attachment_paths = []
     if 'attachment' in request.files:
-        file = request.files['attachment']
-        # 只有当用户确实选择了文件时，才执行保存
-        if file and file.filename != '':
-            from utils import save_uploaded_file
-            # 必须在 if 内部执行保存，确保 file 变量是有效的
-            attachment_path = save_uploaded_file(file, module='funds')
+        uploaded_files = request.files.getlist('attachment')
+        for file in uploaded_files:
+            if file and file.filename != '':
+                from utils import save_uploaded_file
+                path = save_uploaded_file(file, module='funds')
+                if path:
+                    attachment_paths.append(path)
 
-    # 最后将 attachment_path 存入数据库
-    # new_record.attachment = attachment_path
+    delete_attachments = form_data.get('delete_attachments')
+    if delete_attachments:
+        try:
+            import json
+            paths_to_delete = json.loads(delete_attachments)
+            from routes.leave import delete_physical_file
+            for path in paths_to_delete:
+                delete_physical_file(path)
+        except:
+            pass
 
     # 5. 余额计算（基于最新一条记录）
     last_record = FundsRecord.query.order_by(FundsRecord.date.desc(), FundsRecord.id.desc()).first()
@@ -113,7 +122,7 @@ def perform_fund_save(form_data, operator_id, files=None):
         amount=amount,
         note=note,
         balance=new_balance,
-        attachment=attachment_path,
+        attachment=attachment_paths,
         operator_id=operator_id,
     )
     db.session.add(record)

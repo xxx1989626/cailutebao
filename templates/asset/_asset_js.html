@@ -229,7 +229,7 @@
 
     /**
      * 清除子资产选中状态
-     */
+     
     function clearSubSelect() {
         try {
             // 重置全局状态
@@ -257,7 +257,7 @@
         } catch (error) {
             console.error('清除子资产选中状态失败:', error);
         }
-    }
+    }*/
 
     /**
      * 更新子资产选中后的操作按钮状态
@@ -526,46 +526,6 @@
 
 <!-- 自定义样式 -->
 <style>
-    /* 打印样式优化 */
-    @media print {
-        /* 打印时隐藏所有内容 */
-        body * { 
-            visibility: hidden; 
-        }
-        
-        /* 只显示二维码卡片部分 */
-        .card.shadow-sm.border-primary, 
-        .card.shadow-sm.border-primary * {
-            visibility: visible;
-        }
-        
-        .card.shadow-sm.border-primary {
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            width: 300px;
-            height: auto;
-            box-shadow: none !important;
-            border: 1px solid #ccc !important;
-        }
-        
-        /* 隐藏按钮 */
-        .btn { 
-            display: none !important; 
-        }
-        
-        /* 优化打印样式 */
-        #qrcode {
-            margin: 0 auto;
-        }
-        
-        #qr-sn-display {
-            text-align: center;
-            margin-top: 10px;
-            font-weight: bold;
-        }
-    }
 
     /* 子资产列表样式 */
     .sub-asset-item { 

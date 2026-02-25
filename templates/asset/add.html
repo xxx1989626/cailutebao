@@ -1,10 +1,9 @@
-<!-- templates/asset/add.html -->
+<!-- cailutebao\templates\asset\add.html 路径必须保留-->
 {% extends "base.html" %}
 {% block title %}新增资产{% endblock %}
 
 {% block content %}
 <style>
-    /* 全局样式统一 */
     :root {
         --primary-color: #0d6efd;
         --success-color: #198754;
@@ -15,7 +14,6 @@
         --shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
     }
     
-    /* 卡片样式 */
     .card {
         border: none;
         border-radius: 12px;
@@ -35,7 +33,6 @@
         padding: 2rem;
     }
     
-    /* 表单标题样式 */
     h5.mb-3 {
         font-weight: 600;
         color: var(--primary-color);
@@ -50,7 +47,6 @@
         margin-right: 0.5rem;
     }
     
-    /* 财务联动区域 */
     .card.bg-light {
         border-radius: var(--border-radius);
         background-color: rgba(248, 249, 250, 0.8) !important;
@@ -76,7 +72,6 @@
         color: #157347;
     }
     
-    /* 财务表单容器 */
     #finance_container {
         border-radius: var(--border-radius);
         background-color: white;
@@ -93,7 +88,6 @@
         to { opacity: 1; transform: translateY(0); }
     }
     
-    /* 按钮样式 */
     .btn-primary {
         border-radius: var(--border-radius);
         padding: 0.75rem 1.5rem;
@@ -120,7 +114,6 @@
         text-decoration: none;
     }
     
-    /* 响应式优化 */
     @media (max-width: 768px) {
         .card-body {
             padding: 1rem;
@@ -135,7 +128,6 @@
         }
     }
     
-    /* 加载状态 */
     .loading-state {
         display: flex;
         align-items: center;
@@ -195,14 +187,13 @@
 {% block scripts %}
 <script>
 $(document).ready(function() {
-    // 初始化工具提示
+    // 1. 初始化工具提示（保留）
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
     
-    // 财务表单联动
+    // 2. 财务表单联动（核心简化）
     $('#sync_fund_switch').on('change', function() {
         if(this.checked) {
-            // 显示加载状态
             $('#finance_container').html(`
                 <div class="loading-state">
                     <div class="spinner-border spinner-border-sm text-success" role="status"></div>
@@ -219,8 +210,85 @@ $(document).ready(function() {
                 }
                 $(this).slideDown(300);
                 
-                // 重新初始化财务表单的验证和样式
-                initFinanceFormValidation();
+                // ========== 仅保留这几行核心修复 ==========
+                // 解决附件点击循环问题
+                $('#dropZone_attachment').click(function(e) {
+                    e.stopPropagation();
+                    $('#fileInput_attachment').click();
+                });
+                $('#fileInput_attachment').click(function(e) {
+                    e.stopPropagation();
+                });
+
+                // ========== 新增：解决选完文件没反应的核心代码 ==========
+                $(document).on('change', '#fileInput_attachment', function() {
+                    if (this.files && this.files.length > 0) {
+                        const files = Array.from(this.files);
+                        let errorMsg = '';
+                        
+                        // 验证文件大小和格式
+                        files.forEach(file => {
+                            const fileSize = (file.size / 1024 / 1024).toFixed(2);
+                            const fileName = file.name.toLowerCase();
+                            const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.pdf', '.zip', '.rar', '.doc', '.docx', '.xls', '.xlsx'];
+                            const fileExt = fileName.slice(fileName.lastIndexOf('.'));
+                            
+                            if (fileSize > 10) {
+                                errorMsg += `${file.name} (${fileSize}MB) 超过10MB限制；`;
+                            }
+                            if (!allowedExtensions.includes(fileExt)) {
+                                errorMsg += `${file.name} (${fileExt}) 格式不支持；`;
+                            }
+                        });
+                        
+                        // 错误处理
+                        if (errorMsg) {
+                            alert('文件验证失败：\n' + errorMsg);
+                            this.value = '';
+                            $(this).addClass('is-invalid');
+                            return;
+                        }
+                        
+                        // 创建预览区（和资金页面一致）
+                        let $preview = $('#attachment_preview');
+                        if (!$preview.length) {
+                            $('#dropZone_attachment').after(`
+                                <div id="attachment_preview" class="mt-3">
+                                    <div class="small text-muted mb-2">已选文件：</div>
+                                    <div id="file_list" class="d-flex flex-wrap gap-2"></div>
+                                </div>
+                            `);
+                        }
+                        
+                        // 显示文件预览
+                        $('#file_list').empty();
+                        files.forEach(file => {
+                            const fileName = file.name;
+                            const fileSize = (file.size / 1024 / 1024).toFixed(2);
+                            $('#file_list').append(`
+                                <div class="d-flex align-items-center bg-light rounded p-2 small" style="max-width: 200px;">
+                                    <i class="bi bi-file-earmark me-2"></i>
+                                    <span class="text-truncate" title="${fileName}">${fileName}</span>
+                                    <span class="ms-2 text-muted">(${fileSize}MB)</span>
+                                </div>
+                            `);
+                        });
+                        
+                        $(this).removeClass('is-invalid').addClass('is-valid');
+                    }
+                });
+                
+                // 保留金额验证（极简版）
+                $('#finance_amount').on('input blur', function() {
+                    const val = parseFloat($(this).val());
+                    if (!val || val >= 0 || Math.abs(val) < 0.01) {
+                        $(this).addClass('is-invalid');
+                    } else {
+                        $(this).removeClass('is-invalid').addClass('is-valid');
+                        // 自动保留2位小数
+                        this.value = val.toFixed(2);
+                    }
+                });
             });
         } else {
             $('#finance_container').slideUp(300, function() {
@@ -234,156 +302,37 @@ $(document).ready(function() {
         }
     });
     
-    // 表单提交总验证
+    // 3. 表单提交验证（极简版）
     $('form').on('submit', function(e) {
         let isValid = true;
         
-        // 1. 验证资产表单（固定资产编号、照片、数量等）
-        // 这部分验证逻辑已在 partial_asset_form.html 中实现
-        
-        // 2. 验证财务表单（如果启用）
+        // 验证财务金额（如果启用）
         if ($('#sync_fund_switch').is(':checked') && $('#finance_amount').length) {
-            const amountValid = validateAmountInput($('#finance_amount')[0]);
-            if (!amountValid) {
+            const val = parseFloat($('#finance_amount').val());
+            if (!val || val >= 0 || Math.abs(val) < 0.01) {
                 isValid = false;
+                alert('采购金额必须填写负数且不小于0.01元！');
                 $('#finance_amount').focus();
             }
-            
-            // 验证财务必填项
-            $('#finance_container [required]').each(function() {
-                if (!this.value.trim()) {
-                    isValid = false;
-                    $(this).addClass('is-invalid');
-                }
-            });
         }
         
-        // 3. 最终确认
+        // 验证必填项
+        if ($(this)[0].checkValidity() === false) {
+            isValid = false;
+            $(this).addClass('was-validated');
+        }
+        
         if (isValid) {
-            if (!confirm('确认提交新增资产信息？此操作将创建新的资产记录，财务信息也会同步保存。')) {
+            if (!confirm('确认提交新增资产信息？')) {
                 e.preventDefault();
                 return false;
             }
-            
-            // 禁用提交按钮防止重复提交
-            $(this).find('button[type="submit"]').prop('disabled', true).html(
-                '<i class="bi bi-hourglass-split me-2"></i> 提交中...'
-            );
+            $(this).find('button[type="submit"]').prop('disabled', true).html('提交中...');
         } else {
             e.preventDefault();
             alert('表单填写不完整或有误，请检查！');
-            // 滚动到第一个错误字段
-            $(this).find('.is-invalid:first')[0]?.scrollIntoView({ behavior: 'smooth' });
         }
     });
-    
-    // 财务金额验证函数（与partial_fund_form.html保持一致）
-    function validateAmountInput(input) {
-        const value = parseFloat(input.value);
-        
-        if (!input.value || isNaN(value)) {
-            $(input).addClass('is-invalid');
-            $(input).closest('.col-md-6').find('.amount-invalid').text('请输入有效的金额数字');
-            return false;
-        }
-        
-        if (value >= 0) {
-            $(input).addClass('is-invalid');
-            $(input).closest('.col-md-6').find('.amount-invalid').text('采购资产属于支出，金额必须为负值！');
-            return false;
-        }
-        
-        if (Math.abs(value) < 0.01) {
-            $(input).addClass('is-invalid');
-            $(input).closest('.col-md-6').find('.amount-invalid').text('金额不能小于0.01元');
-            return false;
-        }
-        
-        $(input).removeClass('is-invalid').addClass('is-valid');
-        return true;
-    }
-    
-    // 初始化财务表单验证（动态加载后）
-    function initFinanceFormValidation() {
-        // 金额输入验证
-        $('#finance_amount').on('input', function() {
-            validateAmountInput(this);
-            
-            if (this.value && !isNaN(this.value)) {
-                const value = parseFloat(this.value);
-                if (!isNaN(value)) {
-                    const cursorPos = this.selectionStart;
-                    this.value = value.toFixed(2);
-                    this.setSelectionRange(cursorPos, cursorPos);
-                }
-            }
-        }).on('blur', function() {
-            validateAmountInput(this);
-            
-            if (this.value && parseFloat(this.value) > 0) {
-                if (confirm('检测到金额为正数，采购资产应为支出（负数），是否自动转换为负数？')) {
-                    this.value = '-' + Math.abs(parseFloat(this.value)).toFixed(2);
-                    validateAmountInput(this);
-                }
-            }
-        });
-        
-        // 文件上传验证
-        $('#finance_attachment').on('change', function() {
-            if (this.files && this.files[0]) {
-                const file = this.files[0];
-                const fileSize = (file.size / 1024 / 1024).toFixed(2);
-                
-                if (fileSize > 10) {
-                    alert(`文件大小(${fileSize}MB)超过限制(10MB)，请选择更小的文件`);
-                    this.value = '';
-                    $(this).addClass('is-invalid');
-                    return;
-                }
-                
-                const fileName = file.name.toLowerCase();
-                const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.pdf', '.zip', '.rar', '.doc', '.docx', '.xls', '.xlsx'];
-                const fileExt = fileName.slice(fileName.lastIndexOf('.'));
-                
-                if (!allowedExtensions.includes(fileExt)) {
-                    alert(`不支持的文件格式(${fileExt})，请上传：JPG、PNG、PDF、ZIP、RAR、Word、Excel格式文件`);
-                    this.value = '';
-                    $(this).addClass('is-invalid');
-                    return;
-                }
-                
-                $(this).removeClass('is-invalid').addClass('is-valid');
-                alert(`文件已选择：${file.name}\n大小：${fileSize}MB`);
-            }
-        });
-        
-        // 重新初始化工具提示
-        const newTooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-        const newTooltipList = [...newTooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
-        
-        // 统一财务表单样式
-        $('.finance-form-control').addClass('rounded-3').css({
-            'padding': '0.75rem 1rem',
-            'border': '1px solid #ced4da',
-            'transition': 'all 0.2s ease',
-            'font-size': '0.95rem'
-        });
-    }
-    
-    // Bootstrap表单验证初始化
-    (() => {
-        'use strict'
-        const forms = document.querySelectorAll('.needs-validation')
-        Array.from(forms).forEach(form => {
-            form.addEventListener('submit', event => {
-                if (!form.checkValidity()) {
-                    event.preventDefault()
-                    event.stopPropagation()
-                }
-                form.classList.add('was-validated')
-            }, false)
-        })
-    })();
 });
 </script>
 {% endblock %}

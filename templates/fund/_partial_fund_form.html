@@ -7,7 +7,7 @@
             <span class="text-danger">*</span>
             <i class="bi bi-info-circle text-info ms-1" data-bs-toggle="tooltip" data-bs-title="交易发生的实际日期"></i>
         </label>
-        <input type="date" name="date" class="form-control finance-form-control" value="{{ default_date }}">" required>
+        <input type="date" name="date" class="form-control finance-form-control" value="{{ default_date }}" required>
         <div class="invalid-feedback">
             请选择财务日期
         </div>
@@ -58,19 +58,14 @@
         <div class="invalid-feedback amount-invalid">
             请输入有效的金额（支出请填写负数）
         </div>
-        <div class="form-text text-danger fw-medium mt-1">
-            <i class="bi bi-exclamation-circle me-1"></i> 重要：购买资产属于支出，金额必须为负值！
-        </div>
     </div>
 
     <!-- 凭证上传 -->
     <div class="col-md-6">
-        <label class="form-label fw-bold">
-            凭证上传 (发票/照片)
-            <i class="bi bi-info-circle text-info ms-1" data-bs-toggle="tooltip" data-bs-title="上传相关凭证，支持图片、PDF、压缩包格式"></i>
-        </label>
-        <input type="file" name="attachment" id="finance_attachment" class="form-control finance-form-control" 
-               accept="image/*,.pdf,.zip,.rar,.doc,.docx,.xls,.xlsx">
+        {% set name = 'attachment' %}
+        {% set existing_attachments = [] %}
+        {% set accept = 'image/*,.pdf,.zip,.rar,.doc,.docx,.xls,.xlsx' %}
+        {% include "_attachment.html" with context %}
         <div class="form-text">
             支持格式：JPG、PNG、PDF、ZIP、RAR、Word、Excel，单文件最大10MB
         </div>
@@ -151,20 +146,6 @@ $(document).ready(function() {
             return false;
         }
         
-        // 检查是否为负数（支出）
-        if (value >= 0) {
-            $(input).addClass('is-invalid');
-            $('.amount-invalid').text('采购资产属于支出，金额必须为负值！');
-            return false;
-        }
-        
-        // 检查金额合理性
-        if (Math.abs(value) < 0.01) {
-            $(input).addClass('is-invalid');
-            $('.amount-invalid').text('金额不能小于0.01元');
-            return false;
-        }
-        
         // 验证通过
         $(input).removeClass('is-invalid').addClass('is-valid');
         return true;
@@ -188,38 +169,6 @@ $(document).ready(function() {
         }
     });
     
-    // 文件上传验证
-    $('#finance_attachment').on('change', function() {
-        if (this.files && this.files[0]) {
-            const file = this.files[0];
-            const fileSize = (file.size / 1024 / 1024).toFixed(2);
-            
-            // 检查文件大小（限制10MB）
-            if (fileSize > 10) {
-                alert(`文件大小(${fileSize}MB)超过限制(10MB)，请选择更小的文件`);
-                this.value = '';
-                $(this).addClass('is-invalid');
-                return;
-            }
-            
-            // 检查文件格式
-            const fileName = file.name.toLowerCase();
-            const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.pdf', '.zip', '.rar', '.doc', '.docx', '.xls', '.xlsx'];
-            const fileExt = fileName.slice(fileName.lastIndexOf('.'));
-            
-            if (!allowedExtensions.includes(fileExt)) {
-                alert(`不支持的文件格式(${fileExt})，请上传：JPG、PNG、PDF、ZIP、RAR、Word、Excel格式文件`);
-                this.value = '';
-                $(this).addClass('is-invalid');
-                return;
-            }
-            
-            $(this).removeClass('is-invalid').addClass('is-valid');
-            
-            // 显示文件信息
-            alert(`文件已选择：${file.name}\n大小：${fileSize}MB`);
-        }
-    });
     
     // 表单提交验证
     $('form').on('submit', function(e) {
@@ -228,6 +177,10 @@ $(document).ready(function() {
         if (!validateAmountInput(amountInput)) {
             e.preventDefault();
             amountInput.focus();
+            const value = parseFloat(amountInput.value);
+            if (value >= 0) {
+                $('.amount-invalid').text('收入请填正数，支出请填负数（金额不能为0）');
+            }
             return false;
         }
         
@@ -249,6 +202,34 @@ $(document).ready(function() {
             $(this).find('.is-invalid:first')[0]?.scrollIntoView({ behavior: 'smooth' });
             return false;
         }
+
+        // 多文件大小/格式验证（通过附件组件的fileInput）
+        const fileInput = document.getElementById('fileInput_attachment');
+        if (fileInput.files && fileInput.files.length > 0) {
+            const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.pdf', '.zip', '.rar', '.doc', '.docx', '.xls', '.xlsx'];
+            let fileError = false;
+
+            for (const file of fileInput.files) {
+                const fileSize = file.size / 1024 / 1024;
+                if (fileSize > 10) {
+                    alert(`文件 ${file.name} 大小(${fileSize.toFixed(2)}MB)超过10MB限制`);
+                    fileError = true;
+                    break;
+                }
+
+                const ext = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+                if (!allowedExtensions.includes(ext)) {
+                    alert(`文件 ${file.name} 格式(${ext})不支持，仅支持: ${allowedExtensions.join(', ')}`);
+                    fileError = true;
+                    break;
+                }
+            }
+
+            if (fileError) {
+                e.preventDefault();
+                return false;
+            }
+        }
         
         // 确认提交（财务操作重要，添加确认）
         if (!confirm('确认提交财务记录？该操作将生成资金流水记录！')) {
@@ -261,16 +242,10 @@ $(document).ready(function() {
             '<i class="bi bi-hourglass-split me-2"></i> 提交中...'
         );
     });
-    
-    // 自动补全负号（如果用户忘记输入）
-    $('#finance_amount').on('blur', function() {
-        if (this.value && parseFloat(this.value) > 0) {
-            if (confirm('检测到金额为正数，采购资产应为支出（负数），是否自动转换为负数？')) {
-                this.value = '-' + Math.abs(parseFloat(this.value)).toFixed(2);
-                validateAmountInput(this);
-            }
-        }
-    });
+    $('#finance_amount').attr('placeholder', '收入填正数，支出填负数，如 500 或 -500');
+    $('.text-danger.fw-medium').html(`
+        <i class="bi bi-exclamation-circle me-1"></i> 提示：收入请填写正数，支出请填写负数！
+    `);
 });
 
 // 添加自定义样式
