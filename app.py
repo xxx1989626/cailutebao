@@ -377,8 +377,8 @@ def init_app():
     with app.app_context():
         # 动态注册权限
         try:
-            from routes.hr import HR_PERMISSIONS
-            from routes.asset import ASSET_PERMISSIONS
+            from routes.hr.permissions import HR_PERMISSIONS
+            from routes.asset.core import ASSET_PERMISSIONS
             from routes.fund import FUND_PERMISSIONS
             from routes.scheduling import SCHEDULING_PERMISSIONS
             from routes.dorm import DORM_PERMISSIONS

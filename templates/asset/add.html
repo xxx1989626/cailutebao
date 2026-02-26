@@ -187,11 +187,9 @@
 {% block scripts %}
 <script>
 $(document).ready(function() {
-    // 1. 初始化工具提示（保留）
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
     
-    // 2. 财务表单联动（核心简化）
     $('#sync_fund_switch').on('change', function() {
         if(this.checked) {
             $('#finance_container').html(`
@@ -210,82 +208,14 @@ $(document).ready(function() {
                 }
                 $(this).slideDown(300);
                 
-                // ========== 仅保留这几行核心修复 ==========
-                // 解决附件点击循环问题
-                $('#dropZone_attachment').click(function(e) {
-                    e.stopPropagation();
-                    $('#fileInput_attachment').click();
-                });
-                $('#fileInput_attachment').click(function(e) {
-                    e.stopPropagation();
-                });
-
-                // ========== 新增：解决选完文件没反应的核心代码 ==========
-                $(document).on('change', '#fileInput_attachment', function() {
-                    if (this.files && this.files.length > 0) {
-                        const files = Array.from(this.files);
-                        let errorMsg = '';
-                        
-                        // 验证文件大小和格式
-                        files.forEach(file => {
-                            const fileSize = (file.size / 1024 / 1024).toFixed(2);
-                            const fileName = file.name.toLowerCase();
-                            const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.pdf', '.zip', '.rar', '.doc', '.docx', '.xls', '.xlsx'];
-                            const fileExt = fileName.slice(fileName.lastIndexOf('.'));
-                            
-                            if (fileSize > 10) {
-                                errorMsg += `${file.name} (${fileSize}MB) 超过10MB限制；`;
-                            }
-                            if (!allowedExtensions.includes(fileExt)) {
-                                errorMsg += `${file.name} (${fileExt}) 格式不支持；`;
-                            }
-                        });
-                        
-                        // 错误处理
-                        if (errorMsg) {
-                            alert('文件验证失败：\n' + errorMsg);
-                            this.value = '';
-                            $(this).addClass('is-invalid');
-                            return;
-                        }
-                        
-                        // 创建预览区（和资金页面一致）
-                        let $preview = $('#attachment_preview');
-                        if (!$preview.length) {
-                            $('#dropZone_attachment').after(`
-                                <div id="attachment_preview" class="mt-3">
-                                    <div class="small text-muted mb-2">已选文件：</div>
-                                    <div id="file_list" class="d-flex flex-wrap gap-2"></div>
-                                </div>
-                            `);
-                        }
-                        
-                        // 显示文件预览
-                        $('#file_list').empty();
-                        files.forEach(file => {
-                            const fileName = file.name;
-                            const fileSize = (file.size / 1024 / 1024).toFixed(2);
-                            $('#file_list').append(`
-                                <div class="d-flex align-items-center bg-light rounded p-2 small" style="max-width: 200px;">
-                                    <i class="bi bi-file-earmark me-2"></i>
-                                    <span class="text-truncate" title="${fileName}">${fileName}</span>
-                                    <span class="ms-2 text-muted">(${fileSize}MB)</span>
-                                </div>
-                            `);
-                        });
-                        
-                        $(this).removeClass('is-invalid').addClass('is-valid');
-                    }
-                });
+                initAttachmentComponent('attachment');
                 
-                // 保留金额验证（极简版）
                 $('#finance_amount').on('input blur', function() {
                     const val = parseFloat($(this).val());
                     if (!val || val >= 0 || Math.abs(val) < 0.01) {
                         $(this).addClass('is-invalid');
                     } else {
                         $(this).removeClass('is-invalid').addClass('is-valid');
-                        // 自动保留2位小数
                         this.value = val.toFixed(2);
                     }
                 });
@@ -302,21 +232,9 @@ $(document).ready(function() {
         }
     });
     
-    // 3. 表单提交验证（极简版）
     $('form').on('submit', function(e) {
         let isValid = true;
         
-        // 验证财务金额（如果启用）
-        if ($('#sync_fund_switch').is(':checked') && $('#finance_amount').length) {
-            const val = parseFloat($('#finance_amount').val());
-            if (!val || val >= 0 || Math.abs(val) < 0.01) {
-                isValid = false;
-                alert('采购金额必须填写负数且不小于0.01元！');
-                $('#finance_amount').focus();
-            }
-        }
-        
-        // 验证必填项
         if ($(this)[0].checkValidity() === false) {
             isValid = false;
             $(this).addClass('was-validated');

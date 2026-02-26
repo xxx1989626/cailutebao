@@ -151,25 +151,6 @@ $(document).ready(function() {
         return true;
     }
     
-    // 监听金额输入
-    $('#finance_amount').on('input', function() {
-        validateAmountInput(this);
-        
-        // 格式化金额显示（保留两位小数）
-        if (this.value && !isNaN(this.value)) {
-            const value = parseFloat(this.value);
-            if (!isNaN(value)) {
-                // 保存光标位置
-                const cursorPos = this.selectionStart;
-                // 格式化值
-                this.value = value.toFixed(2);
-                // 恢复光标位置
-                this.setSelectionRange(cursorPos, cursorPos);
-            }
-        }
-    });
-    
-    
     // 表单提交验证
     $('form').on('submit', function(e) {
         // 验证金额
