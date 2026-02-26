@@ -371,12 +371,24 @@ $(document).ready(function () {
     let globalAlarmInterval = null;
     window.originalTitle = document.title;
     const audio = document.getElementById('globalNoticeAudio');
-
+    // fetch 超时控制：避免网络抖动时请求长期悬挂
+    async function fetchWithTimeout(url, timeoutMs = 8000) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+            return await fetch(url, {
+                signal: controller.signal,
+                cache: 'no-store'
+            });
+        } finally {
+            clearTimeout(timer);
+        }
+    }
     // 真正的主动推送：只有后端说有新消息，才响铃
     async function checkLoop() {
         try {
             // 拉取是否有新消息
-            let res = await fetch("/notification/has_new_notice");
+            let res = await fetchWithTimeout("/notification/has_new_notice", 8000);
             let data = await res.json();
 
             if (data.has_new) {

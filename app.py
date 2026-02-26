@@ -7,26 +7,51 @@ from config import Config, SECRET_KEY, DATABASE_PATH, UPLOAD_FOLDER, SALARY_MODE
 from models import db, Asset, User, Permission, ChatMessage  # 如需彻底清理可删除 ChatMessage
 from routes import register_blueprints
 import json, os
+import time
 import logging
+from logging.handlers import RotatingFileHandler
 import traceback
 from sqlalchemy import func
 from datetime import datetime, date, timedelta
 import threading
 
 # ==================== 核心优化1：日志增强（定位崩溃原因） ====================
-# 同时输出到文件和控制台，方便本地调试
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('D:/cailu/log/app.log', encoding='utf-8'),
-        logging.StreamHandler()  # 控制台输出
-    ]
+LOG_DIR = os.getenv('CAILU_LOG_DIR', 'D:/cailu/log')
+os.makedirs(LOG_DIR, exist_ok=True)
+
+app_log_path = os.path.join(LOG_DIR, 'app.log')
+error_log_path = os.path.join(LOG_DIR, 'error.log')
+log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.INFO)
+root_logger.handlers.clear()
+
+app_file_handler = RotatingFileHandler(
+    app_log_path,
+    maxBytes=10 * 1024 * 1024,
+    backupCount=5,
+    encoding='utf-8'
 )
+app_file_handler.setFormatter(logging.Formatter(log_format))
+root_logger.addHandler(app_file_handler)
+
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(logging.Formatter(log_format))
+root_logger.addHandler(console_handler)
+
 # 错误日志单独记录
 error_logger = logging.getLogger('error')
-error_logger.addHandler(logging.FileHandler('D:/cailu/log/error.log', encoding='utf-8'))
-
+error_logger.setLevel(logging.ERROR)
+error_logger.handlers.clear()
+error_file_handler = RotatingFileHandler(
+    error_log_path,
+    maxBytes=10 * 1024 * 1024,
+    backupCount=5,
+    encoding='utf-8'
+)
+error_file_handler.setFormatter(logging.Formatter(log_format))
+error_logger.addHandler(error_file_handler)
 # ==================== 应用初始化 ====================
 app = Flask(__name__)
 app.config.update(
@@ -57,6 +82,24 @@ def handle_all_exceptions(e):
 db.init_app(app)
 register_blueprints(app)
 migrate = Migrate(app, db, render_as_batch=True)
+
+@app.before_request
+def mark_request_start():
+    request._start_time = datetime.now()
+
+@app.after_request
+def log_request_result(response):
+    start_time = getattr(request, '_start_time', None)
+    if start_time:
+        duration_ms = (datetime.now() - start_time).total_seconds() * 1000
+        logging.info(
+            "request %s %s status=%s cost=%.2fms",
+            request.method,
+            request.path,
+            response.status_code,
+            duration_ms
+        )
+    return response
 
 # Flask-Login 初始化
 login_manager = LoginManager()
@@ -357,6 +400,20 @@ def serve_root_file(filename):
     except Exception as e:
         logging.error(f"根文件访问失败: {e}")
         return jsonify({'code': 404, 'msg': '文件不存在'}), 404
+@app.route('/healthz')
+def healthz():
+    """轻量健康检查：用于快速判断应用与数据库是否可用。"""
+    try:
+        db.session.execute(func.count(User.id)).scalar()
+        return jsonify({
+            'status': 'ok',
+            'time': datetime.now().isoformat(timespec='seconds'),
+            'pid': os.getpid(),
+            'threads': threading.active_count()
+        }), 200
+    except Exception as e:
+        logging.error(f"健康检查失败: {e}")
+        return jsonify({'status': 'degraded', 'error': str(e)}), 500
 
 # ==================== 核心优化3：定时任务独立线程运行 ====================
 def start_background_tasks():
@@ -370,6 +427,17 @@ def start_background_tasks():
         logging.info("后台定时任务启动成功")
     except Exception as e:
         logging.error(f"后台任务启动失败: {e}")
+def start_heartbeat_logger(interval=60):
+    """周期性写入心跳日志，便于判断进程是否假活。"""
+    def heartbeat_task():
+        while True:
+            try:
+                logging.info("HEARTBEAT alive pid=%s active_threads=%s", os.getpid(), threading.active_count())
+            except Exception as e:
+                logging.error(f"心跳日志写入失败: {e}")
+            time.sleep(interval)
+
+    threading.Thread(target=heartbeat_task, daemon=True).start()
 
 # ==================== 初始化函数 ====================
 def init_app():
@@ -411,7 +479,7 @@ def init_app():
         
         # 启动后台定时任务（独立线程）
         threading.Thread(target=start_background_tasks, daemon=True).start()
-        
+        start_heartbeat_logger(interval=60)
         logging.info("数据库初始化完成，应用启动准备就绪")
 
 # ==================== 主函数（核心优化：稳定的启动配置） ====================
@@ -447,7 +515,10 @@ if __name__ == '__main__':
             app,
             host=host,
             port=port,
-            threads=8  # 多线程处理轮询请求
+            threads=16,
+            connection_limit=1024,
+            channel_timeout=120,
+            cleanup_interval=30
         )
         
         # 4. 包装成HTTPS服务器（避开ssl_context参数兼容问题）
