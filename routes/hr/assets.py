@@ -1,7 +1,7 @@
 import qrcode
 import io
 import base64
-from flask import jsonify,url_for
+from flask import jsonify, request,url_for
 from flask_login import login_required
 
 from . import hr_bp
@@ -12,7 +12,7 @@ from utils import perm
 @login_required
 @perm.require('hr.edit')
 def generate_qr():
-    base_url = "https://cailutebao.top"
+    base_url = request.args.get('base_url', "https://cailutebao.top:8000")
     target_url = base_url + url_for('hr.self_register')
     
     # 生成二维码
