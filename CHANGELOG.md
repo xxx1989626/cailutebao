@@ -2,6 +2,11 @@
 
 所有对本项目的重要变更将记录在此文件中。
 Markdown格式
+
+[7.6.0-alpha] - 2026-02-27
+python http运行
+nginx https运行
+
 [7.5.1-alpha] - 2026-02-26
 解构asset.py hr.py为多文件
 提取附件为公共表单

@@ -1,4 +1,4 @@
-#cailutebao/app.py
+#D:\cailu\cailutebao\app.py   路径必须保留
 from flask_migrate import Migrate
 from flask import Flask, jsonify, request, send_from_directory
 from flask_login import LoginManager, current_user
@@ -68,15 +68,6 @@ app.config.update(
         'pool_pre_ping': True   # 每次请求前检查连接是否有效
     }
 )
-
-# 全局异常捕获装饰器（增强版）
-@app.errorhandler(Exception)
-def handle_all_exceptions(e):
-    # 记录完整错误堆栈
-    error_msg = f"未捕获异常: {str(e)}\n{traceback.format_exc()}"
-    error_logger.error(error_msg)
-    # 本地开发返回详细错误，方便调试
-    return {"code": 500, "msg": "服务器内部错误", "detail": str(e)}, 500
 
 # ==================== 扩展初始化 ====================
 db.init_app(app)
@@ -482,71 +473,29 @@ def init_app():
         start_heartbeat_logger(interval=60)
         logging.info("数据库初始化完成，应用启动准备就绪")
 
-# ==================== 主函数（核心优化：稳定的启动配置） ====================
+# ==================== 主函数 ====================
 if __name__ == '__main__':
-    # 初始化应用（保留你原来的逻辑）
     init_app()
     
-    # 证书路径（保留你的原始配置）
-    cert_file = r"C:\Users\39160\AppData\Local\Posh-ACME\LE_PROD\3070382756\cailutebao.top\fullchain.cer"
-    key_file = r"C:\Users\39160\AppData\Local\Posh-ACME\LE_PROD\3070382756\cailutebao.top\cert.key"
-    
-    # 基础配置
-    host = '0.0.0.0'
-    port = 8000
+    host = '127.0.0.1' 
+    port = 8001
     
     try:
-        import ssl
-        from waitress import create_server
-        from waitress.server import HTTPServer
+        from waitress import serve
         
-        # 1. 验证证书文件
-        if not os.path.exists(cert_file):
-            raise FileNotFoundError(f"证书文件不存在: {cert_file}")
-        if not os.path.exists(key_file):
-            raise FileNotFoundError(f"私钥文件不存在: {key_file}")
+        logging.info(f"✅ 后端服务启动成功，监听本地端口：http://{host}:{port}")
+        logging.info(f"🚀 请通过 Nginx 代理地址访问：https://cailutebao.top:8000")
         
-        # 2. 创建SSL上下文（Python内置标准方式）
-        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        ssl_context.load_cert_chain(certfile=cert_file, keyfile=key_file)
-        
-        # 3. 创建Waitress服务器（兼容所有版本的核心写法）
-        server = create_server(
+        serve(
             app,
             host=host,
             port=port,
-            threads=16,
+            threads=24,           
             connection_limit=1024,
             channel_timeout=120,
             cleanup_interval=30
         )
-        
-        # 4. 包装成HTTPS服务器（避开ssl_context参数兼容问题）
-        http_server = HTTPServer(
-            server.socket_addr,
-            server.application,
-            _server=server,
-            ssl_context=ssl_context  # 直接传给HTTPServer，而非serve()
-        )
-        
-        logging.info(f"✅ 成功加载证书，以HTTPS模式启动服务：https://{host}:{port}")
-        # 5. 启动服务器（阻塞运行）
-        http_server.run()
     
-    except ImportError as e:
-        # 降级方案：Waitress未安装时，用Flask原生HTTPS
-        logging.warning(f"⚠️ Waitress未安装，降级为Flask内置服务器启动HTTPS: {e}")
-        app.run(
-            host=host,
-            port=port,
-            debug=False,
-            threaded=True,
-            use_reloader=False,
-            ssl_context=(cert_file, key_file)  # Flask原生支持，无兼容问题
-        )
-    except FileNotFoundError as e:
-        logging.error(f"❌ 证书文件缺失，无法启动HTTPS服务: {e}")
-        raise
     except Exception as e:
-        logging.error(f"❌ HTTPS服务启动失败: {e}")
-        raise
+        logging.error(f"❌ Waitress 启动失败: {e}")
+        app.run(host=host, port=port, debug=False, threaded=True)
