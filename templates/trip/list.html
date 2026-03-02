@@ -223,7 +223,6 @@
     <div id="copyToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
         <div class="d-flex">
             <div class="toast-body d-flex align-items-center">
-                <i class="bi bi-check-circle me-2"></i>
                 <span id="toastMessage">内容已成功复制到剪贴板！</span>
             </div>
             <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
@@ -389,10 +388,7 @@ const toast = new bootstrap.Toast(toastEl, {
     delay: 3000
 });
 
-/**
- * 核心复制函数
- * 增加了传统 execCommand 兼容，防止在非 HTTPS 环境下 navigator.clipboard 失效
- */
+
 function copyToClipboard(text) {
     if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(text).then(() => {
@@ -408,7 +404,7 @@ function copyToClipboard(text) {
 function fallbackCopy(text) {
     const textArea = document.createElement("textarea");
     textArea.value = text;
-    textArea.style.position = "fixed"; // 避免滚动到页面外
+    textArea.style.position = "fixed"; 
     document.body.appendChild(textArea);
     textArea.select();
     
@@ -426,38 +422,30 @@ function fallbackCopy(text) {
     document.body.removeChild(textArea);
 }
 
-/**
- * 显示提示框
- */
+
 function showToast(message, type = "success") {
     const toastMessage = document.getElementById('toastMessage');
     const toastEl = document.getElementById('copyToast');
     
-    // 更新提示内容和样式
     toastMessage.innerHTML = `<i class="bi bi-${type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'x-circle'} me-2"></i>${message}`;
     toastEl.className = `toast align-items-center text-white bg-${type} border-0`;
     
-    // 显示提示框
     toast.show();
 }
 
-// 出发模板：蔡路派出所驻点 + 事由 (换行) 出差人员 + 目的地 + 归队不详 + 出发时间
 function copyTripStart(reason, names, dest, startDate) {
     const baseTitle = "蔡路派出所驻点配合民警出差";
     const text = `${baseTitle}${reason || ''}\n出差人员：${names || '未指定'}\n目的地: ${dest || '未填写'}\n归队时间：不详\n出发时间: ${startDate || '未填写'}`;
     copyToClipboard(text);
 }
 
-// 归队模板：蔡路派出所驻点 + 事由，姓名，出差结束，已归队。
 function copyTripEnd(reason, names) {
     const baseTitle = "蔡路派出所驻点配合民警出差";
     const text = `${baseTitle}${reason || ''}，${names || '未指定'}，出差结束，已归队。`;
     copyToClipboard(text);
 }
 
-// 页面加载完成后的初始化
 document.addEventListener('DOMContentLoaded', function() {
-    // 为删除按钮添加确认提示
     document.querySelectorAll('.delete-btn').forEach(btn => {
         btn.addEventListener('click', function(e) {
             if (!confirm('确定要删除这条出差记录吗？删除后将无法恢复！')) {
@@ -466,15 +454,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // 为表格行添加悬停动画
     document.querySelectorAll('tbody tr').forEach(row => {
         row.style.transition = 'all 0.2s ease';
     });
     
-    // 年份选择下拉菜单优化
     document.querySelectorAll('.dropdown-item').forEach(item => {
         item.addEventListener('click', function() {
-            // 添加加载状态
             document.body.style.cursor = 'wait';
         });
     });

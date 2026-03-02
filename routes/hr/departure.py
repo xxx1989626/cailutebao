@@ -1,13 +1,15 @@
 import json
 from datetime import datetime
-from flask import request, redirect, url_for, flash
+from flask import request, flash, redirect, url_for
 from flask_login import login_required, current_user
+from app import db, hr_bp, perm
+from models import (
+    EmploymentCycle, AssetAllocation, Asset, AssetHistory, 
+    AssetInstance, ShiftSchedule
+)
+from utils import parse_date, log_action
 
-from . import hr_bp
-from models import EmploymentCycle, AssetAllocation, Asset, AssetHistory, db
-from utils import parse_date, perm, log_action
-
-# ==================== 办理离职（含资产自动核销） ====================
+# ==================== 办理离职 ====================
 @hr_bp.route('/departure/<int:cycle_id>', methods=['POST'])
 @login_required
 @perm.require('hr.departure')
@@ -76,7 +78,6 @@ def departure(cycle_id):
     
     # 若为宿舍长，清空房间资产负责人
     if is_room_leader and room_id:
-        from models import AssetInstance
         # 清空房间资产个体负责人
         AssetInstance.query.filter(
             AssetInstance.room_id == room_id
@@ -102,14 +103,31 @@ def departure(cycle_id):
     archives = json.loads(cycle.archives or '{}')
     archives['departure_reason'] = reason or '无原因说明'
     cycle.archives = json.dumps(archives, ensure_ascii=False)
+
+    # 删除该员工未来的排班记录
+    future_schedules = ShiftSchedule.query.filter(
+        ShiftSchedule.employee_id == cycle.id,
+        ShiftSchedule.date > dep_date
+    ).all()
+    
+    # 统计删除的排班数量
+    deleted_schedule_count = len(future_schedules)
+    
+    # 批量删除未来排班
+    for schedule in future_schedules:
+        db.session.delete(schedule)
     
     # 4. 记录审计日志
     asset_msg = f" | 自动回收资产: {', '.join(returned_assets_summary)}" if returned_assets_summary else " | 无资产需回收"
+    # 新增排班清理日志信息
+    schedule_msg = f" | 清理未来排班: {deleted_schedule_count}条" if deleted_schedule_count > 0 else " | 无未来排班需清理"
+    
     log_description = (
         f"为队员【{cycle.name}】办理了离职手续。"
         f"离职日期：{dep_date.strftime('%Y-%m-%d')}，"
         f"原因：{reason or '未填写'}"
         f"{asset_msg}"
+        f"{schedule_msg}"  
     )
 
     log_action(
@@ -122,7 +140,11 @@ def departure(cycle_id):
     # 5. 提交所有变更
     try:
         db.session.commit()
-        flash(f'离职成功，已自动归还全部个人装备({len(returned_assets_summary)}项)，并释放床位', 'success')
+        # 调整提示信息，加入排班清理的反馈
+        flash_msg = f'离职成功，已自动归还全部个人装备({len(returned_assets_summary)}项)，并释放床位'
+        if deleted_schedule_count > 0:
+            flash_msg += f"，清理未来排班{deleted_schedule_count}条"
+        flash(flash_msg, 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'办理离职失败：{str(e)}', 'danger')

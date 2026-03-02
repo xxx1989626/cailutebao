@@ -235,7 +235,6 @@ def is_within_hour(date_str):
             
         # 第三步：计算时间差
         diff = datetime.now() - record_time
-        # 如果是未来时间（比如录入错误），或者在一小时内
         return diff < timedelta(hours=1)
         
     except Exception as e:
