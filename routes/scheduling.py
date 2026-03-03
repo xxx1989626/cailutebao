@@ -34,7 +34,13 @@ def schedule_list():
     # 获取出差人员
     active_trips = BusinessTrip.query.filter(
         BusinessTrip.status == '出差中',
-        ((BusinessTrip.end_date >= today) | (BusinessTrip.end_date == None))
+        db.and_(
+            BusinessTrip.start_date <= today,
+            db.or_(
+                BusinessTrip.end_date >= today,
+                BusinessTrip.end_date == None
+            )
+        )
     ).all()
     on_trip_ids = {p.id for trip in active_trips for p in trip.participants}
 
