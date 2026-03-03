@@ -69,7 +69,7 @@ def leave_list():
         ).distinct().all()
     
     for (u_id,) in active_user_ids:
-        emp_obj = EmploymentCycle.query.get(u_id)
+        emp_obj = db.session.get(EmploymentCycle, u_id)
         if not emp_obj:
             continue
             
@@ -166,7 +166,7 @@ def add_leave():
 @leave_bp.route('/edit/<int:id>', methods=['GET', 'POST'])
 @perm.require('leave.edit')
 def edit_leave(id):
-    leave = LeaveRecord.query.get_or_404(id)
+    leave = db.get_or_404(LeaveRecord, id)
     employees = EmploymentCycle.query.filter_by(status='在职').all()
     
     if request.method == 'POST':
@@ -227,7 +227,7 @@ def edit_leave(id):
 @leave_bp.route('/finish/<int:id>', methods=['GET', 'POST'])
 @perm.require('leave.edit')
 def finish_leave(id):
-    leave = LeaveRecord.query.get_or_404(id)
+    leave = db.get_or_404(LeaveRecord, id)
     
     if request.method == 'POST':
         actual_end_str = request.form.get('actual_end_date')
@@ -260,7 +260,7 @@ def finish_leave(id):
 @leave_bp.route('/delete/<int:id>')
 @perm.require('leave.edit')
 def delete_leave(id):
-    leave = LeaveRecord.query.get_or_404(id)
+    leave = db.get_or_404(LeaveRecord, id)
     db.session.delete(leave)
     db.session.commit()
     flash('记录已删除', 'info')

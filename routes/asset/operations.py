@@ -12,12 +12,12 @@ from . import asset_bp
 @login_required
 @perm.require('asset.issue')
 def asset_issue(asset_id):
-    asset = Asset.query.get_or_404(asset_id)
+    asset = db.session.get_or_404(Asset, asset_id)
     user_id = request.form.get('user_id')
     quantity = int(request.form.get('quantity', 1))
 
     # 获取被发放人的信息
-    emp = EmploymentCycle.query.get(user_id)
+    emp = db.session.get_or_404(EmploymentCycle, user_id)
     emp_name = emp.name if emp else f"ID:{user_id}"
     
     if asset.stock_quantity < quantity:
@@ -68,12 +68,12 @@ def asset_issue(asset_id):
 @login_required
 @perm.require('asset.issue')
 def asset_exchange(asset_id):
-    asset = Asset.query.get_or_404(asset_id)
+    asset = db.session.get_or_404(Asset, asset_id)
     user_id = request.form.get('user_id')
     quantity = int(request.form.get('quantity', 1))
     reason = request.form.get('note', '以旧换新')
 
-    emp = EmploymentCycle.query.get(user_id)
+    emp = db.session.get_or_404(EmploymentCycle, user_id)
     emp_name = emp.name if emp else f"ID:{user_id}"
 
     # 校验用户持有的旧物资是否够换
@@ -161,12 +161,12 @@ def asset_exchange(asset_id):
 @login_required
 @perm.require('asset.return')
 def asset_return(asset_id):
-    asset = Asset.query.get_or_404(asset_id)
+    asset = db.session.get_or_404(Asset, asset_id)
     user_id = request.form.get('user_id')
     quantity = int(request.form.get('quantity', 1))
 
     # 获取归还人姓名
-    emp = EmploymentCycle.query.get(user_id)
+    emp = db.session.get_or_404(EmploymentCycle, user_id)
     emp_name = emp.name if emp else f"ID:{user_id}"
 
     # 查找未归还的分配记录
@@ -241,7 +241,7 @@ def asset_issue_from_hr():
         flash('未选择任何资产', 'warning')
         return redirect(url_for('hr.hr_detail', id_card=id_card))
 
-    emp = EmploymentCycle.query.get_or_404(user_id)
+    emp = db.session.get_or_404(EmploymentCycle, user_id)
     issued_items = []
 
     try:
@@ -249,7 +249,7 @@ def asset_issue_from_hr():
             qty = int(request.form.get(f'qty_{aid}', 0))
             if qty <= 0: continue
             
-            asset = Asset.query.get(aid)
+            asset = db.session.get_or_404(Asset, aid)
             if not asset or asset.stock_quantity < qty:
                 flash(f'资产 {asset.name if asset else aid} 库存不足，已跳过', 'danger')
                 continue
@@ -308,7 +308,7 @@ def asset_issue_from_hr():
 @login_required
 @perm.require('asset.consume')
 def asset_consume(asset_id):
-    asset = Asset.query.get_or_404(asset_id)
+    asset = db.session.get_or_404(Asset, asset_id)
     if asset.type != '消耗品':
         flash('仅消耗品可直接消耗', 'danger')
         return redirect(url_for('asset.asset_detail', asset_id=asset_id))
@@ -352,7 +352,7 @@ def asset_consume(asset_id):
 @login_required
 @perm.require('asset.supplement')
 def asset_supplement(asset_id):
-    asset = Asset.query.get_or_404(asset_id)
+    asset = db.session.get_or_404(Asset, asset_id)
     quantity = int(request.form.get('quantity', 0))
     is_sync = request.form.get('sync_fund') == 'on'
     raw_price = request.form.get('unit_price', '0').strip()
@@ -403,7 +403,7 @@ def asset_supplement(asset_id):
 @login_required
 @perm.require('asset.scrap')
 def asset_scrap(asset_id):
-    asset = Asset.query.get_or_404(asset_id)
+    asset = db.session.get_or_404(Asset, asset_id)
     
     try:
         quantity = int(request.form.get('quantity', 0))
@@ -463,7 +463,7 @@ def asset_scrap(asset_id):
 @login_required
 @perm.require('asset.repair')
 def asset_repair(asset_id):
-    asset = Asset.query.get_or_404(asset_id)
+    asset = db.session.get_or_404(Asset, asset_id)
     if asset.type != '固定资产':
         flash('仅固定资产可添加维修记录', 'danger')
         return redirect(url_for('asset.asset_detail', asset_id=asset_id))
@@ -506,7 +506,7 @@ def asset_repair(asset_id):
 @login_required
 @perm.require('asset.complete_repair')
 def asset_complete_repair(asset_id):
-    asset = Asset.query.get_or_404(asset_id)
+    asset = db.session.get_or_404(Asset, asset_id)
     if asset.type != '固定资产':
         flash('仅固定资产可标记修复完成', 'danger')
         return redirect(url_for('asset.asset_detail', asset_id=asset_id))
@@ -556,7 +556,7 @@ def asset_complete_repair(asset_id):
 def asset_repair_sub():
     sub_asset_id = request.form.get('sub_asset_id')
     note = request.form.get('note', '').strip()
-    instance = AssetInstance.query.get_or_404(sub_asset_id)
+    instance = db.session.get_or_404(AssetInstance, sub_asset_id)
     
     instance.status = '维修'
     # 记录历史
@@ -587,7 +587,7 @@ def asset_repair_sub():
 def asset_scrap_sub():
     sub_asset_id = request.form.get('sub_asset_id')
     reason = request.form.get('note', '').strip()
-    instance = AssetInstance.query.get_or_404(sub_asset_id)
+    instance = db.session.get_or_404(AssetInstance, sub_asset_id)
     asset = instance.asset_info
     
     instance.status = '报废'
@@ -624,7 +624,7 @@ def asset_complete_repair_sub():
     sub_asset_id = request.form.get('sub_asset_id')
     note = request.form.get('note', '').strip()
     
-    instance = AssetInstance.query.get_or_404(sub_asset_id)
+    instance = db.session.get_or_404(AssetInstance, sub_asset_id)
     instance.status = '正常'
     
     # 记录历史

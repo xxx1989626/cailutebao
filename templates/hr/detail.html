@@ -516,18 +516,19 @@
                                             </p>
                                             {% endif %}
                                     
-                                            {% if record.file_paths %}
+                                            {% if record.file_path %}
                                             <div class="mt-2">
                                                 <label class="small fw-bold text-muted">附件：</label>
                                                 <div class="d-flex flex-wrap gap-2 mt-1">
-                                                    {% for file_path in record.file_paths %}
-                                                    {% if file_path.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp')) %}
-                                                    <a href="/{{ file_path }}" target="_blank" class="d-inline-block">
-                                                        <img src="/{{ file_path }}" class="img-thumbnail" style="width: 80px; height: 80px; object-fit: cover;"
+                                                    {% set paths = record.file_path if record.file_path is iterable and record.file_path is not string else [record.file_path] %}
+                                                    {% for path in paths %}
+                                                    {% if path.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp')) %}
+                                                    <a href="/{{ path }}" target="_blank" class="d-inline-block">
+                                                        <img src="/{{ path }}" class="img-thumbnail" style="width: 80px; height: 80px; object-fit: cover;"
                                                             alt="附件图片">
                                                     </a>
                                                     {% else %}
-                                                    <a href="/{{ file_path }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                    <a href="/{{ path }}" target="_blank" class="btn btn-sm btn-outline-primary">
                                                         <i class="bi bi-file-pdf"></i> 附件{{ loop.index }}
                                                     </a>
                                                     {% endif %}

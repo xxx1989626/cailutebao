@@ -286,7 +286,7 @@ def inject_equipped_assets():
             
             results = []
             for asset, net_qty, issue_date, operator_id, note in query.all():
-                operator = User.query.get(operator_id)
+                operator = db.session.get(User, operator_id)
                 results.append({
                     'asset': asset,
                     'quantity': net_qty,

@@ -67,7 +67,6 @@ def trip_add():
             start_date=start_date,
             end_date=end_date,
             total_days=total_days,
-            reason=request.form.get('reason'),
             status=status
         )
         
@@ -103,7 +102,7 @@ def trip_add():
 @perm.require('trip.edit')
 def trip_edit(id):
     from utils import log_action  # 局部导入
-    trip = BusinessTrip.query.get_or_404(id)
+    trip = db.session.get_or_404(BusinessTrip, id)
     
     if request.method == 'POST':
         start_date_str = request.form.get('start_date')
@@ -111,7 +110,6 @@ def trip_edit(id):
         
         trip.destination = request.form.get('destination')
         trip.start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
-        trip.reason = request.form.get('reason')
         
         # 记录操作前的状态，用于判断是普通编辑还是“确认归队”
         old_status = trip.status
@@ -163,7 +161,7 @@ def trip_edit(id):
 @login_required
 @perm.require('trip.delete')
 def trip_delete(id):
-    trip = BusinessTrip.query.get_or_404(id)
+    trip = db.session.get_or_404(BusinessTrip, id)
     db.session.delete(trip)
     db.session.commit()
     flash('记录已删除', 'warning')

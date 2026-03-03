@@ -46,7 +46,7 @@ def delete(id):
         flash("无权操作", "danger")
         return redirect(url_for('posts.posts_list'))
         
-    post = ShiftPost.query.get_or_404(id)
+    post = db.session.get_or_404(ShiftPost, id)
     if ShiftSchedule.query.filter_by(post_id=id).first():
         flash("该岗位已有排班记录，无法直接删除", "warning")
     else:

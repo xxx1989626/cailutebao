@@ -219,7 +219,7 @@ def log_action(action_type, target_type, target_id, description, **kwargs):
                 receiver_ids.add(manager_user.id)
         operated_user_name = "未知用户"
         if operated_user_id:
-            operated_emp = EmploymentCycle.query.get(operated_user_id)
+            operated_emp = db.session.get(EmploymentCycle, operated_user_id)
             if operated_emp:
                 operated_user_name = operated_emp.name
                 operated_user = User.query.filter_by(username=operated_emp.id_card).first()
@@ -276,79 +276,132 @@ def save_uploaded_file(file, module='misc', sub_folder=None):
 
 # ==================== 清理孤立文件（安全版） ====================
 def cleanup_isolated_files():
+    import os
+    import json
+    import time
+    import shutil
+    from datetime import datetime
     from models import db, Asset, FundsRecord, User, EmploymentCycle, LeaveRecord
+
     base_dir = r"D:\cailu"
     uploads_dir = os.path.join(base_dir, 'uploads')
+    # 按小时创建回收站子目录，防止同名文件冲突
     recycle_bin_dir = os.path.join(base_dir, 'recycle_bin', datetime.now().strftime('%Y%m%d_%H'))
+    
     if not os.path.exists(uploads_dir):
         return
+
     try:
         used_files = set()
+
+        # 核心修复：递归处理函数，确保无论是字符串还是列表都能正确提取路径
         def add_to_used(path):
             if not path:
                 return
-            if isinstance(path, list):
+            # 如果 path 是列表或元组（例如 LeaveRecord.attachments 字段解析后的结果）
+            if isinstance(path, (list, tuple)):
                 for item in path:
-                    add_to_used(item)
+                    add_to_used(item)  # 递归拆解
                 return
+            # 只有是字符串时才执行 lower() 和标准化操作
             if isinstance(path, str):
                 try:
-                    norm = os.path.normpath(path).lower().strip().lstrip('\\').lstrip('/')
+                    # 移除可能的 JSON 转义引号
+                    path_clean = path.strip().replace('"', '').replace("'", "")
+                    norm = os.path.normpath(path_clean).lower().strip().lstrip('\\').lstrip('/')
                     used_files.add(norm)
                 except Exception:
                     pass
+
+        # 1. 扫描资产图片
         assets = db.session.query(Asset.photo_path).filter(Asset.photo_path.isnot(None)).all()
-        for (p,) in assets: add_to_used(p)
+        for (p,) in assets: 
+            add_to_used(p)
+
+        # 2. 扫描资金附件
         funds = db.session.query(FundsRecord.attachment).filter(FundsRecord.attachment.isnot(None)).all()
         for (p,) in funds:
-            p_full = p if p.lower().startswith('uploads') else os.path.join('uploads', 'funds', p)
-            add_to_used(p_full)
+            if isinstance(p, str):
+                # 兼容旧路径格式
+                p_lower = p.lower()
+                p_full = p if p_lower.startswith('uploads') else os.path.join('uploads', 'funds', p)
+                add_to_used(p_full)
+            else:
+                add_to_used(p)
+
+        # 3. 扫描员工档案图片及附件
         employees = db.session.query(EmploymentCycle.photo_path, EmploymentCycle.archives).all()
         for photo, archives_json in employees:
-            if photo: add_to_used(photo)
-            if archives_json:
+            if photo: 
+                add_to_used(photo)
+            if archives_json and isinstance(archives_json, str):
                 try:
                     data = json.loads(archives_json)
-                    for rec in data.get('archive_records', []):
-                        add_to_used(rec.get('file_path'))
-                    for cert in data.get('other_certificates', []):
-                        add_to_used(cert.get('file_path') or cert.get('path'))
+                    if isinstance(data, dict):
+                        # 处理档案记录中的文件
+                        for rec in data.get('archive_records', []):
+                            add_to_used(rec.get('file_path'))
+                        # 处理其他证件中的文件
+                        for cert in data.get('other_certificates', []):
+                            add_to_used(cert.get('file_path') or cert.get('path'))
                 except:
                     pass
+
+        # 4. 扫描请假记录附件（重点修复：支持 JSON 数组字符串）
         leaves = db.session.query(LeaveRecord.attachments).filter(LeaveRecord.attachments.isnot(None)).all()
-        for (attachments,) in leaves:
-            if isinstance(attachments, str) and (attachments.startswith('[') or attachments.startswith('{')):
+        for (attachments_raw,) in leaves:
+            if not attachments_raw:
+                continue
+            # 判断是否为 JSON 数组格式
+            if isinstance(attachments_raw, str) and (attachments_raw.strip().startswith('[') or attachments_raw.strip().startswith('{')):
                 try:
-                    parsed = json.loads(attachments)
-                    add_to_used(parsed)
+                    parsed_data = json.loads(attachments_raw)
+                    add_to_used(parsed_data) # 交给 add_to_used 递归处理列表
                 except:
-                    add_to_used(attachments)
+                    add_to_used(attachments_raw)
             else:
-                add_to_used(attachments)
+                add_to_used(attachments_raw)
+
+        # 5. 执行物理扫描与清理
         SYSTEM_SAFE = ['avatar_default', 'default', 'logo', 'favicon', 'static']
         count = 0
         now_ts = time.time()
+        
         for root, dirs, files in os.walk(uploads_dir):
             for file in files:
+                # 排除系统保留关键字文件
                 if any(kw in file.lower() for kw in SYSTEM_SAFE):
                     continue
+                    
                 full_path = os.path.join(root, file)
+                # 计算相对路径，例如: uploads/leave/xxx.jpg
                 rel_path = os.path.relpath(full_path, base_dir)
                 rel_path_norm = os.path.normpath(rel_path).lower().strip()
+                
+                # 如果文件不在数据库记录中
                 if rel_path_norm not in used_files:
+                    # 安全机制：仅处理创建时间超过 2 小时的文件，防止误删正在上传的文件
                     if now_ts - os.path.getmtime(full_path) > 7200:
                         if not os.path.exists(recycle_bin_dir):
                             os.makedirs(recycle_bin_dir)
-                        target = os.path.join(recycle_bin_dir, f"{datetime.now().strftime('%M%S')}_{file}")
+                            
+                        # 移动到回收站
+                        target_name = f"{datetime.now().strftime('%M%S')}_{file}"
+                        target_path = os.path.join(recycle_bin_dir, target_name)
                         try:
-                            shutil.move(full_path, target)
+                            shutil.move(full_path, target_path)
                             count += 1
                         except:
                             pass 
+
         if count > 0:
-            print(f"[{datetime.now()}] 维护完成：{count}个孤立文件已移至回收站")
+            print(f"[{datetime.now()}] 维护完成：{count}个孤立文件已安全移至回收站")
+            
     except Exception as e:
         db.session.rollback()
+        # 打印错误详情方便排查
+        import traceback
+        traceback.print_exc()
         print(f"维护逻辑出错并已回滚: {str(e)}")
     finally:
         db.session.remove()

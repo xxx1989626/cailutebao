@@ -11,3 +11,5 @@ from . import departure
 from . import import_export
 from . import assets
 from . import permissions
+
+__all__ = ['hr_bp']

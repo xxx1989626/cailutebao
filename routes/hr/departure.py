@@ -2,19 +2,19 @@ import json
 from datetime import datetime
 from flask import request, flash, redirect, url_for
 from flask_login import login_required, current_user
-from app import db, hr_bp, perm
+from . import hr_bp
 from models import (
     EmploymentCycle, AssetAllocation, Asset, AssetHistory, 
-    AssetInstance, ShiftSchedule
+    AssetInstance, ShiftSchedule,db
 )
-from utils import parse_date, log_action
+from utils import parse_date, log_action,perm
 
 # ==================== 办理离职 ====================
 @hr_bp.route('/departure/<int:cycle_id>', methods=['POST'])
 @login_required
 @perm.require('hr.departure')
 def departure(cycle_id):
-    cycle = EmploymentCycle.query.get_or_404(cycle_id)
+    cycle = db.session.get_or_404(EmploymentCycle, cycle_id)
     
     # 状态校验
     if cycle.status == '离职':

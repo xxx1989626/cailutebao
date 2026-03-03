@@ -136,7 +136,7 @@ def self_register():
 @login_required
 @perm.require('hr.edit')
 def approve_pending(id):
-    emp = EmploymentCycle.query.get_or_404(id)
+    emp = db.session.get_or_404(EmploymentCycle, id)
     
     # 状态校验
     if emp.status != '待审核':
@@ -202,7 +202,7 @@ def delete_pending(id):
         return redirect(url_for('hr.hr_list'))
 
     # 查找记录
-    emp = EmploymentCycle.query.get_or_404(id)
+    emp = db.session.get_or_404(EmploymentCycle, id)
     id_card_to_delete = emp.id_card
     old_status = emp.status
     old_name = emp.name

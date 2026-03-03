@@ -23,7 +23,7 @@ def send_operation_notice(title, content, operated_user_id):
         User.position.in_(["队长", "副队长", "领班"])
     ).all()
     # 步骤2：获取被操作人（当事人）
-    operated_user = User.query.get(operated_user_id)
+    operated_user = db.session.get(User, operated_user_id)
     
     # 步骤3：合并接收人（去重，避免重复通知）
     receiver_ids = set()

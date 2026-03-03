@@ -13,7 +13,7 @@ from utils import save_uploaded_file, perm, log_action
 @login_required
 @perm.require('hr.add')
 def add_archive(cycle_id):
-    cycle = EmploymentCycle.query.get_or_404(cycle_id)
+    cycle = db.session.get_or_404(EmploymentCycle, cycle_id)
     
     # 仅在职周期可添加档案
     if cycle.status != '在职':
@@ -122,7 +122,7 @@ def is_within_hour(date_str):
 @hr_bp.route('/archive/edit/<int:cycle_id>/<int:record_idx>', methods=['POST'])
 @login_required
 def edit_archive(cycle_id, record_idx):
-    cycle = EmploymentCycle.query.get_or_404(cycle_id)
+    cycle = db.session.get_or_404(EmploymentCycle, cycle_id)
     archives = json.loads(cycle.archives or '{}')
     
     # 校验记录是否存在
