@@ -46,7 +46,7 @@ def asset_inventory():
 @perm.require('asset.inventory')
 def update_inventory(asset_id):
     """标记资产盘点状态"""
-    asset = db.session.get_or_404(AssetInstance, asset_id)
+    asset = AssetInstance.query.get_or_404(asset_id)
     asset.last_check_date = datetime.now()
     # 支持更新资产状态
     from config import ASSET_STATUS

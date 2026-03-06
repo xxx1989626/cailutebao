@@ -146,7 +146,7 @@ def assign_to_room():
 
     try:
         if item_type == 'asset':
-            instance = db.get_or_404(AssetInstance, item_id)
+            instance = AssetInstance.query.get_or_404(item_id)
             old_room_id = instance.room_id
             instance.room_id = target_room_id if target_room_id else None  # 修复这里！
             
@@ -186,7 +186,7 @@ def assign_to_room():
         
         # 人员分配逻辑（保持不变）
         elif item_type == 'employee':
-            emp = db.get_or_404(EmploymentCycle, item_id)
+            emp = EmploymentCycle.query.get_or_404(item_id)
             old_room_id = emp.room_id
             
             if target_room_id:
@@ -313,7 +313,7 @@ def save_room_pos():
     """持久化房间在地图上的 (x, y) 坐标"""
     data = request.json
     room_id = data.get('room_id')
-    room = db.get_or_404(Room, room_id)
+    room = Room.query.get(room_id)
     if room:
         room.x_pos = data.get('x')
         room.y_pos = data.get('y')

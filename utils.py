@@ -219,7 +219,7 @@ def log_action(action_type, target_type, target_id, description, **kwargs):
                 receiver_ids.add(manager_user.id)
         operated_user_name = "未知用户"
         if operated_user_id:
-            operated_emp = db.session.get(EmploymentCycle, operated_user_id)
+            operated_emp = EmploymentCycle.query.get(operated_user_id)
             if operated_emp:
                 operated_user_name = operated_emp.name
                 operated_user = User.query.filter_by(username=operated_emp.id_card).first()

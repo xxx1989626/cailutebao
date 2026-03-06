@@ -117,7 +117,7 @@ def asset_add():
 @login_required
 @perm.require('asset.edit')
 def asset_edit(asset_id):
-    asset = db.session.get_or_404(Asset, asset_id)
+    asset = Asset.query.get_or_404(asset_id)
     
     if request.method == 'POST':
         # 1. 在修改前，记录下所有的“旧值”
@@ -192,7 +192,7 @@ def asset_edit(asset_id):
 @login_required
 @perm.require('asset.delete')
 def asset_delete(asset_id):
-    asset = db.session.get_or_404(Asset, asset_id)
+    asset = Asset.query.get_or_404(asset_id)
     try:
         # 获取照片路径
         photo_path = asset.photo_path
@@ -221,7 +221,7 @@ def asset_delete(asset_id):
 @perm.require('asset.view')
 def asset_detail(asset_id):
     from models import AssetHistory, AssetAllocation
-    asset = db.session.get_or_404(Asset, asset_id)
+    asset = Asset.query.get_or_404(asset_id)
     in_service_employees = EmploymentCycle.query.filter_by(status='在职').order_by(EmploymentCycle.name).all()
     allocations = AssetHistory.query.filter_by(asset_id=asset_id, action='发放').all()
     page = request.args.get('page', 1, type=int)

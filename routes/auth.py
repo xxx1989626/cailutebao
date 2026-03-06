@@ -87,7 +87,7 @@ def reset_user_password(user_id):
         return redirect(url_for('main.index'))
         
     # 2. 获取目标用户
-    user = db.get_or_404(User, user_id)
+    user = User.query.get_or_404(user_id)
     
     # 3. 执行重置
     user.set_password('123456')

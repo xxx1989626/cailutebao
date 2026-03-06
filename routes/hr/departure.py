@@ -14,7 +14,7 @@ from utils import parse_date, log_action,perm
 @login_required
 @perm.require('hr.departure')
 def departure(cycle_id):
-    cycle = db.session.get_or_404(EmploymentCycle, cycle_id)
+    cycle = EmploymentCycle.query.get_or_404(cycle_id)
     
     # 状态校验
     if cycle.status == '离职':

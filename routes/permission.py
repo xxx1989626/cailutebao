@@ -71,7 +71,7 @@ def permission_update():
 
     try:
         target_user_id = int(float(raw_id))
-        target_user = db.session.get(User, target_user_id)
+        target_user = User.query.get_or_404(target_user_id)
         
         # 2. 获取旧权限列表（用于差异对比）
         # 假设 UserPermission 关联了 Permission 表，我们取权限名称

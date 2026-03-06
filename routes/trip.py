@@ -102,7 +102,7 @@ def trip_add():
 @perm.require('trip.edit')
 def trip_edit(id):
     from utils import log_action  # 局部导入
-    trip = db.session.get_or_404(BusinessTrip, id)
+    trip = db.session.query(BusinessTrip).get_or_404(id)
     
     if request.method == 'POST':
         start_date_str = request.form.get('start_date')
@@ -161,7 +161,7 @@ def trip_edit(id):
 @login_required
 @perm.require('trip.delete')
 def trip_delete(id):
-    trip = db.session.get_or_404(BusinessTrip, id)
+    trip = BusinessTrip.query.get_or_404(id)
     db.session.delete(trip)
     db.session.commit()
     flash('记录已删除', 'warning')

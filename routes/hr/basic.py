@@ -289,7 +289,7 @@ def hr_detail(id_card):
 @login_required
 @perm.require('hr.edit')
 def edit_cycle(cycle_id):
-    cycle = db.session.get_or_404(EmploymentCycle, cycle_id)
+    cycle = EmploymentCycle.query.get_or_404(cycle_id)
     
     # 仅允许编辑在职周期
     if cycle.status != '在职':

@@ -68,8 +68,8 @@ def get_shifts():
     schedules = ShiftSchedule.query.all()
     events = []
     for s in schedules:
-        emp = db.session.get(EmploymentCycle, s.employee_id)
-        post = db.session.get(ShiftPost, s.post_id)
+        emp = EmploymentCycle.query.get(s.employee_id)
+        post = ShiftPost.query.get(s.post_id)
         if emp and post:
             events.append({
                 'id': s.id,
@@ -114,7 +114,7 @@ def save_shift():
 def delete_shift(id):
     if not perm.can('scheduling.edit'):
         return jsonify({'success': False, 'message': '无权操作'})
-    shift = db.session.get_or_404(ShiftSchedule, id)
+    shift = ShiftSchedule.query.get_or_404(id)
     try:
         db.session.delete(shift)
         db.session.commit()
