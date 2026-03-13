@@ -82,13 +82,25 @@ def trip_add():
         db.session.add(new_trip)
         db.session.flush()  # 【新增：刷新 Session 以生成 new_trip.id 供审计记录使用】
         
-        log_action(
-            action_type='出差登记',
-            target_type='BusinessTrip',
-            target_id=new_trip.id,
-            description=f"登记了人员出差：{names}，目的地：{new_trip.destination}，出发时间：{start_date}",
-            cycle_id=participant_ids[0] if participant_ids else None
-        )
+        # ========== 关键修复1：遍历所有参与者，改用 user_id 参数 ==========
+        if participant_ids:
+            # 遍历每个参与者ID，确保每个人都能收到通知
+            for cycle_id in participant_ids:
+                log_action(
+                    action_type='出差登记',
+                    target_type='BusinessTrip',
+                    target_id=new_trip.id,
+                    description=f"登记了人员出差：{names}，目的地：{new_trip.destination}，出发时间：{start_date}",
+                    user_id=cycle_id  # 改用 user_id 参数，和请假模块保持一致
+                )
+        else:
+            # 无参与者时的兜底日志
+            log_action(
+                action_type='出差登记',
+                target_type='BusinessTrip',
+                target_id=new_trip.id,
+                description=f"登记了无指定人员的出差，目的地：{new_trip.destination}，出发时间：{start_date}"
+            )
         
         db.session.commit()
         flash('登记成功', 'success')
@@ -96,6 +108,7 @@ def trip_add():
     
     employees = EmploymentCycle.query.filter_by(status='在职').all()
     return render_template('trip/add.html', employees=employees)
+
 # ==================== 编辑出差 ====================
 @trip_bp.route('/edit/<int:id>', methods=['GET', 'POST'])
 @login_required
@@ -137,15 +150,24 @@ def trip_edit(id):
         if old_status == '出差中' and trip.status == '已归队':
             action_type = '出差归队确认'
         
-        # 3. 循环为每个参与人发送通知并记录审计
-        # 因为你的 log_action 内部逻辑是按单人识别的，为了让每个当事人都收到通知，这里循环调用
-        for p in trip.participants:
+        # ========== 关键修复2：遍历所有参与者，改用 user_id 参数，移除无效循环 ==========
+        if participant_ids:
+            # 遍历每个参与者ID，确保每个人都能收到通知
+            for cycle_id in participant_ids:
+                log_action(
+                    action_type=action_type,
+                    target_type='BusinessTrip',
+                    target_id=trip.id,
+                    description=f"{names} 的出差记录已更新。目的地：{trip.destination}，当前状态：{trip.status}",
+                    user_id=cycle_id  # 改用 user_id 参数
+                )
+        else:
+            # 无参与者时的兜底日志
             log_action(
                 action_type=action_type,
                 target_type='BusinessTrip',
                 target_id=trip.id,
-                description=f"{names} 的出差记录已更新。目的地：{trip.destination}，当前状态：{trip.status}",
-                cycle_id=participant_ids[0] if participant_ids else None
+                description=f"未指定人员的出差记录已更新，当前状态：{trip.status}"
             )
         # --- 审计与通知逻辑结束 ---
 
@@ -156,6 +178,7 @@ def trip_edit(id):
     employees = EmploymentCycle.query.filter_by(status='在职').all()
     current_ids = [p.id for p in trip.participants]
     return render_template('trip/edit.html', trip=trip, employees=employees, current_ids=current_ids)
+
 # ==================== 删除出差 ====================
 @trip_bp.route('/delete/<int:id>')
 @login_required
