@@ -3,7 +3,8 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from models import db, BusinessTrip, EmploymentCycle
 from utils import perm
-from datetime import datetime
+from datetime import datetime, timedelta
+from sqlalchemy import extract
 from sqlalchemy.orm import joinedload
 from io import BytesIO
 import pandas as pd
@@ -15,27 +16,62 @@ trip_bp = Blueprint('trip', __name__, url_prefix='/trip')
 @login_required
 @perm.require('trip.view')
 def trip_list():
-
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
-    # 获取用户选择的年份，默认为当前年
     selected_year = request.args.get('year', datetime.now().year, type=int)
     
-    # 1. 获取所有存在记录的年份，用于前端下拉菜单
+    # 1. 获取年份列表
     all_dates = db.session.query(BusinessTrip.start_date).all()
     years = sorted(list(set(d[0].year for d in all_dates if d[0])), reverse=True) if all_dates else [datetime.now().year]
 
-    # 2. 按照选定年份筛选，并保持“最新大序号在顶”的倒序排列
+    # 2. 分页查询
     pagination = BusinessTrip.query.filter(
-        db.extract('year', BusinessTrip.start_date) == selected_year
+        extract('year', BusinessTrip.start_date) == selected_year
     ).order_by(BusinessTrip.id.desc()).paginate(page=page, per_page=per_page, error_out=False)
     trips = pagination.items
 
-    return render_template('trip/list.html', 
-                           trips=trips, 
-                           years=years, 
-                           selected_year=selected_year,
-                           pagination=pagination)
+    # 3. 统计逻辑：计算该年份内每人的出差频次
+    user_trip_stats = {}
+    
+    # 获取该年份内所有出差记录（为了统计所有人的总数，不分页查询）
+    yearly_trips = BusinessTrip.query.filter(
+        extract('year', BusinessTrip.start_date) == selected_year
+    ).all()
+
+    for trip in yearly_trips:
+        for emp in trip.participants:
+            if emp.id not in user_trip_stats:
+                user_trip_stats[emp.id] = {
+                    'name': emp.name,
+                    'count': 0,
+                    'last_end_date': None
+                }
+            
+            # 逻辑：如果两次出差间隔大于1天，视为新的一次频次（参考请假逻辑）
+            # 或者简单处理：直接按记录条数 stats['count'] += 1
+            # 这里沿用你请假页的逻辑：判断时间重叠或连续性
+            current_stats = user_trip_stats[emp.id]
+            
+            # 如果是该员工的第一条记录，或者与上一条记录不连续，则次数+1
+            if current_stats['last_end_date'] is None or trip.start_date > (current_stats['last_end_date'] + timedelta(days=1)):
+                current_stats['count'] += 1
+            
+            # 更新最晚结束日期
+            if trip.end_date:
+                if current_stats['last_end_date'] is None or trip.end_date > current_stats['last_end_date']:
+                    current_stats['last_end_date'] = trip.end_date
+
+    # 按频次从高到低排序
+    sorted_stats = dict(sorted(user_trip_stats.items(), key=lambda x: x[1]['count'], reverse=True))
+
+    return render_template(
+        'trip/list.html', 
+        trips=trips, 
+        years=years, 
+        selected_year=selected_year,
+        pagination=pagination,
+        user_trip_stats=sorted_stats  # 传递统计数据
+    )
 
 # ==================== 新增出差 ====================
 @trip_bp.route('/add', methods=['GET', 'POST'])

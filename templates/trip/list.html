@@ -59,15 +59,6 @@
         
         <!-- 卡片主体 -->
         <div class="card-body p-4">
-            <!-- 统计信息 -->
-            {% set ongoing_trips = trips | selectattr('status', 'equalto', '出差中') | list %}
-            {% if ongoing_trips %}
-            <div class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
-                <i class="bi bi-exclamation-triangle me-2"></i>
-                <strong>当前有 {{ ongoing_trips|length }} 次出差任务正在进行中</strong>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-            {% endif %}
             
             <!-- 表格区域 -->
             <div class="table-responsive rounded-2 shadow-sm border">
@@ -216,6 +207,34 @@
         {% from "_pagination.html" import render_pagination %}
         {{ render_pagination(pagination, 'trip.trip_list', year=selected_year) }}
     </div>
+    <!-- 统计信息卡片 -->
+     {% if user_trip_stats %}
+<div class="alert alert-info mb-4 shadow-sm border-0 rounded-3" style="background-color: #e8f5e9; border-left: 5px solid #4caf50 !important;">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h6 class="fw-bold text-success mb-0">
+            <i class="bi bi-airplane-engines-fill me-2"></i>{{ selected_year }}年度出差频次统计
+        </h6>
+        <span class="badge bg-success text-white">
+            总计 {{ user_trip_stats|length }} 人
+        </span>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        {% for uid, stats in user_trip_stats.items() %}
+        <span class="badge rounded-pill bg-white text-dark border px-3 py-2 shadow-sm hover-scale" style="transition: transform 0.2s;">
+            <span class="text-success fw-bold">{{ stats.name }}</span>: 
+            <span class="badge bg-success ms-1">{{ stats.count }} 次</span>
+        </span>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+    .hover-scale:hover {
+        transform: scale(1.05);
+        cursor: default;
+    }
+</style>
+{% endif %}
 </div>
 
 <!-- 复制成功提示框 -->
