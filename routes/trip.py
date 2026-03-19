@@ -30,7 +30,7 @@ def trip_list():
     ).order_by(BusinessTrip.id.desc()).paginate(page=page, per_page=per_page, error_out=False)
     trips = pagination.items
 
-    # 3. 统计逻辑：计算该年份内每人的出差频次
+    # 3. 统计逻辑：计算该年份内每人的出差频次 + 总天数（核心修改）
     user_trip_stats = {}
     
     # 获取该年份内所有出差记录（为了统计所有人的总数，不分页查询）
@@ -44,19 +44,30 @@ def trip_list():
                 user_trip_stats[emp.id] = {
                     'name': emp.name,
                     'count': 0,
+                    'total_days': 0,  # 新增：统计总天数
                     'last_end_date': None
                 }
             
-            # 逻辑：如果两次出差间隔大于1天，视为新的一次频次（参考请假逻辑）
-            # 或者简单处理：直接按记录条数 stats['count'] += 1
-            # 这里沿用你请假页的逻辑：判断时间重叠或连续性
             current_stats = user_trip_stats[emp.id]
             
-            # 如果是该员工的第一条记录，或者与上一条记录不连续，则次数+1
+            # 原有逻辑：统计去重后的出差频次
             if current_stats['last_end_date'] is None or trip.start_date > (current_stats['last_end_date'] + timedelta(days=1)):
                 current_stats['count'] += 1
             
-            # 更新最晚结束日期
+            # 新增逻辑：统计该条出差记录的天数并累加
+            if trip.total_days:
+                # 优先使用数据库中已计算的total_days
+                current_stats['total_days'] += trip.total_days
+            elif trip.start_date and trip.end_date:
+                # 无total_days时，手动计算（结束日-开始日+1天，包含起止日）
+                days = (trip.end_date - trip.start_date).days + 1
+                current_stats['total_days'] += days
+            else:
+                # 未结束的出差（end_date为空），计算到当前日期
+                days = (datetime.now().date() - trip.start_date).days + 1
+                current_stats['total_days'] += days
+            
+            # 更新最晚结束日期（原有逻辑保留）
             if trip.end_date:
                 if current_stats['last_end_date'] is None or trip.end_date > current_stats['last_end_date']:
                     current_stats['last_end_date'] = trip.end_date
@@ -70,7 +81,7 @@ def trip_list():
         years=years, 
         selected_year=selected_year,
         pagination=pagination,
-        user_trip_stats=sorted_stats  # 传递统计数据
+        user_trip_stats=sorted_stats  # 包含count和total_days
     )
 
 # ==================== 新增出差 ====================

@@ -1,5 +1,5 @@
+<!-- D:\cailu\cailutebao\templates\leave\add.html -->
 {% extends "base.html" %}
-
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-8">
@@ -14,8 +14,8 @@
                 <form method="POST" enctype="multipart/form-data">
                     <div class="mb-3">
                         <label class="form-label">请假人员</label>
-                        <select name="user_id" class="form-select" required {% if leave %}disabled{% endif %}>
-                            {% for emp in employees %}
+                        <select name="user_id" class="form-select select2-pinyin" required {% if leave %}disabled{% endif %} data-placeholder="请选择人员">
+                            <option value=""></option> {% for emp in employees %}
                             <option value="{{ emp.id }}" {% if leave and leave.user_id == emp.id %}selected{% endif %}>
                                 {{ emp.name }} ({{ emp.post }})
                             </option>
@@ -90,18 +90,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const startVal = startInput.value;
         const endVal = endInput.value;
 
-        // --- 新增：最小值联动逻辑 ---
         if (startVal) {
-            endInput.min = startVal; // 设置结束日期的最小值为开始日期
+            endInput.min = startVal; 
         }
-        // ---------------------------
 
         if (startVal && endVal) {
             const startDate = new Date(startVal);
             const endDate = new Date(endVal);
             
             if (endDate >= startDate) {
-                // 计算差值并 +1（包含首尾）
                 const diffTime = endDate.getTime() - startDate.getTime();
                 const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
                 daysInput.value = diffDays;
@@ -111,11 +108,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // 监听两个日期控件的变化
     startInput.addEventListener('input', calculateLeaveDays);
     endInput.addEventListener('input', calculateLeaveDays);
 
-    // 如果是编辑页面，初始化时跑一遍，确保天数能显示出来
     if (startInput.value && endInput.value) {
         calculateLeaveDays();
     }

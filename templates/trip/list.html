@@ -222,7 +222,7 @@
         {% for uid, stats in user_trip_stats.items() %}
         <span class="badge rounded-pill bg-white text-dark border px-3 py-2 shadow-sm hover-scale" style="transition: transform 0.2s;">
             <span class="text-success fw-bold">{{ stats.name }}</span>: 
-            <span class="badge bg-success ms-1">{{ stats.count }} 次</span>
+            <span class="badge bg-success ms-1">{{ stats.count }} 次/ {{ stats.total_days|int }} 天</span>
         </span>
         {% endfor %}
     </div>

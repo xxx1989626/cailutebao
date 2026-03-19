@@ -11,29 +11,30 @@
                     <form method="POST">
                         <div class="mb-3">
                             <label class="form-label">出差人员 (可多选)</label>
-                            <select name="user_ids" class="form-select" multiple size="8" required>
+                            <select name="user_ids" class="form-select select2-pinyin" multiple required data-placeholder="请选择出差人员">
                                 {% for emp in employees %}
                                 <option value="{{ emp.id }}" {% if emp.id in current_ids %}selected{% endif %}>
                                     {{ emp.name }} - {{ emp.post }}
                                 </option>
                                 {% endfor %}
                             </select>
+                            <small class="text-muted">支持姓名、拼音全拼或首字母搜索</small>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">目的地</label>
                             <input type="text" name="destination" class="form-control" value="{{ trip.destination }}" required>
                         </div>
                         <div class="row">
-    <div class="col-md-6 mb-3">
-        <label class="form-label">开始日期</label>
-        <input type="date" name="start_date" class="form-control" value="{{ trip.start_date if trip else today }}" required>
-    </div>
-    <div class="col-md-6 mb-3">
-        <label class="form-label">归队日期 (选填)</label>
-        <input type="date" name="end_date" class="form-control" value="{{ trip.end_date if trip else '' }}">
-        <div class="form-text">如尚未归队请留空</div>
-    </div>
-</div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">开始日期</label>
+                                <input type="date" name="start_date" class="form-control" value="{{ trip.start_date }}" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">归队日期 (选填)</label>
+                                <input type="date" name="end_date" class="form-control" value="{{ trip.end_date if trip.end_date else '' }}">
+                                <div class="form-text">如尚未归队请留空</div>
+                            </div>
+                        </div>
 
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-success">保存修改</button>
@@ -45,4 +46,8 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+{# 此处不需要再写初始化脚本，base.html 会自动处理 class="select2-pinyin" 的元素 #}
 {% endblock %}

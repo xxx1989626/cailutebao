@@ -10,7 +10,14 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <style>
+        .select2-container--default .select2-selection--multiple,
+        .select2-container--default .select2-selection--single {
+        border: 1px solid #dee2e6; /* 适配 Bootstrap 5 边框颜色 */
+        min-height: 38px;
+        }
+
         :root {
             --primary-color: #0d6efd;
             --dark-color: #212529;
@@ -358,6 +365,8 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://unpkg.com/pinyin-pro"></script>
 
     {% block scripts %}{% endblock %}
 
@@ -422,6 +431,63 @@ $(document).ready(function () {
     $(document).one('click', function () {
         audio.play().then(() => audio.pause()).catch(() => {});
     });
+});
+
+$(document).ready(function() {
+    const { pinyin } = pinyinPro;
+
+    /**
+     * 全局拼音匹配器
+     * 支持：汉字、全拼（不带声调）、拼音首字母
+     */
+    function globalPinyinMatcher(params, data) {
+        if ($.trim(params.term) === '') return data;
+        if (typeof data.text === 'undefined') return null;
+
+        const term = params.term.toLowerCase();
+        const text = data.text.toLowerCase();
+
+        // 1. 原文匹配 (汉字)
+        if (text.indexOf(term) > -1) return data;
+
+        // 2. 全拼匹配
+        const fullPy = pinyin(data.text, { toneType: 'none', nonZh: 'consecutive' }).replace(/\s/g, '').toLowerCase();
+        if (fullPy.indexOf(term) > -1) return data;
+
+        // 3. 首字母匹配
+        const firstPy = pinyin(data.text, { pattern: 'first', toneType: 'none', nonZh: 'consecutive' }).replace(/\s/g, '').toLowerCase();
+        if (firstPy.indexOf(term) > -1) return data;
+
+        return null;
+    }
+
+    // 设置 Select2 全局默认配置
+    $.fn.select2.defaults.set('matcher', globalPinyinMatcher);
+    $.fn.select2.defaults.set('width', '100%');
+    $.fn.select2.defaults.set('language', {
+        noResults: function() { return "未找到匹配项"; },
+        searching: function() { return "搜索中..."; }
+    });
+
+    /**
+     * 自动初始化
+     * 页面上任何 class 包含 'select2-pinyin' 的元素都会自动启用
+     */
+    function initSelect2Pinyin() {
+        $('.select2-pinyin').each(function() {
+            if (!$(this).hasClass("select2-hidden-accessible")) {
+                $(this).select2({
+                    placeholder: $(this).data('placeholder') || "请选择",
+                    allowClear: true
+                });
+            }
+        });
+    }
+
+    // 初始执行
+    initSelect2Pinyin();
+
+    // 监听动态内容（可选：如果你有动态加载的弹窗或表单，可以重新调用 initSelect2Pinyin）
 });
 </script>
 </body>
