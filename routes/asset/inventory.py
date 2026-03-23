@@ -1,3 +1,4 @@
+#D:\cailu\cailutebao\routes\asset\inventory.py
 from datetime import datetime
 from flask import render_template, request, jsonify
 from flask_login import login_required

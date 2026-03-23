@@ -1,3 +1,5 @@
+#D:\cailu\cailutebao\routes\chat.py
+#暂时弃用
 from flask import Blueprint, jsonify
 from flask_login import login_required, current_user
 from models import db, User, EmploymentCycle, ChatMessage

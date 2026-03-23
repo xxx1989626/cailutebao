@@ -1,4 +1,4 @@
-# routes/main.py
+#D:\cailu\cailutebao\routes\main.py
 # 首页及通用路由
 
 from datetime import datetime

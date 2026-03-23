@@ -1,4 +1,4 @@
-# routes/posts.py
+#D:\cailu\cailutebao\routes\posts.py
 from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, send_file
 from flask_login import login_required
 from models import db, ShiftPost, ShiftSchedule

@@ -1,3 +1,4 @@
+#D:\cailu\cailutebao\routes\hr\self_register.py
 import json
 from datetime import datetime
 from flask import render_template, request, redirect, url_for, flash, jsonify

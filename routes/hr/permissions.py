@@ -1,3 +1,4 @@
+#D:\cailu\cailutebao\routes\hr\permissions.py
 # 人事模块权限列表
 HR_PERMISSIONS = [
     ('view', '查看员工信息', '查看员工列表和详情'),

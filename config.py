@@ -1,4 +1,4 @@
-# config.py
+#D:\cailu\cailutebao\config.py
 # 项目全局配置文件
 
 import os

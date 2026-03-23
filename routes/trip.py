@@ -1,4 +1,4 @@
-# routes/trip.py
+#D:\cailu\cailutebao\routes\trip.py
 from flask import Blueprint, render_template, request, redirect, url_for, flash,make_response
 from flask_login import login_required, current_user
 from models import db, BusinessTrip, EmploymentCycle

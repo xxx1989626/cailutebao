@@ -1,3 +1,4 @@
+#D:\cailu\cailutebao\routes\hr\assets.py
 import qrcode
 import io
 import base64

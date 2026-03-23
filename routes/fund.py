@@ -1,5 +1,5 @@
-# routes/fund.py
-# 资金管理模块 (已集成附件上传功能)
+#D:\cailu\cailutebao\routes\fund.py
+# 资金管理模块
 
 import os
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, current_app

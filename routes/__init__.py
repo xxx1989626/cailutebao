@@ -1,4 +1,4 @@
-# routes/__init__.py
+#D:\cailu\cailutebao\routes\__init__.py
 # 注册所有蓝图到应用
 
 def register_blueprints(app):

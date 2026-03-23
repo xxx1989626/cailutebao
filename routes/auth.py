@@ -1,4 +1,4 @@
-# routes/auth.py
+#D:\cailu\cailutebao\routes\auth.py
 # 认证相关路由
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash

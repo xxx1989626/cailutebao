@@ -1,4 +1,4 @@
-<!-- templates/hr/edit.html -->
+<!-- templates\hr\edit.html -->
 {% extends "base.html" %}
 
 {% block title %}编辑员工信息 - {{ cycle.name }}{% endblock %}
@@ -65,24 +65,75 @@
             </div>
         </div>
         <div class="card-body form-page-body">
-            <form method="POST" action="{{ url_for('hr.edit_cycle', cycle_id=cycle.id) }}" enctype="multipart/form-data" class="needs-validation" novalidate>
-                {% set employee = cycle %} {# 回显数据 #}
-                {% include "hr/_employee_form.html" with context %} {# 关键修复：添加 with context #}
+            <form id="editForm" method="POST" action="{{ url_for('hr.edit_cycle', cycle_id=cycle.id) }}" enctype="multipart/form-data" class="needs-validation" novalidate>
+                {% set employee = cycle %}
+                {% include "hr/_employee_form.html" with context %}
                 
                 <div class="text-center mt-5 pt-4 border-top">
-                    <button type="submit" class="btn btn-primary action-btn btn-lg">
-                        <i class="bi bi-save me-2"></i>保存修改
-                    </button>
-                    <a href="{{ url_for('hr.hr_detail', id_card=cycle.id_card) }}" class="btn btn-secondary action-btn btn-lg">
+                    {% if cycle.status == "在职" %}
+                        <button type="submit" class="btn btn-primary action-btn btn-lg">
+                            <i class="bi bi-save me-2"></i>保存修改
+                        </button>
+                    {% else %}
+                        <button type="button" id="btnSaveAndApprove" class="btn btn-success action-btn btn-lg">
+                            <i class="bi bi-check-circle me-2"></i>保存并批准入职
+                        </button>
+                    {% endif %}
+                    
+                    <a href="{{ url_for('hr.hr_detail', id_card=cycle.id_card) }}" class="btn btn-secondary action-btn btn-lg ms-2">
                         <i class="bi bi-x-circle me-2"></i>取消
                     </a>
                 </div>
             </form>
+
+            <form id="approveForm" action="{{ url_for('hr.approve_pending', id=cycle.id) }}" method="POST" style="display:none;"></form>
         </div>
     </div>
 </div>
 
 <script>
+document.addEventListener('DOMContentLoaded', function() {
+    const btnApprove = document.getElementById('btnSaveAndApprove');
+    const editForm = document.getElementById('editForm');
+    const approveForm = document.getElementById('approveForm');
+
+    if (btnApprove) {
+        btnApprove.addEventListener('click', function() {
+            if (!confirm('确定保存修改并批准 {{ cycle.name }} 入职吗？')) return;
+
+            // 1. 禁用按钮防止重复点击
+            btnApprove.disabled = true;
+            btnApprove.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>处理中...';
+
+            // 2. 使用 FormData 包装主表单数据
+            const formData = new FormData(editForm);
+
+            // 3. 先执行异步保存 (Fetch API)
+            fetch(editForm.action, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                // 注意：后端保存成功后会执行 redirect，Fetch 会跟随重定向
+                // 我们只需要确保保存逻辑执行完成（没报错）即可
+                if (response.ok) {
+                    // 4. 保存完成后，直接提交隐藏的审批表单
+                    // 这会触发完整的后端 approve_pending 逻辑并执行最终跳转
+                    approveForm.submit();
+                } else {
+                    alert('保存信息失败，请检查数据准确性');
+                    location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('网络错误，请稍后再试');
+                btnApprove.disabled = false;
+            });
+        });
+    }
+});
+
     // 表单验证
     (() => {
         'use strict'

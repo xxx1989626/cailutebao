@@ -1,3 +1,4 @@
+#D:\cailu\cailutebao\routes\hr\basic.py
 from flask import render_template, request, redirect, url_for, flash,json
 from flask_login import login_required, current_user
 from sqlalchemy import or_
@@ -292,7 +293,7 @@ def edit_cycle(cycle_id):
     cycle = EmploymentCycle.query.get_or_404(cycle_id)
     
     # 仅允许编辑在职周期
-    if cycle.status != '在职':
+    if cycle.status not in ['待审核', '在职']:
         flash('仅在职周期可编辑', 'danger')
         return redirect(url_for('hr.hr_detail', id_card=cycle.id_card))
     

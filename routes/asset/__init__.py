@@ -1,3 +1,4 @@
+#D:\cailu\cailutebao\routes\asset\__init__.py
 from flask import Blueprint
 
 # 初始化资产蓝图，路由前缀保持 /asset 不变

@@ -1,7 +1,5 @@
-# routes/permission.py
+#D:\cailu\cailutebao\routes\permission.py
 # 权限管理模块
-
-# routes/permission.py
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required,current_user
 from models import db, Permission, UserPermission, EmploymentCycle, User,OperationLog

@@ -1,4 +1,4 @@
-# models.py
+#D:\cailu\cailutebao\models.py
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -234,7 +234,7 @@ class Notification(db.Model):
     related_type = db.Column(db.String(50))  # 关联业务类型
     related_id = db.Column(db.Integer)  # 关联业务ID
     created_at = db.Column(db.DateTime, default=datetime.now)  # 通知创建时间
-    user = db.relationship('User', backref='notifications')  # 建立与 User 模型的关联关系
+    user = db.relationship('User', backref=db.backref('notifications', cascade='all, delete-orphan'))  # 建立与 User 模型的关联关系
 # ==================== 出差管理模型 ====================
 trip_participants = db.Table('trip_participants',
     db.Column('trip_id', db.Integer, db.ForeignKey('business_trips.id'), primary_key=True),

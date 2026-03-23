@@ -1,3 +1,4 @@
+#D:\cailu\cailutebao\routes\asset\operations.py
 from datetime import datetime
 from flask import flash, redirect, url_for, request
 from flask_login import login_required, current_user
