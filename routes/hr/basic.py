@@ -24,7 +24,6 @@ def hr_list():
     if status_filter not in ['待审核', '在职', '离职']:
         status_filter = '在职'
     
-    pending_count = EmploymentCycle.query.filter_by(status='待审核').count()
     search = request.args.get('search', '').strip()
     sort = request.args.get('sort', 'hire_date_desc')
     
@@ -63,10 +62,17 @@ def hr_list():
     
     # 状态过滤
     if status_filter == '待审核':
-        query = query.filter(EmploymentCycle.status == '待审核')
+        # 待审核包括：新入职待审核和信息变更待审批
+        query = query.filter(
+            db.or_(
+                EmploymentCycle.status == '待审核',
+                EmploymentCycle.pending_status == 'pending'
+            )
+        )
     elif status_filter == '离职':
         query = query.filter(EmploymentCycle.status == '离职')
     else:
+        # 在职人员不包括待审批状态的记录
         query = query.filter(EmploymentCycle.status == '在职')
     
     # 搜索过滤
@@ -95,8 +101,7 @@ def hr_list():
                            search=search,
                            status_filter=status_filter,
                            sort=sort,
-                           show_fields=show_fields,
-                           pending_count=pending_count)
+                           show_fields=show_fields)
 
 # ==================== 新增员工 ====================
 @hr_bp.route('/add', methods=['GET', 'POST'])
@@ -285,12 +290,33 @@ def hr_detail(id_card):
                            politics_options=get_politics_options(),
                            education_options=get_education_options())
 
+# ==================== 员工自行编辑自己的信息（通用入口） ====================
+@hr_bp.route('/edit-me', methods=['GET', 'POST'])
+@login_required
+def edit_me():
+    # 自动找到当前登录用户 在职 的档案
+    cycle = EmploymentCycle.query.filter_by(
+        id_card=current_user.username,
+        status='在职'
+    ).first()
+
+    if not cycle:
+        flash('未找到您的在职档案，请联系管理员', 'danger')
+        return redirect(url_for('hr.hr_list'))
+
+    # 跳转到自己的编辑页
+    return redirect(url_for('hr.edit_cycle', cycle_id=cycle.id))
+
 # ==================== 编辑当前在职周期 ====================
 @hr_bp.route('/edit/<int:cycle_id>', methods=['GET', 'POST'])
 @login_required
-@perm.require('hr.edit')
 def edit_cycle(cycle_id):
     cycle = EmploymentCycle.query.get_or_404(cycle_id)
+    
+    # 权限校验：只能编辑自己的信息或有hr.edit权限
+    if cycle.id_card != current_user.username and not perm.can('hr.edit'):
+        flash('权限不足，您只能编辑自己的信息', 'danger')
+        return redirect(url_for('hr.hr_detail', id_card=current_user.username))
     
     # 仅允许编辑在职周期
     if cycle.status not in ['待审核', '在职']:
@@ -316,6 +342,7 @@ def edit_cycle(cycle_id):
         }
 
         changes = []
+        change_data = {}
 
         # 辅助函数：统一转为字符串对比
         def to_str(v):
@@ -339,33 +366,67 @@ def edit_cycle(cycle_id):
             # 记录变更
             if to_str(old_val_raw) != to_str(new_val_raw):
                 changes.append(f"{label}[{to_str(old_val_raw)} -> {to_str(new_val_raw)}]")
-                setattr(cycle, field, new_val_raw)
+                change_data[field] = new_val_raw
 
         # 处理头像更新
+        photo_change = None
         if 'photo' in request.files and request.files['photo'].filename:
             path = save_uploaded_file(request.files['photo'], module='avatar')
             if path:
-                cycle.photo_path = path
+                photo_change = path
                 changes.append("更新了证件照")
         
-        # 修正头像路径的NaN问题
-        if not cycle.photo_path or str(cycle.photo_path).lower() == 'nan':
-            cycle.photo_path = 'uploads/default-avatar.png'
-
         # 提交变更
         try:
-            # 有变更才记录日志
+            # 有变更才处理
             if changes:
-                log_action(
-                    action_type='编辑人员',
-                    target_type='Employee',
-                    target_id=cycle.id,
-                    description=f"修改了队员【{cycle.name}】的档案：{', '.join(changes)}",
-                    **locals()
-                )
+                # 检查是否为普通队员编辑自己的信息
+                if cycle.id_card == current_user.username and not perm.can('hr.edit'):
+                    # 普通队员编辑，需要审批
+                    # 构建变更数据
+                    pending_data = {
+                        'changes': change_data,
+                        'photo_change': photo_change,
+                        'submitter_id': current_user.id,
+                        'submitter_name': current_user.name,
+                        'submit_time': datetime.now().isoformat()
+                    }
+                    
+                    # 保存待审批数据
+                    cycle.pending_changes = json.dumps(pending_data, ensure_ascii=False)
+                    cycle.pending_status = 'pending'
+                    cycle.pending_updated_at = datetime.now()
+                    
+                    db.session.commit()
+                    flash('信息变更已提交，等待管理员审批', 'info')
+                else:
+                    # 管理员直接编辑，无需审批
+                    # 应用变更
+                    for field, new_val in change_data.items():
+                        setattr(cycle, field, new_val)
+                    
+                    # 处理头像
+                    if photo_change:
+                        cycle.photo_path = photo_change
+                    
+                    # 修正头像路径的NaN问题
+                    if not cycle.photo_path or str(cycle.photo_path).lower() == 'nan':
+                        cycle.photo_path = 'uploads/default-avatar.png'
+                    
+                    # 记录日志
+                    log_action(
+                        action_type='编辑人员',
+                        target_type='Employee',
+                        target_id=cycle.id,
+                        description=f"修改了队员【{cycle.name}】的档案：{', '.join(changes)}",
+                        **locals()
+                    )
+                    
+                    db.session.commit()
+                    flash('员工信息更新成功', 'success')
+            else:
+                flash('没有检测到变更', 'info')
             
-            db.session.commit()
-            flash('员工信息更新成功', 'success')
             return redirect(url_for('hr.hr_detail', id_card=cycle.id_card))
         except Exception as e:
             db.session.rollback()
@@ -380,3 +441,166 @@ def edit_cycle(cycle_id):
                            salary_modes=SALARY_MODES,
                            positions=POSITIONS,
                            posts=POSTS)
+
+
+
+# ==================== 审批变更 ====================
+@hr_bp.route('/approve_change/<int:cycle_id>', methods=['POST'])
+@login_required
+@perm.require('hr.edit')
+def approve_change(cycle_id):
+    cycle = EmploymentCycle.query.get_or_404(cycle_id)
+    
+    if cycle.pending_status != 'pending':
+        flash('该记录没有待审批的变更', 'warning')
+        return redirect(url_for('hr.hr_list', status='待审核'))
+    
+    try:
+        # 解析待审批数据
+        pending_data = json.loads(cycle.pending_changes)
+        
+        # 应用变更
+        if 'changes' in pending_data:
+            for field, new_val in pending_data['changes'].items():
+                setattr(cycle, field, new_val)
+        
+        # 处理头像变更
+        if 'photo_change' in pending_data and pending_data['photo_change']:
+            cycle.photo_path = pending_data['photo_change']
+        
+        # 修正头像路径的NaN问题
+        if not cycle.photo_path or str(cycle.photo_path).lower() == 'nan':
+            cycle.photo_path = 'uploads/default-avatar.png'
+        
+        # 记录审批信息
+        cycle.pending_status = 'approved'
+        cycle.pending_approved_by = current_user.id
+        cycle.pending_approved_at = datetime.now()
+        
+        # 记录审计日志
+        submitter_name = pending_data.get('submitter_name', '未知')
+        changes_desc = []
+        field_map = {
+            'name': '姓名', 'phone': '手机号', 'ethnic': '民族', 'politics': '政治面貌',
+            'education': '学历', 'position': '职位', 'post': '岗位', 'salary_mode': '工资模式',
+            'hire_date': '入职日期', 'household_province': '户籍省', 'household_city': '户籍市',
+            'household_district': '户籍区', 'household_town': '户籍镇', 'household_village': '户籍村','household_detail': '户籍详址',
+            'residence_province': '居住省', 'residence_city': '居住市', 'residence_district': '居住区',
+            'residence_town': '居住镇', 'residence_village': '居住村', 'residence_detail': '居住详址', 'military_service': '服役经历',
+            'enlistment_date': '入伍日期', 'unit_number': '部队代号', 'branch': '兵种',
+            'discharge_date': '退伍日期', 'has_license': '驾照', 'license_date': '领证日期',
+            'license_type': '驾照类型', 'license_expiry': '驾照到期', 'security_license_number': '保安证号',
+            'security_license_date': '保安证日期', 'emergency_name': '紧急联系人',
+            'emergency_relation': '联系人关系', 'emergency_phone': '联系人电话',
+            'hat_size': '帽子尺寸', 'short_sleeve': '短袖尺寸', 'long_sleeve': '长袖尺寸',
+            'winter_uniform': '冬装尺寸', 'shoe_size': '鞋码'
+        }
+        
+        for field, new_val in pending_data.get('changes', {}).items():
+            if field in field_map:
+                changes_desc.append(f"{field_map[field]}: {new_val}")
+        if pending_data.get('photo_change'):
+            changes_desc.append("更新了证件照")
+        
+        log_action(
+            action_type='审批信息变更',
+            target_type='Employee',
+            target_id=cycle.id,
+            description=f"批准了队员【{cycle.name}】的信息变更申请，申请人：{submitter_name}，变更内容：{', '.join(changes_desc)}",
+            **locals()
+        )
+        
+        db.session.commit()
+        flash(f'已批准 {cycle.name} 的信息变更', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'审批失败，错误：{str(e)}', 'danger')
+    
+    return redirect(url_for('hr.hr_list', status='待审核'))
+
+# ==================== 拒绝变更 ====================
+@hr_bp.route('/reject_change/<int:cycle_id>', methods=['POST'])
+@login_required
+@perm.require('hr.edit')
+def reject_change(cycle_id):
+    cycle = EmploymentCycle.query.get_or_404(cycle_id)
+    
+    if cycle.pending_status != 'pending':
+        flash('该记录没有待审批的变更', 'warning')
+        return redirect(url_for('hr.hr_list', status='待审核'))
+    
+    try:
+        # 记录拒绝信息
+        cycle.pending_status = 'rejected'
+        cycle.pending_approved_by = current_user.id
+        cycle.pending_approved_at = datetime.now()
+        
+        # 记录审计日志
+        pending_data = json.loads(cycle.pending_changes)
+        submitter_name = pending_data.get('submitter_name', '未知')
+        
+        log_action(
+            action_type='拒绝信息变更',
+            target_type='Employee',
+            target_id=cycle.id,
+            description=f"拒绝了队员【{cycle.name}】的信息变更申请，申请人：{submitter_name}",
+            **locals()
+        )
+        
+        db.session.commit()
+        flash(f'已拒绝 {cycle.name} 的信息变更', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'操作失败，错误：{str(e)}', 'danger')
+    
+    return redirect(url_for('hr.hr_list', status='待审核'))
+
+# ==================== 查看变更详情 ====================
+@hr_bp.route('/change_detail/<int:cycle_id>')
+@login_required
+@perm.require('hr.edit')
+def change_detail(cycle_id):
+    cycle = EmploymentCycle.query.get_or_404(cycle_id)
+    
+    if cycle.pending_status != 'pending' or not cycle.pending_changes:
+        flash('该记录没有待审批的变更', 'warning')
+        return redirect(url_for('hr.hr_list', status='待审核'))
+    
+    # 解析待审批数据
+    try:
+        pending_data = json.loads(cycle.pending_changes)
+    except:
+        pending_data = {}
+    
+    # 字段映射
+    field_map = {
+        'name': '姓名', 'phone': '手机号', 'ethnic': '民族', 'politics': '政治面貌',
+        'education': '学历', 'position': '职位', 'post': '岗位', 'salary_mode': '工资模式',
+        'hire_date': '入职日期', 'household_province': '户籍省', 'household_city': '户籍市',
+        'household_district': '户籍区', 'household_town': '户籍镇', 'household_village': '户籍村','household_detail': '户籍详址',
+        'residence_province': '居住省', 'residence_city': '居住市', 'residence_district': '居住区',
+        'residence_town': '居住镇', 'residence_village': '居住村', 'residence_detail': '居住详址', 'military_service': '服役经历',
+        'enlistment_date': '入伍日期', 'unit_number': '部队番号', 'branch': '兵种',
+        'discharge_date': '退伍日期', 'has_license': '驾照', 'license_date': '领证日期',
+        'license_type': '驾照类型', 'license_expiry': '驾照到期', 'security_license_number': '保安证号',
+        'security_license_date': '保安证日期', 'emergency_name': '紧急联系人',
+        'emergency_relation': '联系人关系', 'emergency_phone': '联系人电话',
+        'hat_size': '帽子尺寸', 'short_sleeve': '短袖尺寸', 'long_sleeve': '长袖尺寸',
+        'winter_uniform': '冬装尺寸', 'shoe_size': '鞋码'
+    }
+    
+    # 格式化变更数据
+    formatted_changes = []
+    for field, new_val in pending_data.get('changes', {}).items():
+        if field in field_map:
+            old_val = getattr(cycle, field)
+            formatted_changes.append({
+                'field': field_map[field],
+                'old_value': old_val,
+                'new_value': new_val
+            })
+    
+    return render_template('hr/change_detail.html',
+                           cycle=cycle,
+                           pending_data=pending_data,
+                           formatted_changes=formatted_changes)

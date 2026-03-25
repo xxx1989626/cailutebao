@@ -1,0 +1,90 @@
+<!-- templates/hr/change_detail.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mt-4">变更详情</h1>
+    <ol class="breadcrumb mb-4">
+        <li class="breadcrumb-item"><a href="{{ url_for('hr.hr_list') }}">队员管理</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('hr.hr_list', status='待审核') }}">待审核</a></li>
+        <li class="breadcrumb-item active">变更详情</li>
+    </ol>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-user-edit"></i> {{ cycle.name }} 的信息变更申请
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>基本信息</h5>
+                    <ul class="list-group mb-4">
+                        <li class="list-group-item">
+                            <strong>队员姓名:</strong> {{ cycle.name }}
+                        </li>
+                        <li class="list-group-item">
+                            <strong>身份证号:</strong> {{ cycle.id_card }}
+                        </li>
+                        <li class="list-group-item">
+                            <strong>申请人:</strong> {{ pending_data.submitter_name }}
+                        </li>
+                        <li class="list-group-item">
+                            <strong>提交时间:</strong> {{ pending_data.submit_time|format_datetime }}
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <h5>变更内容</h5>
+            {% if formatted_changes %}
+            <div class="table-responsive mb-4">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>字段</th>
+                            <th>原值</th>
+                            <th>新值</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for change in formatted_changes %}
+                        <tr>
+                            <td>{{ change.field }}</td>
+                            <td>{{ change.old_value or '-' }}</td>
+                            <td>{{ change.new_value or '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                        {% if pending_data.photo_change %}
+                        <tr>
+                            <td>证件照</td>
+                            <td>原照片</td>
+                            <td>新照片已上传</td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="mt-4">
+                <form method="POST" action="{{ url_for('hr.approve_change', cycle_id=cycle.id) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-success">批准变更</button>
+                </form>
+                <form method="POST" action="{{ url_for('hr.reject_change', cycle_id=cycle.id) }}" style="display: inline; margin-left: 10px;">
+                    <button type="submit" class="btn btn-danger">拒绝变更</button>
+                </form>
+                <a href="{{ url_for('hr.hr_list', status='待审核') }}" class="btn btn-secondary" style="margin-left: 10px;">
+                    返回列表
+                </a>
+            </div>
+            {% else %}
+            <div class="alert alert-info" role="alert">
+                暂无变更内容
+            </div>
+            <a href="{{ url_for('hr.hr_list', status='待审核') }}" class="btn btn-secondary">
+                返回列表
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -97,9 +97,12 @@ login_manager = LoginManager()
 login_manager.login_view = 'auth.login'
 login_manager.login_message = '请先登录系统'
 login_manager.login_message_category = 'warning'
+login_manager.session_protection = "strong"
+login_manager.redirect_protection = None
 login_manager.init_app(app)
 
 # ==================== Jinja2 自定义过滤器（保留原有逻辑） ====================
+app.jinja_env.filters['format_datetime'] = format_datetime
 @app.template_filter('to_date')
 def to_date_filter(value):
     """将字符串或date转换为 date 对象，用于计算时长。改进：支持None/date输入"""
@@ -198,7 +201,12 @@ def inject_global_data():
             try:
                 from models import EmploymentCycle, Notification
                 # 全局获取待审核人数
-                p_count = EmploymentCycle.query.filter_by(status='待审核').count()
+                p_count = EmploymentCycle.query.filter(
+                    db.or_(
+                        EmploymentCycle.status == '待审核',
+                        EmploymentCycle.pending_status == 'pending'
+                    )
+                ).count()
                 # 全局获取未读通知数
                 n_count = Notification.query.filter_by(user_id=user_id, is_read=False).count()
                 data = dict(pending_count=p_count, unread_notice_count=n_count)

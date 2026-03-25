@@ -226,6 +226,43 @@
         
         <!-- 卡片主体 -->
         <div class="card-body p-4">
+            <!-- 变更申请状态提示 -->
+            {% for cycle in cycles %}
+                {% if cycle.status == '在职' %}
+                    {% if cycle.pending_status == 'pending' %}
+                    <div class="alert alert-warning mb-4 auto-hide" role="alert">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-hourglass-split me-2"></i>
+                            <div>
+                                <strong>变更申请待审批</strong>
+                                <p class="mb-0">您提交的信息变更申请正在等待管理员审批，请耐心等待。</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% elif cycle.pending_status == 'approved' %}
+                    <div class="alert alert-success mb-4 auto-hide" role="alert">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-check-circle me-2"></i>
+                            <div>
+                                <strong>变更申请已批准</strong>
+                                <p class="mb-0">您的信息变更申请已被管理员批准，信息已更新。</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% elif cycle.pending_status == 'rejected' %}
+                    <div class="alert alert-danger mb-4 auto-hide" role="alert">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-x-circle me-2"></i>
+                            <div>
+                                <strong>变更申请已拒绝</strong>
+                                <p class="mb-0">您的信息变更申请已被管理员拒绝，请检查变更内容后重新提交。</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                {% endif %}
+            {% endfor %}
+            
             <div class="tab-content">
                 <!-- 查看模式 -->
                 <div class="tab-pane fade show active" id="view_tab">
@@ -246,6 +283,13 @@
                             
                             <div class="d-flex align-items-center gap-2">
                                 <span class="badge bg-light text-dark">{{ cycle.status }}</span>
+                                
+                                <!-- 编辑按钮 -->
+                                {% if (current_user.username == cycle.id_card) or perm.can('hr.edit') %}
+                                <a href="{{ url_for('hr.edit_cycle', cycle_id=cycle.id) }}" class="btn btn-sm btn-outline-light btn-action">
+                                    <i class="bi bi-pencil me-1"></i> 编辑信息
+                                </a>
+                                {% endif %}
                                 
                                 <!-- 重置密码按钮 -->
                                 {% if current_user.role == 'admin' and associated_user %}
@@ -676,7 +720,7 @@
                                                                 id="settle_utilities{{ cycle.id }}" required>
                                                             <label class="form-check-label fw-bold"
                                                                 for="settle_utilities{{ cycle.id }}">
-                                                                已结算水电费
+                                                                已结算水电费、住宿管理费
                                                             </label>
                                                         </div>
 
@@ -903,5 +947,13 @@
             });
         });
     });
+    // 自动隐藏提示消息（5秒后消失）
+setTimeout(() => {
+    document.querySelectorAll('.auto-hide').forEach(el => {
+        el.style.transition = 'opacity 0.8s ease';
+        el.style.opacity = '0';
+        setTimeout(() => el.remove(), 800);
+    });
+}, 5000);
 </script>
 {% endblock %}

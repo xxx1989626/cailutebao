@@ -32,6 +32,11 @@ def login():
                 flash('您的账户使用的是初始密码，请立即修改！', 'warning')
                 return redirect(url_for('auth.change_password'))
             flash('登录成功', 'success')
+
+            next_page = request.args.get('next')  # 自动获取用户本来想去的页面
+            if next_page:
+                return redirect(next_page)  # 有就跳回去
+            
             return redirect(url_for('main.index'))
         else:
             flash('用户名或密码错误', 'danger')

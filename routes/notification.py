@@ -102,7 +102,12 @@ def get_unread_count():
     pending_hr_count = 0
     from utils import perm 
     if perm.can('hr.view'):
-        pending_hr_count = EmploymentCycle.query.filter_by(status='待审核').count()
+        pending_hr_count = EmploymentCycle.query.filter(
+            db.or_(
+                EmploymentCycle.status == '待审核',           # 入职待审批
+                EmploymentCycle.pending_status == 'pending'    # 信息变更待审核
+            )
+        ).count()
     
     # 返回总和。只要这个数字 > 0，网页就会嘀嘀嘀
     return {"unread_count": notice_count + pending_hr_count}
@@ -127,7 +132,12 @@ def has_new_notice():
 
     pending_hr = 0
     if perm.can('hr.view'):
-        pending_hr = EmploymentCycle.query.filter_by(status='待审核').count()
+        pending_hr = EmploymentCycle.query.filter(
+            db.or_(
+                EmploymentCycle.status == '待审核',           # 入职待审批
+                EmploymentCycle.pending_status == 'pending'    # 信息变更待审核
+            )
+        ).count()
 
     return {
         "has_new": (notice_count + pending_hr) > 0,

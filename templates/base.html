@@ -225,7 +225,7 @@
                     <li class="nav-item">
                         {% if current_user.is_authenticated %}
                             {% if perm.can('hr.view') %}
-                                <a class="nav-link {% if request.endpoint and 'hr.' in request.endpoint %}active{% endif %}" 
+                                <a class="nav-link {% if request.endpoint == 'hr.hr_list' %}active{% endif %}" 
                                    href="{{ url_for('hr.hr_list') }}">
                                     <i class="bi bi-people me-1"></i> 人事管理
                                     {% if pending_count > 0 %}

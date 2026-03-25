@@ -93,6 +93,12 @@ class EmploymentCycle(db.Model):
     bed_number = db.Column(db.String(50))  # 床位号
     archives = db.Column(db.Text)  # 档案JSON字符串
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 档案创建时间
+    # 审批相关字段
+    pending_changes = db.Column(db.Text)  # 待审批的变更（JSON格式）
+    pending_status = db.Column(db.String(10), default='none')  # 审批状态：none, pending, approved, rejected
+    pending_updated_at = db.Column(db.DateTime)  # 提交变更的时间
+    pending_approved_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # 审批人ID
+    pending_approved_at = db.Column(db.DateTime)  # 审批时间
 # ==================== 资产模型 ====================
 class Asset(db.Model):
     __tablename__ = 'assets'   # 数据库表名

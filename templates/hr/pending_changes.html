@@ -1,0 +1,53 @@
+<!-- templates/hr/pending_changes.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mt-4">待审批信息变更</h1>
+    <ol class="breadcrumb mb-4">
+        <li class="breadcrumb-item"><a href="{{ url_for('hr.hr_list') }}">队员管理</a></li>
+        <li class="breadcrumb-item active">待审批变更</li>
+    </ol>
+    
+    {% if pending_cycles %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-list"></i> 待审批变更列表
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>队员姓名</th>
+                            <th>身份证号</th>
+                            <th>提交时间</th>
+                            <th>申请人</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cycle in pending_cycles %}
+                        {% set pending_data = cycle.pending_changes|fromjson %}
+                        <tr>
+                            <td>{{ cycle.name }}</td>
+                            <td>{{ cycle.id_card }}</td>
+                            <td>{{ pending_data.submit_time|format_datetime }}</td>
+                            <td>{{ pending_data.submitter_name }}</td>
+                            <td>
+                                <a href="{{ url_for('hr.change_detail', cycle_id=cycle.id) }}" class="btn btn-info btn-sm">查看详情</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info" role="alert">
+        暂无待审批的信息变更
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
