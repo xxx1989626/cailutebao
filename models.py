@@ -207,6 +207,7 @@ class ShiftPost(db.Model):
     color = db.Column(db.String(20), default='#007bff') # 标签颜色
     default_start = db.Column(db.String(10), default="08:30")  # 岗位默认开始时间
     default_end = db.Column(db.String(10), default="17:30")  # 岗位默认结束时间
+    default_hours = db.Column(db.Float, default=12)  # 岗位默认排班时长
 
 class ShiftSchedule(db.Model):
     __tablename__ = 'shift_schedules'  # 数据库表名

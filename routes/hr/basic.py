@@ -66,13 +66,17 @@ def hr_list():
         query = query.filter(
             db.or_(
                 EmploymentCycle.status == '待审核',
-                EmploymentCycle.pending_status == 'pending'
+                db.and_(
+                    EmploymentCycle.status == '在职',
+                    EmploymentCycle.pending_status == 'pending'
+                )
             )
         )
     elif status_filter == '离职':
         query = query.filter(EmploymentCycle.status == '离职')
     else:
-        # 在职人员不包括待审批状态的记录
+        # 在职人员包括所有status为在职的记录，无论pending_status是什么
+        # 提交信息变更申请的队员仍然是在职状态
         query = query.filter(EmploymentCycle.status == '在职')
     
     # 搜索过滤
@@ -383,9 +387,21 @@ def edit_cycle(cycle_id):
                 # 检查是否为普通队员编辑自己的信息
                 if cycle.id_card == current_user.username and not perm.can('hr.edit'):
                     # 普通队员编辑，需要审批
+                    # 日期字段列表
+                    date_fields = ['hire_date', 'enlistment_date', 'discharge_date', 'license_date', 'license_expiry', 'security_license_date']
+                    
+                    # 将日期对象转换为字符串格式，以便JSON序列化
+                    serializable_change_data = {}
+                    for field, new_val in change_data.items():
+                        if field in date_fields and new_val:
+                            # 将date对象转换为字符串
+                            serializable_change_data[field] = new_val.strftime('%Y-%m-%d') if hasattr(new_val, 'strftime') else str(new_val)
+                        else:
+                            serializable_change_data[field] = new_val
+                    
                     # 构建变更数据
                     pending_data = {
-                        'changes': change_data,
+                        'changes': serializable_change_data,
                         'photo_change': photo_change,
                         'submitter_id': current_user.id,
                         'submitter_name': current_user.name,
@@ -459,10 +475,23 @@ def approve_change(cycle_id):
         # 解析待审批数据
         pending_data = json.loads(cycle.pending_changes)
         
+        # 日期字段列表
+        date_fields = ['hire_date', 'enlistment_date', 'discharge_date', 'license_date', 'license_expiry', 'security_license_date']
+        
         # 应用变更
         if 'changes' in pending_data:
             for field, new_val in pending_data['changes'].items():
-                setattr(cycle, field, new_val)
+                # 处理日期字段
+                if field in date_fields and new_val:
+                    # 将字符串转换为date对象
+                    parsed_date = parse_date(new_val)
+                    if parsed_date:
+                        setattr(cycle, field, parsed_date)
+                    else:
+                        # 如果解析失败，设置为None
+                        setattr(cycle, field, None)
+                else:
+                    setattr(cycle, field, new_val)
         
         # 处理头像变更
         if 'photo_change' in pending_data and pending_data['photo_change']:
