@@ -3,186 +3,157 @@
 {% block title %}考勤排班管理{% endblock %}
 
 {% block head %}
+<!-- 引入 AG-Grid 免费版 CSS 和 JS -->
+<script src="{{ url_for('static', filename='js/AG-Grid/ag-grid-community.min.js') }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/lunar-javascript@1.6.12/lunar.min.js"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='js/AG-Grid/ag-grid.min.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='js/AG-Grid/ag-theme-alpine.min.css') }}">
 <style>
-/*  ========== 最终能铺满的容器 ========== */
-.matrix-container {
-    width: 100% !important;
-    overflow-x: auto !important; /* 允许横向滚动 */
-    overflow-y: auto !important;
-    max-height: calc(100vh - 200px) !important;
-    border: 1px solid #dee2e6 !important;
-}
+    /* 自定义容器高度 */
+    #myGrid {
+        height: calc(100vh - 280px);
+        width: 100%;
+    }
 
-/*  ========== 表格：强制铺满容器 ========== */
-#matrixTable {
-    table-layout: fixed !important;
-    width: 100% !important;        /* 基础宽度 */
-    min-width: 1550px !important;  /* 关键：确保哪怕只有几天，也要撑开至少这么宽 */
-    border-collapse: collapse !important;
-    background-color: white !important;
-}
+    /* 强制 AG-Grid 边框为纯黑色，更像 Excel */
+    .ag-theme-alpine {
+        --ag-border-color: #000000 !important;
+        --ag-row-border-color: #000000 !important;
+        --ag-column-border-color: #000000 !important;
+        --ag-header-column-border-color: #000000 !important;
+        --ag-borders: solid 1px !important;
+        --ag-row-border-style: solid !important;
+        --ag-column-border-style: solid !important;
+    }
 
-/* 姓名列固定 200px */
-#matrixTable th:first-child,
-#matrixTable td:first-child {
-    width: 200px !important;
-    min-width: 200px !important;
-    max-width: 200px !important;
-    position: sticky;
-    left: 0;
-    z-index: 10;
-    background: #f8f9fa;
-    border-right: 2px solid #6c757d;
-    text-align: left;
-    padding-left: 8px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    height: 25px;
-    line-height: 25px;
-}
+    /* 强制显示行横线（包括姓名列） */
+    .ag-theme-alpine .ag-row {
+        border-bottom: 1px solid #000 !important;
+    }
 
-/* 日期头 */
-#matrixTable thead th {
-    position: sticky;
-    top: 0;
-    z-index: 9;
-    background: #e9ecef;
-    text-align: center;
-    vertical-align: middle;
-    height: 50px !important;
-    border-bottom: 2px solid #6c757d;
-    font-weight: 600;
-}
+    /* 强制显示单元格竖线 */
+    .ag-theme-alpine .ag-cell {
+        border-right: 1px solid #000 !important;
+        border-left: 1px solid #000 !important;
+    }
 
-/*  ========== 核心：日期列自动分配宽度 ========== */
-#matrixTable th:not(:first-child),
-#matrixTable td:not(:first-child) {
-    width: 1% !important;         /* 使用百分比宽度，让日期列均匀分配剩余空间 */
-    min-width: 45px !important;   /* 最小宽度 */
-}
+    /* 修复表头竖线 */
+    .ag-theme-alpine .ag-header-cell {
+        border-right: 1px solid #000 !important;
+        border-left: 1px solid #000 !important;
+        padding: 0 2px !important;
+        text-align: center !important;
+        justify-content: center !important;
+    }
 
-/* 单元格通用 */
-#matrixTable td {
-    border: 1px solid #dee2e6;
-    text-align: center;
-    vertical-align: middle;
-    padding: 0;
-    height: 50px !important;
-    white-space: nowrap;
-    position: relative;
-}
+    /* 修复姓名列（固定列）的边框 */
+    .ag-theme-alpine .ag-pinned-left-cols-container .ag-cell {
+        border-right: 1px solid #000 !important;
+    }
 
-#matrixTable td.selected {
-    background-color: #0d6efd20;
-    border: 1px solid #0d6efd;
-}
-#matrixTable td.range-selected {
-    background-color: #0d6efd10;
-}
+    .ag-theme-alpine .ag-header-cell-text {
+        font-size: 12px !important;
+        margin: 0 !important;
+    }
+    .ag-theme-alpine .ag-row {
+        height: 40px !important;
+    }
+    .ag-theme-alpine .ag-cell {
+        height: 40px !important; 
+        padding: 0 !important;
+        display: flex;
+        align-items: stretch;
+    }
 
-.shift-cell {
-    position: relative;
-    width: 100%;
+    /* 自定义单元格渲染器样式：强制上下各占一半 */
+.cell-wrapper {
+    display: block; 
     height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-    z-index: 1;
+    width: 100%;
+    position: relative;
 }
-.shift-hours {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 1;
+/* 第一行：排班 强制高20px 背景铺满 */
+.cell-top {
+    height: 20px; 
+    line-height: 20px;
+    text-align: center;
+    font-size: 10px;
+    font-weight: bold;
+    width: 100%;
+    margin: 0;
+    padding: 0;
 }
-
-/* 小圆点正常显示 */
-.status-tag {
-    position: absolute !important;
-    top: 2px !important;
-    right: 2px !important;
-    width: 10px !important;  /* 稍微加粗一点 */
-    height: 10px !important;
-    border-radius: 50% !important;
-    z-index: 20 !important;   /* 确保在最上层 */
-    border: 1px solid #fff !important;
-    display: block !important; /* 强制显示 */
+/* 第二行：加班 强制高20px */
+.cell-bottom {
+    height: 20px; 
+    line-height: 20px;
+    text-align: center;
+    font-size: 9px;
+    color: #666;
+    cursor: pointer;
+    width: 100%;
+    margin: 0;
+    padding: 0;
 }
-
-.trip-tag { background-color: #ffc107 !important; }
-.leave-tag { background-color: #dc3545 !important; }
-.night-icon { background-color: #6610f2; }
-
-.card-custom {
-    border: none;
-}
+.cell-bottom:hover { background-color: #f0f0f0; }
+    
+    /* 状态小圆点 */
+    .status-dot {
+        position: absolute;
+        top: 1px;
+        right: 1px;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        border: 1px solid white;
+        z-index: 9999;
+    }
+    .dot-trip { background-color: #ffc107; }
+    .dot-leave { background-color: #dc3545; }
+    .dot-night { background-color: #6610f2; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container mt-4 mb-5">
     {% include '_common_tabs.html' %}
-    <!-- 排班管理主卡片 -->
     <div class="card card-custom border-0 shadow-sm rounded-3 overflow-hidden">
-        <!-- 卡片头部 -->
-        <div
-            class="card-header bg-gradient bg-success text-white d-flex flex-wrap justify-content-between align-items-center gap-3 py-3 px-4">
+        <div class="card-header bg-gradient bg-success text-white d-flex flex-wrap justify-content-between align-items-center gap-3 py-3 px-4">
             <h5 class="mb-0">{{ selected_year }}年{{ selected_month }}月排班管理</h5>
             <div class="d-flex align-items-center gap-3">
                 <input type="month" id="monthPicker" class="form-control form-control-sm"
                     value="{{ selected_year }}-{{ '%02d' % selected_month }}">
-                <div class="dropdown">
-                    <ul class="dropdown-menu">
-                        {% for y in range(selected_year - 3, selected_year + 4) %}
-                        <li><a class="dropdown-item {% if y == selected_year %}active bg-primary{% endif %}"
-                                href="{{ url_for('scheduling.schedule_list', year=y, month=selected_month) }}">{{ y
-                                }}年</a></li>
-                        {% endfor %}
-                    </ul>
-                </div>
             </div>
             <div class="d-flex gap-2">
-                <button class="btn btn-sm btn-outline-primary"
-                    onclick="document.getElementById('excelImportInput').click()">
+                <button class="btn btn-sm btn-outline-light" onclick="document.getElementById('excelImportInput').click()">
                     <i class="bi bi-file-earmark-arrow-up"></i> 导入 Excel
                 </button>
-                <button class="btn btn-sm btn-outline-danger" onclick="clearCurrentMonth()">
+                <button class="btn btn-sm btn-outline-light" onclick="clearCurrentMonth()">
                     <i class="bi bi-trash3"></i> 清空本月
                 </button>
                 <input type="file" id="excelImportInput" hidden onchange="importExcelSchedule(this)">
                 <div class="btn-group">
-                    <a href="{{ url_for('scheduling.export_attendance', table_type='A') }}"
-                        class="btn btn-sm btn-outline-secondary">导出A表</a>
-                    <a href="{{ url_for('scheduling.export_attendance', table_type='B') }}"
-                        class="btn btn-sm btn-outline-secondary">导出B表</a>
+                    <a href="{{ url_for('scheduling.export_attendance', table_type='A') }}" class="btn btn-sm btn-outline-light">导出A表</a>
+                    <a href="{{ url_for('scheduling.export_attendance', table_type='B') }}" class="btn btn-sm btn-outline-light">导出B表</a>
                 </div>
             </div>
         </div>
 
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <div class="d-flex align-items-center gap-3">
-                <span class="text-muted small"><i class="bi bi-info-circle"></i> 单击选中、双击设置班次、del删除。数字=工时，
-                    <span style="color:#ffc107;">●</span>出差 
-                    <span style="color:#dc3545;">●</span>请假 
-                    <span style="color:#6610f2;">●</span>夜班
-            </div>
+        <div class="p-2 bg-light border-bottom">
+            <span class="text-muted small"><i class="bi bi-info-circle"></i> 
+                单击/拖动选择，<strong>双击</strong>设置班次，<strong>Del</strong>删除。
+                <span style="color:#ffc107;">●</span>出差 
+                <span style="color:#dc3545;">●</span>请假
+                <span style="color:#6610f2;">●</span>夜班
+            </span>
         </div>
-        <div class="matrix-container shadow-sm">
-            <table id="matrixTable">
-                <thead>
-                    <tr id="dateHeader">
-                        <th>姓 名</th>
-                    </tr>
-                </thead>
-                <tbody id="matrixBody"></tbody>
-            </table>
-        </div>
+
+        <!-- AG-Grid 表格容器 -->
+        <div id="myGrid" class="ag-theme-alpine"></div>
     </div>
 </div>
 
+<!-- 模态框保持不变 -->
 <div class="modal fade" id="shiftModal" tabindex="-1">
     <div class="modal-dialog modal-sm modal-dialog-centered">
         <div class="modal-content shadow-lg border-0">
@@ -209,6 +180,7 @@
         </div>
     </div>
 </div>
+
 <div class="modal fade" id="overtimeModal" tabindex="-1">
     <div class="modal-dialog modal-sm modal-dialog-centered">
         <div class="modal-content shadow-lg border-0">
@@ -216,12 +188,10 @@
                 <h6 class="fw-bold mb-3">设置加班工时</h6>
                 <input type="hidden" id="overtimeUserId">
                 <input type="hidden" id="overtimeDate">
-                
                 <div class="mb-3">
                     <label class="small text-muted">加班小时数</label>
                     <input type="number" step="0.5" id="overtimeHours" class="form-control text-center" placeholder="输入数字，留空=清除">
                 </div>
-
                 <button class="btn btn-primary w-100 fw-bold" onclick="saveOvertime()">确认保存</button>
             </div>
         </div>
@@ -231,519 +201,380 @@
 
 {% block scripts %}
 <script>
-    // === 全局变量：从后端模板注入，避免NaN ===
+    let gridApi;
+    let gridColumnApi;
     let currentMonth = "{{ selected_year }}-{{ '%02d' % selected_month }}";
-    let isSelecting = false;
-    let startCell = null;
-    let selectedCells = [];
+    let rowData = [];
+    let columnDefs = [];
+    let postsMap = {}; // 岗位信息缓存
+    let tripSet = new Set();
+    let leaveSet = new Set();
+    let nightSet = new Set();
+    let selectedCell = null;
+    let selectedLayer = null;
+    let clipboardData = null;
 
-    // === 安全打开模态框 ===
-    function openFromCell(cell) {
-        if (!cell) return;
-        const userId = cell.getAttribute('data-user-id');
-        const userName = cell.getAttribute('data-user-name');
-        const date = cell.getAttribute('data-date');
-        const postId = cell.getAttribute('data-post-id') || '';
-        const shiftType = cell.getAttribute('data-shift-type') || '白';
+    // 1. 自定义单元格渲染器 (核心：分层显示)
+    function ShiftCellRenderer() {}
+    ShiftCellRenderer.prototype.init = function(params) {
+        this.eGui = document.createElement('div');
+        this.eGui.className = 'cell-wrapper';
+        
+        const empId = params.data.id;
+        const day = params.colDef.field;
+        const dateStr = `${currentMonth}-${String(day).padStart(2, '0')}`;
+        const shiftData = params.data.shifts ? params.data.shifts[day] : null;
+        
+        let html = '';
+        
+        // 状态小圆点
+        const isTrip = tripSet.has(`${empId}-${dateStr}`);
+        const isLeave = leaveSet.has(`${empId}-${dateStr}`);
+        const isNight = shiftData && shiftData.type === '夜';
+        
+        if (isTrip) html += `<span class="status-dot dot-trip"></span>`;
+        if (isLeave) html += `<span class="status-dot dot-leave"></span>`;
+        if (isNight) html += `<span class="status-dot dot-night"></span>`;  
 
-        openShiftModal(userId, userName, date, postId ? parseInt(postId) : null, shiftType);
-    }
+        if (shiftData && shiftData.post_id) {
+            // 有排班数据
+            html += `
+                <div class="cell-top" style="background-color: ${shiftData.color};">
+                    ${shiftData.default_hours || ''}
+                </div>
+                <div class="cell-bottom" data-action="overtime">
+                    ${shiftData.hours ? shiftData.hours : '<span style="opacity:0.3">加班</span>'}
+                </div>
+            `;
+        } else {
+            // 无排班，看是否有纯加班
+            html += `
+        <div class="cell-top" data-layer="shift" style="background-color: #f8f9fa; color: #ccc;">
+            休
+        </div>
+        <div class="cell-bottom" data-layer="overtime" data-action="overtime">
+            ${shiftData && shiftData.hours ? shiftData.hours : '<span style="opacity:0.3">加班</span>'}
+        </div>
+    `;
+        }
+        
+        this.eGui.innerHTML = html;
+        
+        // 保存数据引用供事件使用
+        this.params = params;
+        this.empId = empId;
+        this.dateStr = dateStr;
+        this.shiftData = shiftData;
+        
+        // 绑定事件
+        this.eGui.addEventListener('dblclick', this.onDblClick.bind(this));
+    };
+    ShiftCellRenderer.prototype.getGui = function() { return this.eGui; };
+    ShiftCellRenderer.prototype.destroy = function() {};
+    ShiftCellRenderer.prototype.onDblClick = function(e) {
+        e.stopPropagation();
+        // 判断点击的是下层（加班）还是上层
+        if (e.target.closest('[data-action="overtime"]')) {
+            openOvertimeModal(this.empId, this.dateStr, this.shiftData ? this.shiftData.hours : null);
+        } else {
+            const postId = this.shiftData ? this.shiftData.post_id : null;
+            const shiftType = this.shiftData ? this.shiftData.type : '白';
+            openShiftModal(this.empId, this.params.data.name, this.dateStr, postId, shiftType);
+        }
+    };
 
+    // 2. 初始化 AG-Grid
     document.addEventListener('DOMContentLoaded', function () {
-        // 1. 月份选择器：修复跳转逻辑
-        const monthPicker = document.getElementById('monthPicker');
-        monthPicker.addEventListener('change', function (e) {
+        const gridDiv = document.querySelector('#myGrid');
+        
+        // 基础配置
+        const gridOptions = {
+            rowHeight: 40,
+            columnDefs: columnDefs,
+            rowData: rowData,
+            defaultColDef: {
+                width: 40,
+                minWidth: 40,
+                resizable: true,
+                sortable: false,
+                filter: false,
+                cellRenderer: ShiftCellRenderer, 
+                editable: false,
+                enablePivot: false,
+                enableRowGroup: false,
+                enableValue: false
+            },
+            rowSelection: 'multiple',
+            animateRows: false,
+            suppressScrollOnNewData: true,
+            onGridReady: function(params) {
+                gridApi = params.api;
+                gridColumnApi = params.columnApi;
+                loadMatrix();
+            },
+            // 键盘事件处理
+onCellKeyDown: function(params) {
+    const e = params.event;
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        handleDelete(false, params); // 不再需要Shift参数
+    }
+    else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
+        e.preventDefault();
+        handleCopy(params);
+    }
+    else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+        e.preventDefault();
+        handlePaste(params);
+    }
+},
+
+            onCellClicked: function(params) {
+                if (params.column.getColId() === 'name') return;
+                selectedCell = params;
+                const target = params.event.target;
+                if (target.closest('[data-layer="overtime"]')) {
+                    selectedLayer = 'overtime';
+                } else {
+                    selectedLayer = 'shift';
+                }
+            }
+        };
+
+        agGrid.createGrid(gridDiv, gridOptions);
+
+        // 月份切换
+        document.getElementById('monthPicker').addEventListener('change', function (e) {
             const val = e.target.value;
-            if (!val || !/^\d{4}-\d{2}$/.test(val)) return;
+            if (!val) return;
             const [year, month] = val.split('-');
             window.location.href = "{{ url_for('scheduling.schedule_list') }}?year=" + year + "&month=" + month;
         });
-
-        // 2. 加载矩阵数据
-        loadMatrix();
-
-        // 3. 鼠标选择事件：修复null报错
-        document.addEventListener('mousedown', startSelection);
-        document.addEventListener('mousemove', extendSelection);
-        document.addEventListener('mouseup', endSelection);
-
-        // 4. 双击打开模态框
-        document.getElementById('matrixBody').addEventListener('dblclick', function (e) {
-            const cell = e.target.closest('#matrixTable td');
-            if (cell && cell.cellIndex > 0) { // 跳过姓名列
-                openFromCell(cell);
-            }
-        });
-
-        // 5. 点击外部清除选择
-        document.addEventListener('click', function (e) {
-            if (!e.target.closest('#matrixTable')) {
-                clearSelection();
-            }
-        });
-
-        // 6. 键盘快捷键
-        document.addEventListener('keydown', handleKeyboardShortcuts);
-
-        // 7. 模态框Enter提交
-        document.getElementById('shiftModal').addEventListener('keydown', function (e) {
-            if (e.key === 'Enter' && this.classList.contains('show')) {
-                e.preventDefault();
-                commitShift();
-            }
-        });
     });
 
-    // === 核心：加载矩阵数据（适配后端返回格式）===
+    // 3. 加载数据
     function loadMatrix() {
         fetch("/scheduling/api/get_matrix_data?month=" + currentMonth)
-            .then(response => {
-                if (!response.ok) throw new Error("接口返回失败");
-                return response.json();
-            })
+            .then(response => response.json())
             .then(data => {
-                clearSelection();
-                renderHeader(data.month);
-                renderBody(data);
-            })
-            .catch(error => {
-                console.error("加载矩阵失败：", error);
-                alert("加载排班数据失败，请刷新页面重试");
-            });
-    }
-
-    // === 渲染日期表头 ===
-    function renderHeader(monthStr) {
-        const header = document.getElementById('dateHeader');
-        header.innerHTML = '<th>姓  名</th>';
-
-        // 计算当月天数
-        const [year, month] = monthStr.split('-').map(Number);
-        const lastDay = new Date(year, month, 0).getDate();
-
-        // 生成日期列
-        for (let day = 1; day <= lastDay; day++) {
-            header.innerHTML += `<th>${day}</th>`;
-        }
-    }
-
-    // === 渲染表格主体（适配后端数据格式，修复小圆点显示）===
-    function renderBody(data) {
-        const body = document.getElementById('matrixBody');
-        body.innerHTML = '';
-        const { matrix, on_trip_dates, on_leave_dates } = data;
-        const [year, month] = data.month.split('-').map(Number);
-        const lastDay = new Date(year, month, 0).getDate();
-
-        // 转换出差/请假日期为Set，方便快速查询
-        const tripSet = new Set(on_trip_dates);
-        const leaveSet = new Set(on_leave_dates);
-
-        // 遍历每个员工
-        matrix.forEach(emp => {
-            const empId = emp.id;
-            const empName = emp.name;
-            let row = `<tr>
-                <td class="bg-light" tabindex="-1">${empName}</td>
-            `;
-
-            // 遍历当月每一天
+                // 缓存岗位
+                postsMap = data.posts;
+                // 缓存出差/请假
+                tripSet = new Set(data.on_trip_dates);
+                leaveSet = new Set(data.on_leave_dates);
+                
+                // 构建列定义 (动态日期)
+                const [year, month] = data.month.split('-').map(Number);
+                const lastDay = new Date(year, month, 0).getDate();
+                
+const cols = [
+                { 
+                    field: 'name', 
+                    headerName: '姓名', 
+                    width: 60, 
+                    pinned: 'left',
+                    cellRenderer: null,
+                    cellStyle: {'font-weight': 'bold', 'background-color': '#f8f9fa'}
+                }
+            ];
+            
             for (let day = 1; day <= lastDay; day++) {
                 const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                const shift = emp.shifts[day]; // 后端返回的shifts是按day为key的对象
-                const isTrip = tripSet.has(`${empId}-${dateStr}`);
-                const isLeave = leaveSet.has(`${empId}-${dateStr}`);
-
-                // 构建单元格属性
-                let cellAttrs = `
-                    data-user-id="${empId}"
-                    data-user-name="${empName}"
-                    data-date="${dateStr}"
-                    data-post-id="${shift ? shift.post_id : ''}"
-                    data-shift-type="${shift ? shift.type : '白'}"
-                    oncontextmenu="deleteShift(event, ${empId}, '${dateStr}')"
-                    onkeydown="handleKeyboardNavigation(event, this)"
-                    tabindex="0"
-                `;
-
-                // 构建单元格内容（核心：确保小圆点正确渲染）
-                let cellContent = '';
-                if (shift) {
-                    // 有排班数据
-                    cellContent = `
-                    <div class="shift-cell" style="position: relative; width: 100%; height: 50px; padding:0;">
-                        <div style="display: flex; flex-direction: column; height: 100%; text-align: center;">
-                            <div style="background-color: ${shift.color}; flex: 1.2; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; color: #000; border-bottom: 1px solid #ddd;">
-                                ${shift.default_hours || ''}
-                            </div>
-                            <div style="background-color: #ffffff; flex: 1; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #666;">
-                                 ${shift.hours ? shift.hours : ''}
-                            </div>
-                        </div>
-                        ${shift.type === '夜' ? '<span class="status-tag night-icon" title="夜班"></span>' : ''}
-                        ${isTrip ? '<span class="status-tag trip-tag" title="出差"></span>' : ''}
-                        ${isLeave ? '<span class="status-tag leave-tag" title="请假"></span>' : ''}
-                    </div>
-                `;
-                } else {
-                    // 无排班数据
-                    cellContent = `
-                        <div class="shift-cell" style="position: relative; width: 100%; height: 25px;">
-                            ${isTrip ? '<span class="status-tag trip-tag" title="出差"></span>' : ''}
-                            ${isLeave ? '<span class="status-tag leave-tag" title="请假"></span>' : ''}
-                        </div>
-                    `;
-                    cellAttrs += ' class="shift-empty"';
+                const dateObj = new Date(year, month - 1, day);
+                const dayOfWeek = dateObj.getDay();
+                
+                // 【使用 lunar-javascript 判断】
+                const lunar = Solar.fromYmd(year, month, day).getLunar();
+                const isHoliday = lunar.getFestivals().length > 0; // 判断是否为法定节假日
+                
+                let headerStyle = {};
+                if (isHoliday) {
+                    headerStyle = { 'background-color': '#ffe6e6', 'color': '#dc3545' };
+                } else if (dayOfWeek === 0 || dayOfWeek === 6) {
+                    headerStyle = { 'background-color': '#fff3e0', 'color': '#e65100' };
                 }
-
-                row += `<td ${cellAttrs}>${cellContent}</td>`;
+                
+                cols.push({ 
+                    field: String(day), 
+                    headerName: String(day), 
+                    width: 40, 
+                    minWidth: 40,
+                    headerStyle: headerStyle
+                });
             }
-
-            row += '</tr>';
-            body.innerHTML += row;
+            
+            gridApi.setGridOption('columnDefs', cols);
+            gridApi.setGridOption('rowData', data.matrix);
         });
     }
 
-    // === 鼠标选择：修复null报错 ===
-    function startSelection(e) {
-        if (e.button !== 0) return; // 只处理左键
-        const cell = e.target?.closest('#matrixTable td');
-        if (!cell || cell.cellIndex === 0) return; // 跳过姓名列
+// 4. 删除逻辑 (智能版：点哪里删哪里)
+function handleDelete(isShiftKey, params) {
+    const targetParams = params || selectedCell;
+    if (!targetParams) return;
 
-        e.preventDefault();
-        isSelecting = true;
-        startCell = cell;
-        clearSelection();
-        cell.classList.add('selected');
-        selectedCells.push(cell);
-    }
+    const colId = targetParams.column.getColId();
+    if (colId === 'name') return;
 
-    function extendSelection(e) {
-        if (!isSelecting || !startCell) return;
-        const cell = e.target?.closest('#matrixTable td');
-        if (!cell || cell.cellIndex === 0) return;
+    const rowData = targetParams.data;
+    const day = colId;
+    const dateStr = `${currentMonth}-${String(day).padStart(2, '0')}`;
 
-        clearSelection();
-        selectRange(startCell, cell);
-    }
+    // 自动根据点击位置判断删除内容
+    const promise = selectedLayer === 'overtime'
+        // 点击了下层：删除加班
+        ? fetch("{{ url_for('scheduling.delete_overtime_by_date') }}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: rowData.id, date: dateStr })
+          })
+        // 点击了上层：删除排班
+        : fetch("{{ url_for('scheduling.delete_shift_by_date') }}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: rowData.id, date: dateStr })
+          });
 
-    function endSelection() {
-        isSelecting = false;
-        startCell = null;
-    }
+    promise.then(() => loadMatrix());
+}
 
-    // === 矩形选择范围 ===
-    function selectRange(start, end) {
-        const startRow = start.parentElement.rowIndex;
-        const startCol = start.cellIndex;
-        const endRow = end.parentElement.rowIndex;
-        const endCol = end.cellIndex;
-
-        const minRow = Math.min(startRow, endRow);
-        const maxRow = Math.max(startRow, endRow);
-        const minCol = Math.min(startCol, endCol);
-        const maxCol = Math.max(startCol, endCol);
-
-        const table = document.getElementById('matrixTable');
-        for (let i = minRow; i <= maxRow; i++) {
-            const row = table.rows[i];
-            if (!row) continue;
-            for (let j = minCol; j <= maxCol; j++) {
-                const cell = row.cells[j];
-                if (!cell || cell.cellIndex === 0) continue; // 跳过姓名列
-                cell.classList.add((i === startRow && j === startCol) || (i === endRow && j === endCol) ? 'selected' : 'range-selected');
-                selectedCells.push(cell);
-            }
-        }
-    }
-
-    // === 清除选择：安全校验 ===
-    function clearSelection() {
-        selectedCells.forEach(cell => {
-            if (cell && cell.classList) {
-                cell.classList.remove('selected', 'range-selected');
-            }
-        });
-        selectedCells = [];
-    }
-
-    // === 键盘快捷键 ===
-    function handleKeyboardShortcuts(e) {
-        // 复制
-        if (e.ctrlKey && e.key === 'c') {
-            e.preventDefault();
-            copySelectedCells();
-        }
-        // 粘贴
-        else if (e.ctrlKey && e.key === 'v') {
-            e.preventDefault();
-            pasteCells();
-        }
-        // 剪切
-        else if (e.ctrlKey && e.key === 'x') {
-            e.preventDefault();
-            cutSelectedCells();
-        }
-        // 删除
-        else if (e.key === 'Delete' || e.key === 'Backspace') {
-            e.preventDefault();
-            deleteSelectedCells();
-        }
-    }
-
-    // === 复制/粘贴/剪切 ===
-    function copySelectedCells() {
-        if (selectedCells.length === 0) return;
-        const copyData = selectedCells.map(cell => ({
-            postId: cell.getAttribute('data-post-id'),
-            shiftType: cell.getAttribute('data-shift-type')
-        })).filter(item => item.postId);
-        localStorage.setItem('shiftCopyData', JSON.stringify(copyData));
-    }
-
-    function pasteCells() {
-        const copyDataStr = localStorage.getItem('shiftCopyData');
-        if (!copyDataStr || selectedCells.length === 0) return;
-        const copyData = JSON.parse(copyDataStr);
-        if (copyData.length === 0) return;
-
-        // 批量粘贴：等待所有请求完成后刷新
-        const promises = [];
-        selectedCells.forEach((cell, idx) => {
-            const dataIdx = idx % copyData.length;
-            const { postId, shiftType } = copyData[dataIdx];
-            if (!postId) return;
-
-            const userId = cell.getAttribute('data-user-id');
-            const date = cell.getAttribute('data-date');
-            if (!userId || !date) return;
-
-            promises.push(
-                fetch("{{ url_for('scheduling.save_shift') }}", {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        user_id: userId,
-                        date: date,
-                        post_id: postId,
-                        shift_type: shiftType
-                    })
-                })
-            );
-        });
-
-        Promise.all(promises).then(() => loadMatrix());
-    }
-
-    function cutSelectedCells() {
-        copySelectedCells();
-        deleteSelectedCells();
-    }
-
-    function deleteSelectedCells() {
-        if (selectedCells.length === 0) return;
-        selectedCells.forEach(cell => {
-            const userId = cell.getAttribute('data-user-id');
-            const date = cell.getAttribute('data-date');
-            if (userId && date) deleteShift(null, userId, date);
-        });
-    }
-
-    // === 键盘导航 ===
-    function handleKeyboardNavigation(e, cell) {
-        e.preventDefault();
-        const key = e.key;
-        if (key === 'Enter' || key === ' ') {
-            openFromCell(cell);
-            return;
-        }
-
-        // 上下左右/Tab导航
-        const row = cell.parentElement;
-        const rowIndex = Array.from(row.parentElement.children).indexOf(row);
-        const colIndex = Array.from(row.children).indexOf(cell);
-        const table = document.getElementById('matrixTable');
-        const totalRows = table.rows.length;
-        const totalCols = table.rows[0].cells.length;
-
-        let newRowIdx = rowIndex;
-        let newColIdx = colIndex;
-
-        switch (key) {
-            case 'ArrowUp': newRowIdx = Math.max(0, rowIndex - 1); break;
-            case 'ArrowDown': newRowIdx = Math.min(totalRows - 1, rowIndex + 1); break;
-            case 'ArrowLeft': newColIdx = Math.max(1, colIndex - 1); break; // 跳过姓名列
-            case 'ArrowRight': newColIdx = Math.min(totalCols - 1, colIndex + 1); break;
-            case 'Tab':
-                if (e.shiftKey) {
-                    newColIdx = colIndex - 1;
-                    if (newColIdx < 1) {
-                        newRowIdx = rowIndex - 1;
-                        newColIdx = totalCols - 1;
-                    }
-                } else {
-                    newColIdx = colIndex + 1;
-                    if (newColIdx >= totalCols) {
-                        newRowIdx = rowIndex + 1;
-                        newColIdx = 1;
-                    }
-                }
-                newRowIdx = Math.max(0, Math.min(totalRows - 1, newRowIdx));
-                break;
-            default: return;
-        }
-
-        // 聚焦到新单元格
-        const newCell = table.rows[newRowIdx]?.cells[newColIdx];
-        if (newCell) newCell.focus();
-    }
-
-    // === 模态框操作 ===
-    function openShiftModal(userId, userName, date, postId = null, shiftType = '白') {
+    // === 模态框操作函数 (保持逻辑不变，只是刷新改为 loadMatrix) ===
+    function openShiftModal(userId, userName, date, postId, shiftType) {
         document.getElementById('targetUserId').value = userId;
         document.getElementById('targetDate').value = date;
         document.getElementById('modalTitle').innerText = `${userName} (${date})`;
-
-        const postSelect = document.getElementById('targetPostId');
-        if (postId) postSelect.value = postId;
+        if (postId) document.getElementById('targetPostId').value = postId;
         document.getElementById('isNight').checked = (shiftType === '夜');
-
-        const modal = new bootstrap.Modal(document.getElementById('shiftModal'));
-        modal.show();
-        setTimeout(() => postSelect.focus(), 100);
+        new bootstrap.Modal(document.getElementById('shiftModal')).show();
     }
 
     function commitShift() {
-        const userId = document.getElementById('targetUserId').value;
-        const date = document.getElementById('targetDate').value;
-        const postId = document.getElementById('targetPostId').value;
-        const shiftType = document.getElementById('isNight').checked ? '夜' : '白';
-
         fetch("{{ url_for('scheduling.save_shift') }}", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                user_id: userId,
-                date: date,
-                post_id: postId,
-                shift_type: shiftType
+                user_id: document.getElementById('targetUserId').value,
+                date: document.getElementById('targetDate').value,
+                post_id: document.getElementById('targetPostId').value,
+                shift_type: document.getElementById('isNight').checked ? '夜' : '白'
             })
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    bootstrap.Modal.getInstance(document.getElementById('shiftModal')).hide();
-                    loadMatrix();
-                } else {
-                    alert("保存失败：" + data.message);
-                }
-            })
-            .catch(error => {
-                alert("保存失败：网络错误");
-                console.error(error);
-            });
+        }).then(res => res.json()).then(data => {
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('shiftModal')).hide();
+                loadMatrix();
+            } else alert(data.message);
+        });
     }
-    // 打开加班模态框
-function openOvertimeModal(userId, date, currentHours = null) {
-    document.getElementById('overtimeUserId').value = userId;
-    document.getElementById('overtimeDate').value = date;
-    document.getElementById('overtimeHours').value = currentHours === null ? '' : currentHours;
-    new bootstrap.Modal(document.getElementById('overtimeModal')).show();
-}
 
-// 保存加班
-function saveOvertime() {
-    const userId = document.getElementById('overtimeUserId').value;
-    const date = document.getElementById('overtimeDate').value;
-    let hours = document.getElementById('overtimeHours').value.trim();
+    function openOvertimeModal(userId, date, currentHours) {
+        document.getElementById('overtimeUserId').value = userId;
+        document.getElementById('overtimeDate').value = date;
+        document.getElementById('overtimeHours').value = currentHours === null ? '' : currentHours;
+        new bootstrap.Modal(document.getElementById('overtimeModal')).show();
+    }
 
-    if (hours === '') hours = null;
-    else hours = parseFloat(hours);
-
-    fetch("{{ url_for('scheduling.save_overtime') }}", {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            user_id: userId,
-            date: date,
-            hours: hours
-        })
-    }).then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          bootstrap.Modal.getInstance(document.getElementById('overtimeModal')).hide();
-          loadMatrix();
-        } else {
-          alert('保存失败：' + data.message);
-        }
-      });
-}
-
-    // === 删除排班 ===
-    function deleteShift(e, userId, date) {
-        if (e) e.preventDefault();
-        if (!confirm("确定删除该排班记录吗？")) return;
-
-        fetch("{{ url_for('scheduling.delete_shift_by_date') }}", {
+    function saveOvertime() {
+        let hours = document.getElementById('overtimeHours').value.trim();
+        hours = hours === '' ? null : parseFloat(hours);
+        fetch("{{ url_for('scheduling.save_overtime') }}", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: userId, date: date })
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) loadMatrix();
-                else alert("删除失败：" + data.message);
-            });
-    }
-    // === 删除加班 ===
-    function deleteOvertime(e, userId, date) {
-        if (e) e.preventDefault();
-        if (!confirm("确定删除该加班记录吗？")) return;
-
-        fetch("{{ url_for('scheduling.delete_overtime_by_date') }}", {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: userId, date: date })
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) loadMatrix();
-                else alert("删除失败：" + data.message);
-            });
+            body: JSON.stringify({
+                user_id: document.getElementById('overtimeUserId').value,
+                date: document.getElementById('overtimeDate').value,
+                hours: hours
+            })
+        }).then(res => res.json()).then(data => {
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('overtimeModal')).hide();
+                loadMatrix();
+            } else alert(data.message);
+        });
     }
 
-    // === 清空本月 ===
     function clearCurrentMonth() {
         if (!confirm(`确定清空 ${currentMonth} 的所有排班记录吗？`)) return;
-
         fetch("{{ url_for('scheduling.clear_month') }}", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ month: currentMonth })
-        })
-            .then(response => response.json())
-            .then(data => {
-                alert(data.message);
-                if (data.success) loadMatrix();
-            });
+        }).then(res => res.json()).then(data => {
+            alert(data.message);
+            if (data.success) loadMatrix();
+        });
     }
 
-    // === 导入Excel ===
     function importExcelSchedule(input) {
         if (!input.files.length) return;
         const formData = new FormData();
         formData.append('file', input.files[0]);
-
         fetch("{{ url_for('scheduling.import_schedule_data') }}", {
-            method: 'POST',
-            body: formData
-        })
-            .then(response => response.json())
-            .then(data => {
-                alert(data.message);
-                if (data.success) loadMatrix();
-                input.value = '';
-            });
+            method: 'POST', body: formData
+        }).then(res => res.json()).then(data => {
+            alert(data.message);
+            if (data.success) loadMatrix();
+            input.value = '';
+        });
     }
+    // === 新增：手动复制粘贴逻辑 ===
+function handleCopy(params) {
+    if (!params || params.column.getColId() === 'name') return;
+    
+    const rowData = params.data;
+    const day = params.column.getColId();
+    const shiftData = rowData.shifts ? rowData.shifts[day] : null;
+    
+    if (shiftData) {
+        // 复制：保存岗位ID、班次类型、工时
+        clipboardData = {
+            post_id: shiftData.post_id,
+            type: shiftData.type,
+            hours: shiftData.hours
+        };
+        // 可选：给用户一个视觉反馈（比如闪烁一下格子）
+        console.log("已复制班次:", clipboardData);
+    } else {
+        clipboardData = null;
+    }
+}
+
+function handlePaste(params) {
+    if (!clipboardData || !params || params.column.getColId() === 'name') return;
+    
+    const rowData = params.data;
+    const day = params.column.getColId();
+    const dateStr = `${currentMonth}-${String(day).padStart(2, '0')}`;
+    
+    // 直接调用现有的保存接口，把复制的数据贴过去
+    fetch("{{ url_for('scheduling.save_shift') }}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            user_id: rowData.id,
+            date: dateStr,
+            post_id: clipboardData.post_id,
+            shift_type: clipboardData.type || '白'
+        })
+    }).then(res => res.json()).then(data => {
+        if (data.success) {
+            // 如果复制的内容里有加班，顺便也把加班存了
+            if (clipboardData.hours) {
+                fetch("{{ url_for('scheduling.save_overtime') }}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: rowData.id,
+                        date: dateStr,
+                        hours: clipboardData.hours
+                    })
+                }).then(() => loadMatrix());
+            } else {
+                loadMatrix();
+            }
+        } else {
+            alert(data.message);
+        }
+    });
+}
 </script>
 {% endblock %}

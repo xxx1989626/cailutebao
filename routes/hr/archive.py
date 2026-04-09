@@ -25,6 +25,7 @@ def add_archive(cycle_id):
     record_type = request.form['record_type']
     title = request.form['title'].strip()
     description = request.form.get('description', '').strip()
+    record_date = request.form['record_date']
     
     # 处理多文件上传（替换原有单文件逻辑）
     file_paths = []
@@ -51,7 +52,7 @@ def add_archive(cycle_id):
         'title': title,
         'description': description,
         'file_paths': file_paths,  # 改为数组存储多文件路径
-        'date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'date': record_date,
         'operator': current_user.name,
         'operator_id': current_user.id
     }
@@ -71,7 +72,7 @@ def add_archive(cycle_id):
         action_type='添加档案',
         target_type='EmployeeArchive',
         target_id=cycle.id,
-        description=description_log,** locals()
+        description=description_log
     )
 
     # 提交变更
@@ -134,8 +135,10 @@ def edit_archive(cycle_id, record_idx):
     record = archives['archive_records'][record_idx]
 
     # 权限校验：仅创建者1小时内可编辑
+    record_date = request.form['record_date']
     if record['operator_id'] == current_user.id and is_within_hour(record['date']):
         # 更新基础信息
+        record['date'] = request.form['record_date']
         record['type'] = request.form['record_type']
         record['title'] = request.form['title'].strip()
         record['description'] = request.form.get('description', '').strip()

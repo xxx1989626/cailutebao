@@ -216,20 +216,9 @@ class ShiftSchedule(db.Model):
     employee_id = db.Column(db.Integer, db.ForeignKey('employment_cycles.id'), nullable=False)  # 关联员工ID（外键）
     post_id = db.Column(db.Integer, db.ForeignKey('shift_posts.id'))  # 关联排班岗位ID（外键）
     shift_type = db.Column(db.String(10))  # 班次类型
-    is_overtime = db.Column(db.Boolean, default=False)  # 是否加班
-    hours = db.Column(db.Float, default=12.0)  # 排班时长
-    start_time = db.Column(db.String(5), default="08:00")  # 班次实际开始时间
-    end_time = db.Column(db.String(5), default="20:00")  # 班次实际结束时间
-    is_duty_leader = db.Column(db.Boolean, default=False) # 是否值班领导
-    is_duty_chief = db.Column(db.Boolean, default=False)  # 是否值班长
+    hours = db.Column(db.Float, nullable=True, default=None)  # 加班时长
     employee = db.relationship('EmploymentCycle', backref='schedules')  # 建立与 EmploymentCycle 模型的关联关系
     post = db.relationship('ShiftPost', backref='schedules')  # 建立与 ShiftPost 模型的关联关系
-
-class ShiftTemplate(db.Model):
-    __tablename__ = 'shift_templates'  # 数据库表名
-    id = db.Column(db.Integer, primary_key=True)  # 主键ID
-    name = db.Column(db.String(100), nullable=False)  # 模板名称
-    data = db.Column(db.JSON) # 存储排班规则的 JSON 数据
 # ==================== 通知相关模型 ====================
 class Notification(db.Model):
     __tablename__ = 'notifications'  # 数据库表名

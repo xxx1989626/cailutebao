@@ -224,15 +224,26 @@ def save_shift():
     data = request.json
     try:
         date_obj = datetime.strptime(data['date'], '%Y-%m-%d').date()
-        shift = ShiftSchedule.query.filter_by(employee_id=int(data['user_id']), date=date_obj).first()
-        if not shift:
-            shift = ShiftSchedule(employee_id=int(data['user_id']), date=date_obj)
-        post = ShiftPost.query.get(int(data.get('post_id')))
-        default_hours = post.default_hours if post else 12.0
-        shift.post_id = int(data.get('post_id'))
-        shift.shift_type = data.get('shift_type', '白')
-        shift.is_overtime = data.get('is_overtime', False)
-        shift.hours = None
+        user_id = int(data['user_id'])
+        
+        # 1. 查询当天该员工的所有记录（包括纯加班记录）
+        shift = ShiftSchedule.query.filter_by(employee_id=user_id, date=date_obj).first()
+
+        if shift:
+            # --- 编辑模式：只更新【排班信息】，绝对不碰加班时长 hours ---
+            shift.post_id = int(data.get('post_id'))
+            shift.shift_type = data.get('shift_type', '白')
+            # ✅ 这里没有任何关于 hours 的代码，加班数据原封不动保留
+        else:
+            # --- 新建模式：只创建【排班记录】，加班字段留空 ---
+            shift = ShiftSchedule(
+                employee_id=user_id,
+                date=date_obj,
+                post_id=int(data.get('post_id')),
+                shift_type=data.get('shift_type', '白'),
+                hours=None  # 新建排班时加班为空，完全独立
+            )
+
         db.session.add(shift)
         db.session.commit()
         return jsonify({'success': True, 'shift_id': shift.id})
@@ -248,7 +259,16 @@ def delete_shift_by_date():
     data = request.json
     try:
         date_obj = datetime.strptime(data['date'], '%Y-%m-%d').date()
-        ShiftSchedule.query.filter_by(employee_id=int(data['user_id']), date=date_obj).delete()
+        user_id = int(data['user_id'])
+        
+        shift = ShiftSchedule.query.filter_by(employee_id=user_id, date=date_obj).first()
+        if shift:
+            if shift.hours is not None:
+                shift.post_id = None
+                shift.shift_type = None
+            else:
+                db.session.delete(shift)
+        
         db.session.commit()
         return jsonify({'success': True})
     except Exception as e:
@@ -263,7 +283,16 @@ def delete_overtime_by_date():
     data = request.json
     try:
         date_obj = datetime.strptime(data['date'], '%Y-%m-%d').date()
-        ShiftSchedule.query.filter_by(employee_id=int(data['user_id']), date=date_obj, is_overtime=True).delete()
+        user_id = int(data['user_id'])
+        
+        shift = ShiftSchedule.query.filter_by(employee_id=user_id, date=date_obj).first()
+        
+        if shift:
+            if shift.post_id is not None:
+                shift.hours = None
+            else:
+                db.session.delete(shift)
+        
         db.session.commit()
         return jsonify({'success': True})
     except Exception as e:
@@ -356,21 +385,25 @@ def import_schedule_data():
                 emp = EmploymentCycle.query.filter_by(name=emp_name, status='在职').first()
                 if emp:
                     s_type = '夜' if '夜' in post_name else '白'
-                    if not ShiftSchedule.query.filter_by(
-                        employee_id=emp.id, 
-                        date=current_date, 
-                        post_id=target_post.id).first():
+                    existing_shift = ShiftSchedule.query.filter_by(employee_id=emp.id, date=current_date).first()
+                    if existing_shift:
+                        existing_shift.post_id = target_post.id
+                        existing_shift.shift_type = s_type
+                    else:
                         db.session.add(ShiftSchedule(
-                            employee_id=emp.id, 
-                            date=current_date, 
-                            post_id=target_post.id, 
-                            shift_type=s_type, 
-                            hours=None))
-                        success_count += 1
-                else: missing_names.add(emp_name)
+                            employee_id=emp.id,
+                            date=current_date,
+                            post_id=target_post.id,
+                            shift_type=s_type,
+                            hours=None
+                        ))
+                    success_count += 1 
+                else:
+                    missing_names.add(emp_name)
         db.session.commit()
         res_msg = f"成功导入 {success_count} 条记录。"
-        if missing_names: res_msg += f" 未在系统找到员工：{', '.join(list(missing_names)[:5])}"
+        if missing_names:
+            res_msg += f" 未在系统找到员工：{', '.join(list(missing_names)[:5])}"
         return jsonify({'success': True, 'message': res_msg})
     except Exception as e:
         db.session.rollback()
