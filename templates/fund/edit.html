@@ -1,0 +1,249 @@
+<!-- templates/fund/edit.html -->
+{% extends "base.html" %}
+{% block title %}编辑资金记录{% endblock %}
+
+{% block content %}
+<style>
+    :root {
+        --success-color: #198754;
+        --primary-color: #0d6efd;
+        --danger-color: #dc3545;
+        --warning-color: #ffc107;
+        --border-radius: 8px;
+        --shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    }
+    
+    .card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        max-width: 900px;
+        margin: 0 auto;
+    }
+    
+    .card-header {
+        background: linear-gradient(135deg, var(--warning-color) 0%, #e0a800 100%) !important;
+        padding: 1rem 1.5rem;
+        border-bottom: none;
+    }
+    
+    .card-body {
+        padding: 2rem;
+    }
+    
+    h5.mb-3 {
+        font-weight: 600;
+        color: var(--warning-color);
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid rgba(255, 193, 7, 0.1);
+        margin-bottom: 1.5rem !important;
+        display: flex;
+        align-items: center;
+    }
+    
+    h5.mb-3 i {
+        margin-right: 0.5rem;
+    }
+    
+    .btn-warning {
+        border-radius: var(--border-radius);
+        padding: 0.75rem 1.5rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        box-shadow: 0 4px 6px rgba(255, 193, 7, 0.15);
+    }
+    
+    .btn-warning:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 10px rgba(255, 193, 7, 0.2);
+    }
+    
+    .btn-link {
+        color: #6c757d;
+        transition: all 0.2s ease;
+        border-radius: var(--border-radius);
+        padding: 0.75rem 1.5rem;
+    }
+    
+    .btn-link:hover {
+        color: #212529;
+        background-color: #f8f9fa;
+        text-decoration: none;
+    }
+    
+    .form-control:focus {
+        border-color: var(--warning-color);
+        box-shadow: 0 0 0 4px rgba(255, 193, 7, 0.1);
+    }
+    
+    .original-info {
+        background-color: #fff3cd;
+        border: 1px solid #ffc107;
+        border-radius: var(--border-radius);
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .original-info small {
+        color: #856404;
+    }
+</style>
+
+<div class="container mt-4 mb-5">
+    <div class="card shadow border-0">
+        <div class="card-header bg-warning text-dark py-3">
+            <h4 class="mb-0"><i class="bi bi-pencil-square"></i> 编辑财务记录</h4>
+        </div>
+        <div class="card-body p-4">
+            <!-- 原始信息提示 -->
+            <div class="original-info">
+                <small><i class="bi bi-info-circle me-1"></i> 正在编辑记录 ID: {{ record.id }}，修改后余额将自动重新计算</small>
+            </div>
+            
+            <form action="{{ url_for('fund.fund_edit', record_id=record.id) }}" method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
+                <div class="mb-4">
+                    <h5 class="mb-3 text-warning border-bottom pb-2">
+                        <i class="bi bi-receipt"></i> 收支详情
+                    </h5>
+                    
+                    <!-- 财务日期 -->
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">
+                                财务日期 <span class="text-danger">*</span>
+                            </label>
+                            <input type="date" name="date" class="form-control" 
+                                   value="{{ record.date.strftime('%Y-%m-%d') if record.date else '' }}" required>
+                            <div class="invalid-feedback">请选择财务日期</div>
+                        </div>
+                        
+                        <!-- 资方/付款人 -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">
+                                资方/付款人 <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" name="payer" class="form-control" 
+                                   value="{{ record.payer }}" placeholder="如：特保队、某某公司" required>
+                            <div class="invalid-feedback">请输入资方/付款人信息</div>
+                        </div>
+                        
+                        <!-- 费用项目 -->
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold">
+                                费用项目 <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" name="item" class="form-control" 
+                                   value="{{ record.item }}" placeholder="如：采购资产支出、日常办公支出" required>
+                            <div class="invalid-feedback">请输入费用项目说明</div>
+                        </div>
+                        
+                        <!-- 金额 -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">
+                                金额 (元) <span class="text-danger">*</span>
+                                <i class="bi bi-exclamation-triangle text-warning ms-1" 
+                                   data-bs-toggle="tooltip" data-bs-title="支出填负数，收入填正数"></i>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text {% if record.amount >= 0 %}bg-success text-white{% else %}bg-danger text-white{% endif %} rounded-start-3">¥</span>
+                                <input type="number" step="0.01" name="amount" id="edit_amount"
+                                       class="form-control {% if record.amount >= 0 %}border-success{% else %}border-danger{% endif %} rounded-end-3"
+                                       value="{{ record.amount }}" 
+                                       placeholder="支出填负数，收入填正数" required>
+                            </div>
+                            <div class="invalid-feedback">请输入有效的金额</div>
+                        </div>
+                        
+                        <!-- 凭证上传 -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">凭证附件</label>
+                            {% if record.attachment and record.attachment|length > 0 %}
+                            <div class="mb-2">
+                                <small class="text-muted">已有附件：</small>
+                                <div class="d-flex flex-wrap gap-2 mt-1">
+                                    {% for path in record.attachment %}
+                                    <a href="/{{ path }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-file-earmark"></i> {{ path.split('/')[-1] }}
+                                    </a>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+                            <input type="file" name="attachment" class="form-control" 
+                                   accept="image/*,.pdf,.zip,.rar,.doc,.docx,.xls,.xlsx" multiple>
+                            <div class="form-text">可添加新附件，原有附件保留</div>
+                        </div>
+                        
+                        <!-- 备注 -->
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold">财务备注</label>
+                            <textarea name="note" class="form-control" rows="3"
+                                      placeholder="填写相关的报销说明、流水号、审批人等备注信息...">{{ record.note or '' }}</textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-warning btn-lg shadow">
+                        <i class="bi bi-save"></i> 保存修改
+                    </button>
+                    <a href="{{ url_for('fund.fund_list') }}" class="btn btn-link text-muted">取消返回</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    // 初始化工具提示
+    const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    const tooltipList = [...tooltipTriggerList].map(el => new bootstrap.Tooltip(el));
+    
+    // 金额输入框样式动态切换
+    $('#edit_amount').on('input', function() {
+        const val = parseFloat($(this).val());
+        const group = $(this).prev('.input-group-text');
+        
+        if (val >= 0) {
+            group.removeClass('bg-danger').addClass('bg-success');
+            $(this).removeClass('border-danger').addClass('border-success');
+        } else {
+            group.removeClass('bg-success').addClass('bg-danger');
+            $(this).removeClass('border-success').addClass('border-danger');
+        }
+    });
+    
+    // Bootstrap表单验证
+    (() => {
+        'use strict'
+        const forms = document.querySelectorAll('.needs-validation')
+        Array.from(forms).forEach(form => {
+            form.addEventListener('submit', event => {
+                if (!form.checkValidity()) {
+                    event.preventDefault()
+                    event.stopPropagation()
+                }
+                form.classList.add('was-validated')
+            }, false)
+        })
+    })();
+    
+    // 提交确认
+    $('form').on('submit', function(e) {
+        if (!confirm('确认保存修改？修改后系统将重新计算所有余额。')) {
+            e.preventDefault();
+            return false;
+        }
+        
+        // 禁用按钮防止重复提交
+        $(this).find('button[type="submit"]').prop('disabled', true).html(
+            '<i class="bi bi-hourglass-split me-2"></i> 保存中...'
+        );
+    });
+});
+</script>
+{% endblock %}
+{% endblock %}

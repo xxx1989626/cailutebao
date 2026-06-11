@@ -450,6 +450,7 @@
     <hr class="my-4">
 
     <!-- 薪资计算模式、职位信息 -->
+    {% if perm.can('hr.view') %}
     <h5 class="form-section-title admin-only">
         <i class="bi bi-briefcase me-2"></i>工作信息
     </h5>
@@ -484,6 +485,8 @@
                 value="{{ employee.hire_date.strftime('%Y-%m-%d') if employee.hire_date and employee.hire_date is not string else (employee.hire_date[:10] if employee.hire_date else '') }}" min="0001-01-01" max="9999-12-31">
         </div>
     </div>
+        </div>
+    {% endif %}
 
     <!-- 紧急联系人 + 工作服尺码 -->
     <div class="row g-4 mt-4">

@@ -108,20 +108,21 @@ def get_matrix_data():
 
     # 3. 执行四级排序逻辑
     def sort_key(emp):
-        """
-        排序逻辑：
-        p1: 薪资模式权重
-        p2: 职位权重
-        p3: 班组权重
-        p4: 数据库ID (作为同条件下的固定唯一顺序)
-        """
-        p1 = SALARY_MAP.get(emp.salary_mode, 99)
-        p2 = POSITION_MAP.get(emp.position, 99)
-        # 注意：这里假设你的模型中班组字段名为 post，如果实际是 group 或其他请对应修改
+
+        p1 = POSITION_MAP.get(emp.position, 99)
+        p2 = SALARY_MAP.get(emp.salary_mode, 99)
         p3 = GROUP_MAP.get(emp.post, 99)
-        p4 = emp.id  # 同条件下，按入职先后(ID大小)固定死，不随刷新变动
+        p4 = emp.id  
+                # ============= 固定白班在前，夜班在后 =============
+        shift_order = 0  # 0=白班，1=夜班
+        if emp.schedules:
+            month_schedules = [s for s in emp.schedules if s.date.strftime("%Y-%m") == month_str]
+            if month_schedules and month_schedules[0].post:
+                post_name = month_schedules[0].post.name
+                if "夜班" in post_name:
+                    shift_order = 1
         
-        return (p1, p2, p3, p4)
+        return (p3, shift_order, p1, p2, p4)
 
     # 应用排序
     employees = sorted(employees_query, key=sort_key)

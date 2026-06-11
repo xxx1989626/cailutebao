@@ -264,7 +264,8 @@
                             <th>类型</th>
                             <th>操作人</th>
                             <th>备注</th>
-                            <th>凭证</th> 
+                            <th>凭证</th>
+                            <th>操作</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -319,6 +320,19 @@
     <span class="text-muted small">无</span>
     {% endif %}
 </td>
+                                <!-- 操作按钮 -->
+                                <td>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <a href="{{ url_for('fund.fund_edit', record_id=r.id) }}" 
+                                           class="btn btn-outline-warning" title="编辑">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-outline-danger" 
+                                                onclick="confirmDelete({{ r.id }})" title="删除">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
                             </tr>
                             {% endfor %}
                         {% else %}
@@ -343,8 +357,21 @@
     </div>
 </div>
 
+<!-- 删除确认表单（隐藏） -->
+<form id="deleteForm" method="POST" style="display: none;">
+</form>
+
 <!-- 交互增强脚本 -->
 <script>
+    // 删除确认函数
+    function confirmDelete(recordId) {
+        if (confirm('确定要删除这条财务记录吗？删除后系统将重新计算所有余额。此操作不可撤销！')) {
+            const form = document.getElementById('deleteForm');
+            form.action = `/fund/delete/${recordId}`;
+            form.submit();
+        }
+    }
+    
     document.addEventListener('DOMContentLoaded', function() {
         // 筛选表单提交优化
         const filterForm = document.querySelector('form[method="GET"]');

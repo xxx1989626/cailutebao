@@ -1,17 +1,35 @@
 #D:\cailu\cailutebao\routes\fund.py
-# 资金管理模块
+# 资金管理模块 - 修复版（余额计算逻辑修正）
 
 import os
+import json
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, current_app
 from flask_login import login_required, current_user
-from models import db, FundsRecord, Asset
-from utils import parse_date, format_date, perm, log_action, today_str
+from models import db, FundsRecord, Asset, User
+from utils import parse_date, format_date, perm, log_action, today_str, save_uploaded_file
 from datetime import datetime
 from io import BytesIO
 import pandas as pd
 from werkzeug.utils import secure_filename
 
 fund_bp = Blueprint('fund', __name__, url_prefix='/fund')
+
+# ==================== 核心余额重算函数 ====================
+def recalculate_balances():
+    """
+    按日期顺序重新计算所有余额，确保数据一致性。
+    在新增、导入、编辑、删除记录后调用。
+    """
+    # 按日期升序、ID升序获取所有记录
+    records = FundsRecord.query.order_by(FundsRecord.date.asc(), FundsRecord.id.asc()).all()
+    
+    running_balance = 0.0
+    for record in records:
+        running_balance += record.amount
+        record.balance = running_balance
+    
+    db.session.flush()
+    return running_balance  # 返回最终余额
 
 # ==================== 资金收支列表 ====================
 @fund_bp.route('/list')
@@ -22,6 +40,8 @@ def fund_list():
     date_filter = request.args.get('date')
     payer_filter = request.args.get('payer')
     item_filter = request.args.get('item')
+    page = request.args.get('page', 1, type=int)
+    per_page = 20  # 每页显示20条
     
     # 自定义排序
     sort = request.args.get('sort', 'date_desc')
@@ -47,11 +67,17 @@ def fund_list():
     if item_filter:
         query = query.filter(FundsRecord.item.ilike(f'%{item_filter}%'))
     
-    records = query.order_by(order).all()
-    total_balance = db.session.query(db.func.sum(FundsRecord.amount)).scalar() or 0
+    # 使用分页
+    pagination = query.order_by(order).paginate(page=page, per_page=per_page, error_out=False)
+    records = pagination.items
+    
+    # 使用最新记录的余额作为总余额（更准确）
+    latest_record = FundsRecord.query.order_by(FundsRecord.date.desc(), FundsRecord.id.desc()).first()
+    total_balance = latest_record.balance if latest_record else 0
     
     return render_template('fund/list.html',
                            records=records,
+                           pagination=pagination,
                            total_balance=total_balance,
                            date_filter=date_filter,
                            payer_filter=payer_filter,
@@ -64,7 +90,6 @@ def perform_fund_save(form_data, operator_id, files=None):
     财务核心保存逻辑：从 form_data 读数据，执行财务入库。
     """
     # 1. 金额提取与计算逻辑
-    # 优先取财务片段的 'amount'，若无则由资产片段的 'unit_price' * 'quantity' 计算
     if form_data.get('amount'):
         amount = float(form_data.get('amount'))
     elif form_data.get('unit_price') and form_data.get('quantity'):
@@ -89,11 +114,10 @@ def perform_fund_save(form_data, operator_id, files=None):
 
     # 4. 附件/凭证上传逻辑
     attachment_paths = []
-    if 'attachment' in request.files:
-        uploaded_files = request.files.getlist('attachment')
+    if files and 'attachment' in files:
+        uploaded_files = files.getlist('attachment')
         for file in uploaded_files:
             if file and file.filename != '':
-                from utils import save_uploaded_file
                 path = save_uploaded_file(file, module='funds')
                 if path:
                     attachment_paths.append(path)
@@ -101,7 +125,6 @@ def perform_fund_save(form_data, operator_id, files=None):
     delete_attachments = form_data.get('delete_attachments')
     if delete_attachments:
         try:
-            import json
             paths_to_delete = json.loads(delete_attachments)
             from routes.leave import delete_physical_file
             for path in paths_to_delete:
@@ -109,28 +132,26 @@ def perform_fund_save(form_data, operator_id, files=None):
         except:
             pass
 
-    # 5. 余额计算（基于最新一条记录）
-    last_record = FundsRecord.query.order_by(FundsRecord.date.desc(), FundsRecord.id.desc()).first()
-    last_balance = last_record.balance if last_record else 0
-    new_balance = last_balance + amount
-
-    # 6. 创建财务记录
+    # 5. 创建财务记录（余额暂设为0，后续统一重算）
     record = FundsRecord(
         date=record_datetime,
         payer=payer,
         item=item,
         amount=amount,
         note=note,
-        balance=new_balance,
+        balance=0,  # 临时值，稍后重算
         attachment=attachment_paths,
         operator_id=operator_id,
     )
     db.session.add(record)
     db.session.flush()
+    
+    # 6. 重新计算所有余额（确保一致性）
+    recalculate_balances()
+    
     return record
 
 # ==================== 添加收支记录 ====================
-
 @fund_bp.route('/get_form_snippet')
 @login_required
 def get_fund_form_snippet():
@@ -149,7 +170,6 @@ def fund_add():
             sync_msg = ""
             if request.form.get('sync_asset') == 'on':
                 from .asset import perform_asset_save
-                # 调用资产保存函数
                 perform_asset_save(request.form, request.files)
                 sync_msg = "，并已同步登记资产入库"
 
@@ -172,67 +192,149 @@ def fund_add():
 
     return render_template('fund/add.html', default_date=today_str())
 
-# ==================== 3. 批量导入（全格式日期兼容版） ====================
+# ==================== 编辑收支记录 ====================
+@fund_bp.route('/edit/<int:record_id>', methods=['GET', 'POST'])
+@login_required
+@perm.require('fund.edit')
+def fund_edit(record_id):
+    record = FundsRecord.query.get_or_404(record_id)
+    
+    if request.method == 'POST':
+        try:
+            # 更新字段
+            record.date = datetime.combine(parse_date(request.form.get('date')), datetime.now().time())
+            record.payer = request.form.get('payer')
+            record.item = request.form.get('item')
+            record.amount = float(request.form.get('amount'))
+            record.note = request.form.get('note', '')
+            
+            # 处理附件
+            if 'attachment' in request.files:
+                uploaded_files = request.files.getlist('attachment')
+                for file in uploaded_files:
+                    if file and file.filename != '':
+                        path = save_uploaded_file(file, module='funds')
+                        if path:
+                            if record.attachment:
+                                record.attachment.append(path)
+                            else:
+                                record.attachment = [path]
+            
+            # 重新计算所有余额
+            recalculate_balances()
+            
+            log_action(
+                action_type="财务编辑",
+                target_type="FundsRecord",
+                target_id=record.id,
+                description=f"修改记录 {record.item} 金额 {record.amount}"
+            )
+            
+            db.session.commit()
+            flash('财务记录已更新', 'success')
+            return redirect(url_for('fund.fund_list'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'更新失败：{str(e)}', 'danger')
+    
+    return render_template('fund/edit.html', record=record)
+
+# ==================== 删除收支记录 ====================
+@fund_bp.route('/delete/<int:record_id>', methods=['POST'])
+@login_required
+@perm.require('fund.delete')
+def fund_delete(record_id):
+    record = FundsRecord.query.get_or_404(record_id)
+    
+    try:
+        log_action(
+            action_type="财务删除",
+            target_type="FundsRecord",
+            target_id=record.id,
+            description=f"删除记录 {record.item} 金额 {record.amount}"
+        )
+        
+        db.session.delete(record)
+        
+        # 删除后重新计算所有余额
+        recalculate_balances()
+        
+        db.session.commit()
+        flash('财务记录已删除', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'删除失败：{str(e)}', 'danger')
+    
+    return redirect(url_for('fund.fund_list'))
+
+# ==================== 批量导入 ====================
 @fund_bp.route('/import', methods=['GET', 'POST'])
 @login_required
 @perm.require('fund.import')
 def fund_import():
-    from models import User
     if request.method == 'POST':
         file = request.files.get('file')
-        if not file: return redirect(request.url)
+        if not file:
+            flash('请选择文件', 'warning')
+            return redirect(request.url)
         
         try:
             df = pd.read_excel(file)
             df.columns = [col.strip() for col in df.columns]
             
-            last_rec = FundsRecord.query.order_by(FundsRecord.id.desc()).first()
-            current_bal = last_rec.balance if last_rec else 0
+            # 验证必要列
+            required_cols = ['日期', '资方', '项目', '金额']
+            missing = [c for c in required_cols if c not in df.columns]
+            if missing:
+                flash(f'Excel缺少必要列：{missing}', 'danger')
+                return redirect(request.url)
             
+            imported_count = 0
             for idx, row in df.iterrows():
-                amt = float(row['金额'])
-                current_bal += amt
-                
-                # --- 1. 处理操作人 ---
+                # 处理操作人
                 op_name = str(row.get('操作人', '')).strip()
                 user = User.query.filter_by(name=op_name).first()
                 final_op_id = user.id if user else current_user.id
                 
-                # --- 2. 处理凭证文件名 (解决 final_attachment 定义问题) ---
+                # 处理凭证
                 excel_attachment = str(row.get('凭证', '')).strip()
-                # 预设变量，确保它一定被定义
-                current_attachment_value = None 
+                attachment_value = None
+                if excel_attachment and excel_attachment.lower() not in ['nan', '无', '']:
+                    attachment_value = excel_attachment
                 
-                # 只要不是无效字符，就取 Excel 里的文件名
-                if excel_attachment and excel_attachment.lower() != 'nan' and excel_attachment != '无':
-                    current_attachment_value = excel_attachment
-
                 record = FundsRecord(
                     date=pd.to_datetime(row['日期']).to_pydatetime(),
                     payer=str(row['资方']).strip(),
                     item=str(row['项目']).strip(),
-                    amount=amt,
+                    amount=float(row['金额']),
                     note=str(row.get('备注', '')).strip() if pd.notna(row.get('备注')) else '',
-                    balance=current_bal,
-                    attachment=current_attachment_value, # 存入文件名，网页就会生成链接
+                    balance=0,  # 临时值，稍后统一重算
+                    attachment=attachment_value,
                     operator_id=final_op_id
                 )
                 db.session.add(record)
+                imported_count += 1
+            
+            # 导入完成后，统一重算所有余额
+            final_balance = recalculate_balances()
             
             db.session.commit()
-            flash('数据导入成功，凭证链接已关联', 'success')
+            flash(f'成功导入 {imported_count} 条记录，当前余额：{final_balance:.2f} 元', 'success')
             return redirect(url_for('fund.fund_list'))
+            
         except Exception as e:
             db.session.rollback()
             flash(f'导入失败：{str(e)}', 'danger')
             
     return render_template('fund/import.html')
-# ==================== 4. 导出清单 ====================
+
+# ==================== 导出清单 ====================
 @fund_bp.route('/export')
 @login_required
 @perm.require('fund.export')
 def fund_export():
-    # 获取当前筛选下的所有记录
     records = FundsRecord.query.order_by(FundsRecord.date.desc()).all()
     
     data = []
@@ -249,7 +351,6 @@ def fund_export():
         })
     
     df = pd.DataFrame(data)
-    # 按照你要求的顺序重新排序列（确保万一）
     column_order = ['日期', '资方', '项目', '金额', '类型', '操作人', '备注', '凭证']
     df = df[column_order]
 
@@ -263,9 +364,12 @@ def fund_export():
                      download_name=f"财务导出_{curr_time}.xlsx",
                      mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
+# ==================== 权限定义 ====================
 FUND_PERMISSIONS = [
     ('view', '查看资金', '查看资金收支列表'),
     ('add', '新增资金', '手动添加收支记录'),
+    ('edit', '编辑资金', '修改收支记录'),
+    ('delete', '删除资金', '删除收支记录'),
     ('import', '导入资金', '通过Excel批量导入'),
     ('export', '导出资金', '导出资金明细到Excel'),
 ]
