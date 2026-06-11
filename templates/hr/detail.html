@@ -561,11 +561,11 @@
                                             </p>
                                             {% endif %}
                                     
-                                            {% if record.file_path %}
+                                            {% if record.file_paths %}
                                             <div class="mt-2">
                                                 <label class="small fw-bold text-muted">附件：</label>
                                                 <div class="d-flex flex-wrap gap-2 mt-1">
-                                                    {% set paths = record.file_path if record.file_path is iterable and record.file_path is not string else [record.file_path] %}
+                                                    {% set paths = record.file_paths if record.file_paths is iterable and record.file_paths is not string else [record.file_paths] %}
                                                     {% for path in paths %}
                                                     {% if path.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp')) %}
                                                     <a href="/{{ path }}" target="_blank" class="d-inline-block">

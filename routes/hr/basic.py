@@ -268,6 +268,20 @@ def hr_detail(id_card):
         flash('未找到该身份证记录', 'warning')
         return redirect(url_for('hr.hr_list'))
     
+    # 自动清理已批准/已拒绝的变更申请状态，避免提示一直显示
+    for cycle in cycles:
+        if cycle.status == '在职' and cycle.pending_status in ('approved', 'rejected'):
+            cycle.pending_status = 'none'
+            cycle.pending_changes = None
+            cycle.pending_approved_by = None
+            cycle.pending_approved_at = None
+    
+    # 提交清理操作
+    try:
+        db.session.commit()
+    except:
+        db.session.rollback()
+    
     # 获取当前在职周期
     current_cycle = next((c for c in cycles if c.status == '在职'), None)
     associated_user = User.query.filter_by(username=current_cycle.id_card).first() if current_cycle else None
