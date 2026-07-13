@@ -261,6 +261,22 @@ class LeaveRecord(db.Model):
     attachments = db.Column(db.JSON, default=[])          # 附件
     created_at = db.Column(db.DateTime, default=datetime.now)  # 请假记录创建时间
     is_reported = db.Column(db.Boolean, default=False, comment='是否上报：False=未上报，True=已上报')  # 布尔类型，默认未上报
+# ==================== 证件管理模型 ====================
+class EmployeeDocument(db.Model):
+    __tablename__ = 'employee_documents'
+    id = db.Column(db.Integer, primary_key=True)
+    cycle_id = db.Column(db.Integer, db.ForeignKey('employment_cycles.id'), nullable=False)
+    cycle = db.relationship('EmploymentCycle', backref='documents')
+    doc_type = db.Column(db.String(50), nullable=False)
+    doc_number = db.Column(db.String(100))
+    issue_date = db.Column(db.Date)
+    expire_date = db.Column(db.Date)
+    front_image = db.Column(db.String(255))
+    back_image = db.Column(db.String(255))
+    note = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
 # ==================== 聊天模型 ====================
 class ChatMessage(db.Model):
     __tablename__ = 'chat_messages'  # 数据库表名

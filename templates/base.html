@@ -223,16 +223,30 @@
                             <i class="bi bi-house me-1"></i> 首页看板
                         </a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item dropdown">
                         {% if current_user.is_authenticated %}
                             {% if perm.can('hr.view') %}
-                                <a class="nav-link {% if request.endpoint == 'hr.hr_list' %}active{% endif %}" 
-                                   href="{{ url_for('hr.hr_list') }}">
+                                <a class="nav-link dropdown-toggle {% if request.endpoint and 'hr.' in request.endpoint %}active{% endif %}" 
+                                   data-bs-toggle="dropdown" href="#" role="button">
                                     <i class="bi bi-people me-1"></i> 人事管理
                                     {% if pending_count > 0 %}
                                         <span class="badge bg-danger rounded-pill ms-1">{{ pending_count }}</span>
                                     {% endif %}
                                 </a>
+                                <ul class="dropdown-menu">
+                                    <li>
+                                        <a class="dropdown-item {% if request.endpoint == 'hr.hr_list' %}active{% endif %}" 
+                                           href="{{ url_for('hr.hr_list') }}">
+                                            <i class="bi bi-person-lines-fill me-2"></i>员工花名册
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item {% if request.endpoint and 'document.' in request.endpoint %}active{% endif %}" 
+                                           href="{{ url_for('hr.document_list') }}">
+                                            <i class="bi bi-file-earmark-text me-2"></i>证件管理
+                                        </a>
+                                    </li>
+                                </ul>
                             {% else %}
                                 <a class="nav-link {% if request.endpoint == 'hr.hr_detail' %}active{% endif %}" 
                                    href="{{ url_for('hr.hr_detail', id_card=current_user.username) }}">

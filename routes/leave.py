@@ -77,6 +77,7 @@ def leave_list():
         records = LeaveRecord.query.filter_by(user_id=u_id).order_by(LeaveRecord.start_date.asc()).all()
         
         real_count = 0
+        total_days = 0
         last_end_date = None
         
         for r in records:
@@ -85,10 +86,17 @@ def leave_list():
             
             if last_end_date is None or r.end_date > last_end_date:
                 last_end_date = r.end_date
+            
+            # 累加请假天数
+            if r.total_days is not None:
+                total_days += r.total_days
+            elif r.end_date and r.start_date:
+                total_days += (r.end_date - r.start_date).days + 1
                 
         user_leave_stats[u_id] = {
             'name': emp_obj.name, 
-            'count': real_count
+            'count': real_count,
+            'days': round(total_days, 1)
         }
 
     sorted_stats = dict(sorted(user_leave_stats.items(), key=lambda x: x[1]['count'], reverse=True))

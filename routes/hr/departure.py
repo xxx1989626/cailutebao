@@ -135,6 +135,7 @@ def departure(cycle_id):
         action_type='人员离职',
         target_type='Employee',
         target_id=cycle.id,
+        cycle_id=cycle.id,
         description=log_description,** locals()
     )
 

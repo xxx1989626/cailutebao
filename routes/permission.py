@@ -70,6 +70,8 @@ def permission_update():
     try:
         target_user_id = int(float(raw_id))
         target_user = User.query.get_or_404(target_user_id)
+        emp_cycle = EmploymentCycle.query.filter_by(id_card=target_user.username).first()
+        cycle_id = emp_cycle.id if emp_cycle else None
         
         # 2. 获取旧权限列表（用于差异对比）
         # 假设 UserPermission 关联了 Permission 表，我们取权限名称
@@ -110,7 +112,7 @@ def permission_update():
             target_type='UserPermission',
             target_id=target_user_id,
             description=log_desc,
-            **locals()
+            cycle_id=cycle_id,
         )
 
         db.session.commit()

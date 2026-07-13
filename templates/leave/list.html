@@ -220,7 +220,7 @@
             {% for uid, stats in user_leave_stats.items() %}
             <span class="badge rounded-pill bg-white text-dark border px-3 py-2 shadow-sm hover-scale">
                 <span class="text-primary fw-bold">{{ stats.name }}</span>: 
-                <span class="badge bg-primary ms-1">{{ stats.count }} 次</span>
+                <span class="badge bg-primary ms-1">{{ stats.count }} 次/{{ stats.days }} 天</span>
             </span>
             {% endfor %}
         </div>

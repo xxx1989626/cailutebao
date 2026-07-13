@@ -1,0 +1,71 @@
+<!-- templates/hr/document/add.html -->
+{% extends "base.html" %}
+
+{% block title %}添加证件{% endblock %}
+
+{% block content %}
+<style>
+    .doc-img { max-width: 200px; }
+</style>
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white border-bottom">
+                <h5 class="mb-0 fw-bold text-dark">
+                    <i class="bi bi-plus-lg me-2"></i>添加证件 - {{ cycle.name }}
+                </h5>
+            </div>
+            
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="mb-4">
+                        <label class="form-label">证件类型 <span class="text-danger">*</span></label>
+                        <select name="doc_type" class="form-select" title="证件类型" required>
+                            {% for t in doc_types %}
+                            <option value="{{ t }}">{{ t }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label">证件号码</label>
+                        <input type="text" name="doc_number" class="form-control" placeholder="请输入证件号码">
+                    </div>
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label">发证日期</label>
+                            <input type="date" name="issue_date" class="form-control" min="0001-01-01" max="9999-12-31" title="发证日期">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">有效期至</label>
+                            <input type="date" name="expire_date" class="form-control" min="0001-01-01" max="9999-12-31" title="有效期至">
+                            <small class="text-muted">不填表示长期有效</small>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label">证件正面照片</label>
+                        <input type="file" name="front_image" class="form-control" accept="image/*" title="证件正面照片">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label">证件反面照片</label>
+                        <input type="file" name="back_image" class="form-control" accept="image/*" title="证件反面照片">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label">备注</label>
+                        <textarea name="note" class="form-control" rows="3" placeholder="其他说明"></textarea>
+                    </div>
+                    
+                    <div class="d-flex gap-3">
+                        <button type="submit" class="btn btn-primary flex-1">保存</button>
+                        <a href="{{ url_for('hr.hr_detail', id_card=cycle.id_card) }}" class="btn btn-secondary">取消</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

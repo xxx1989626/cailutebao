@@ -441,6 +441,9 @@ def start_heartbeat_logger(interval=60):
 def init_app():
     """应用初始化（封装核心逻辑）"""
     with app.app_context():
+        # 创建所有表（如果不存在）
+        db.create_all()
+        
         # 动态注册权限
         try:
             from routes.hr.permissions import HR_PERMISSIONS

@@ -230,7 +230,6 @@ def log_action(action_type, target_type, target_id, description, **kwargs):
             notify_content = f"""
             <p>操作人：{current_user.name}</p>
             <p>操作类型：{action_type}</p>
-            <p>操作对象：{target_type}（ID：{target_id}）</p>
             <p>被操作人：{operated_user_name}</p>
             <p>操作详情：{description}</p>
             <p>操作时间：{format_datetime(datetime.now())}</p>
@@ -312,6 +311,17 @@ def cleanup_isolated_files():
                     used_files.add(norm)
                 except Exception:
                     pass
+
+        # 自动扫描：遍历所有模型的所有字符串字段，识别包含 uploads 路径的文件
+        # 避免遗漏新模块的文件字段（如证件照片、档案附件等）
+        for model_cls in db.Model.__subclasses__():
+            for col in model_cls.__table__.columns:
+                if hasattr(col.type, 'python_type') and col.type.python_type in (str,):
+                    for (val,) in db.session.query(col).filter(col.isnot(None)).all():
+                        if isinstance(val, str) and 'uploads' in val.lower():
+                            add_to_used(val)
+                        elif isinstance(val, (list, tuple)):
+                            add_to_used(list(val))
 
         # 1. 扫描资产图片
         assets = db.session.query(Asset.photo_path).filter(Asset.photo_path.isnot(None)).all()
