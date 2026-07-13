@@ -1,0 +1,82 @@
+<!-- templates/hr/document/_document_form.html -->
+<!-- 公共证件表单：新增/编辑/审批共用 -->
+<!-- 变量: mode('add'/'edit'/'view'), document, cycle, doc_types -->
+<style>
+    .doc-img { max-width: 200px; }
+    .change-diff { background: #fff3cd; padding: 2px 6px; border-radius: 3px; }
+    .old-value { text-decoration: line-through; color: #999; }
+    .new-value { color: #0d6efd; font-weight: 500; }
+</style>
+
+<div class="mb-4">
+    <label class="form-label">证件类型 <span class="text-danger">*</span></label>
+    {% if mode == 'view' %}
+    <input type="text" class="form-control" value="{{ document.doc_type }}" readonly disabled>
+    {% else %}
+    <select name="doc_type" class="form-select" title="证件类型" required {% if mode == 'view' %}disabled{% endif %}>
+        {% for t in doc_types %}
+        <option value="{{ t }}" {% if document and document.doc_type == t %}selected{% endif %}>{{ t }}</option>
+        {% endfor %}
+    </select>
+    {% endif %}
+</div>
+
+<div class="mb-4">
+    <label class="form-label">证件号码</label>
+    <input type="text" name="doc_number" class="form-control" placeholder="请输入证件号码"
+           value="{{ document.doc_number if document else '' }}" {% if mode == 'view' %}readonly disabled{% endif %}>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <label class="form-label">发证日期</label>
+        <input type="date" name="issue_date" class="form-control" min="0001-01-01" max="9999-12-31" title="发证日期"
+               value="{{ document.issue_date.strftime('%Y-%m-%d') if document and document.issue_date else '' }}"
+               {% if mode == 'view' %}readonly disabled{% endif %}>
+    </div>
+    <div class="col-md-6">
+        <label class="form-label">有效期至</label>
+        <input type="date" name="expire_date" class="form-control" min="0001-01-01" max="9999-12-31" title="有效期至"
+               value="{{ document.expire_date.strftime('%Y-%m-%d') if document and document.expire_date else '' }}"
+               {% if mode == 'view' %}readonly disabled{% endif %}>
+        <small class="text-muted">不填表示长期有效</small>
+    </div>
+</div>
+
+<div class="mb-4">
+    <label class="form-label">证件正面照片</label>
+    {% if mode == 'view' %}
+        {% if document and document.front_image %}
+        <img src="/{{ document.front_image }}" class="img-thumbnail" style="max-width: 200px;" alt="证件正面照片">
+        {% else %}
+        <span class="text-muted">暂无照片</span>
+        {% endif %}
+    {% else %}
+        {% set name = 'front_image' %}
+        {% set existing_attachments = [document.front_image] if document and document.front_image else [] %}
+        {% set accept = 'image/*' %}
+        {% include '_attachment.html' %}
+    {% endif %}
+</div>
+
+<div class="mb-4">
+    <label class="form-label">证件反面照片</label>
+    {% if mode == 'view' %}
+        {% if document and document.back_image %}
+        <img src="/{{ document.back_image }}" class="img-thumbnail" style="max-width: 200px;" alt="证件反面照片">
+        {% else %}
+        <span class="text-muted">暂无照片</span>
+        {% endif %}
+    {% else %}
+        {% set name = 'back_image' %}
+        {% set existing_attachments = [document.back_image] if document and document.back_image else [] %}
+        {% set accept = 'image/*' %}
+        {% include '_attachment.html' %}
+    {% endif %}
+</div>
+
+<div class="mb-4">
+    <label class="form-label">备注</label>
+    <textarea name="note" title="备注" class="form-control" rows="3" placeholder="其他说明"
+              {% if mode == 'view' %}readonly disabled{% endif %}>{{ document.note if document else '' }}</textarea>
+</div>

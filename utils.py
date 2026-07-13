@@ -312,65 +312,32 @@ def cleanup_isolated_files():
                 except Exception:
                     pass
 
-        # 自动扫描：遍历所有模型的所有字符串字段，识别包含 uploads 路径的文件
-        # 避免遗漏新模块的文件字段（如证件照片、档案附件等）
+        # 自动扫描：遍历所有模型的所有字段，识别包含 uploads 路径的文件
+        # 支持字符串、列表、JSON 嵌套等多种格式
+        def scan_value(val):
+            if not val:
+                return
+            if isinstance(val, str):
+                if 'uploads' in val.lower():
+                    add_to_used(val)
+                # 尝试解析 JSON
+                if val.strip().startswith('[') or val.strip().startswith('{'):
+                    try:
+                        parsed = json.loads(val)
+                        scan_value(parsed)
+                    except:
+                        pass
+            elif isinstance(val, (list, tuple)):
+                for item in val:
+                    scan_value(item)
+            elif isinstance(val, dict):
+                for k, v in val.items():
+                    scan_value(v)
+
         for model_cls in db.Model.__subclasses__():
             for col in model_cls.__table__.columns:
-                if hasattr(col.type, 'python_type') and col.type.python_type in (str,):
-                    for (val,) in db.session.query(col).filter(col.isnot(None)).all():
-                        if isinstance(val, str) and 'uploads' in val.lower():
-                            add_to_used(val)
-                        elif isinstance(val, (list, tuple)):
-                            add_to_used(list(val))
-
-        # 1. 扫描资产图片
-        assets = db.session.query(Asset.photo_path).filter(Asset.photo_path.isnot(None)).all()
-        for (p,) in assets: 
-            add_to_used(p)
-
-        # 2. 扫描资金附件
-        funds = db.session.query(FundsRecord.attachment).filter(FundsRecord.attachment.isnot(None)).all()
-        for (p,) in funds:
-            if isinstance(p, str):
-                # 兼容旧路径格式
-                p_lower = p.lower()
-                p_full = p if p_lower.startswith('uploads') else os.path.join('uploads', 'funds', p)
-                add_to_used(p_full)
-            else:
-                add_to_used(p)
-
-        # 3. 扫描员工档案图片及附件
-        employees = db.session.query(EmploymentCycle.photo_path, EmploymentCycle.archives).all()
-        for photo, archives_json in employees:
-            if photo: 
-                add_to_used(photo)
-            if archives_json and isinstance(archives_json, str):
-                try:
-                    data = json.loads(archives_json)
-                    if isinstance(data, dict):
-                        # 处理档案记录中的文件
-                        for rec in data.get('archive_records', []):
-                            add_to_used(rec.get('file_path'))
-                        # 处理其他证件中的文件
-                        for cert in data.get('other_certificates', []):
-                            add_to_used(cert.get('file_path') or cert.get('path'))
-                except:
-                    pass
-
-        # 4. 扫描请假记录附件（重点修复：支持 JSON 数组字符串）
-        leaves = db.session.query(LeaveRecord.attachments).filter(LeaveRecord.attachments.isnot(None)).all()
-        for (attachments_raw,) in leaves:
-            if not attachments_raw:
-                continue
-            # 判断是否为 JSON 数组格式
-            if isinstance(attachments_raw, str) and (attachments_raw.strip().startswith('[') or attachments_raw.strip().startswith('{')):
-                try:
-                    parsed_data = json.loads(attachments_raw)
-                    add_to_used(parsed_data) # 交给 add_to_used 递归处理列表
-                except:
-                    add_to_used(attachments_raw)
-            else:
-                add_to_used(attachments_raw)
+                for (val,) in db.session.query(col).filter(col.isnot(None)).all():
+                    scan_value(val)
 
         # 5. 执行物理扫描与清理
         SYSTEM_SAFE = ['avatar_default', 'default', 'logo', 'favicon', 'static']

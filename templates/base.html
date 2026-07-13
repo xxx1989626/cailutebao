@@ -229,8 +229,8 @@
                                 <a class="nav-link dropdown-toggle {% if request.endpoint and 'hr.' in request.endpoint %}active{% endif %}" 
                                    data-bs-toggle="dropdown" href="#" role="button">
                                     <i class="bi bi-people me-1"></i> 人事管理
-                                    {% if pending_count > 0 %}
-                                        <span class="badge bg-danger rounded-pill ms-1">{{ pending_count }}</span>
+                                    {% if pending_count > 0 or doc_pending_count > 0 %}
+                                        <span class="badge bg-danger rounded-pill ms-1">{{ pending_count + doc_pending_count }}</span>
                                     {% endif %}
                                 </a>
                                 <ul class="dropdown-menu">
@@ -244,6 +244,9 @@
                                         <a class="dropdown-item {% if request.endpoint and 'document.' in request.endpoint %}active{% endif %}" 
                                            href="{{ url_for('hr.document_list') }}">
                                             <i class="bi bi-file-earmark-text me-2"></i>证件管理
+                                            {% if doc_pending_count > 0 %}
+                                                <span class="badge bg-warning text-dark rounded-pill ms-2">{{ doc_pending_count }}</span>
+                                            {% endif %}
                                         </a>
                                     </li>
                                 </ul>

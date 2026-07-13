@@ -199,7 +199,7 @@ def inject_global_data():
             data = _notice_cache[user_id]['data']
         else:
             try:
-                from models import EmploymentCycle, Notification
+                from models import EmploymentCycle, Notification, EmployeeDocument
                 # 全局获取待审核人数
                 p_count = EmploymentCycle.query.filter(
                     db.or_(
@@ -207,16 +207,18 @@ def inject_global_data():
                         EmploymentCycle.pending_status == 'pending'
                     )
                 ).count()
+                # 全局获取证件待审批数量
+                doc_pending_count = EmployeeDocument.query.filter_by(pending_status='pending').count()
                 # 全局获取未读通知数
                 n_count = Notification.query.filter_by(user_id=user_id, is_read=False).count()
-                data = dict(pending_count=p_count, unread_notice_count=n_count)
+                data = dict(pending_count=p_count, doc_pending_count=doc_pending_count, unread_notice_count=n_count)
                 # 更新缓存
                 _notice_cache[user_id] = {'time': now, 'data': data}
             except Exception as e:
                 logging.error(f"获取全局数据失败: {e}")
-                data = dict(pending_count=0, unread_notice_count=0)
+                data = dict(pending_count=0, doc_pending_count=0, unread_notice_count=0)
         return data
-    return dict(pending_count=0, unread_notice_count=0)
+    return dict(pending_count=0, doc_pending_count=0, unread_notice_count=0)
 
 @app.template_global()
 def is_within_hour(date_str):

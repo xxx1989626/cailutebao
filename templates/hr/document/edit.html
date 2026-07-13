@@ -4,9 +4,6 @@
 {% block title %}编辑证件{% endblock %}
 
 {% block content %}
-<style>
-    .doc-img { max-width: 200px; }
-</style>
 <div class="row">
     <div class="col-md-8 mx-auto">
         <div class="card shadow-sm border-0">
@@ -15,67 +12,23 @@
                     <i class="bi bi-pencil me-2"></i>编辑证件 - {{ document.cycle.name }}
                 </h5>
             </div>
-            
             <div class="card-body">
+                {% if document.pending_status == 'pending' %}
+                <div class="alert alert-warning">
+                    <i class="bi bi-clock me-2"></i>该证件有变更正在审批中，暂时无法编辑
+                </div>
+                <a href="{{ url_for('hr.hr_detail', id_card=document.cycle.id_card) }}" class="btn btn-secondary">返回</a>
+                {% else %}
                 <form method="POST" enctype="multipart/form-data">
-                    <div class="mb-4">
-                        <label class="form-label">证件类型 <span class="text-danger">*</span></label>
-                        <select name="doc_type" class="form-select" title="证件类型" required>
-                            {% for t in doc_types %}
-                            <option value="{{ t }}" {% if document.doc_type == t %}selected{% endif %}>{{ t }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <label class="form-label">证件号码</label>
-                        <input type="text" name="doc_number" value="{{ document.doc_number or '' }}" class="form-control" placeholder="请输入证件号码">
-                    </div>
-                    
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <label class="form-label">发证日期</label>
-                            <input type="date" name="issue_date" title="发证日期" placeholder="YYYY-MM-DD" value="{{ document.issue_date.strftime('%Y-%m-%d') if document.issue_date else '' }}" class="form-control" min="0001-01-01" max="9999-12-31">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">有效期至</label>
-                            <input type="date" name="expire_date" title="有效期至" placeholder="YYYY-MM-DD" value="{{ document.expire_date.strftime('%Y-%m-%d') if document.expire_date else '' }}" class="form-control" min="0001-01-01" max="9999-12-31">
-                            <small class="text-muted">不填表示长期有效</small>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <label class="form-label">证件正面照片</label>
-                        {% if document.front_image %}
-                        <div class="mb-2">
-                            <img src="/{{ document.front_image }}" class="img-thumbnail doc-img" alt="证件正面照片">
-                        </div>
-                        {% endif %}
-                        <input type="file" name="front_image" title="证件正面照片" class="form-control" accept="image/*">
-                        <small class="text-muted">不选择则保留原照片</small>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <label class="form-label">证件反面照片</label>
-                        {% if document.back_image %}
-                        <div class="mb-2">
-                            <img src="/{{ document.back_image }}" class="img-thumbnail doc-img" alt="证件反面照片">
-                        </div>
-                        {% endif %}
-                        <input type="file" name="back_image" title="证件反面照片" class="form-control" accept="image/*">
-                        <small class="text-muted">不选择则保留原照片</small>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <label class="form-label">备注</label>
-                        <textarea name="note" title="备注" class="form-control" rows="3" placeholder="其他说明">{{ document.note or '' }}</textarea>
-                    </div>
-                    
+                    {% include 'hr/document/_document_form.html' %}
                     <div class="d-flex gap-3">
-                        <button type="submit" class="btn btn-primary flex-1">保存</button>
+                        <button type="submit" class="btn btn-primary flex-1">
+                            {% if is_admin %}保存{% else %}提交审批{% endif %}
+                        </button>
                         <a href="{{ url_for('hr.hr_detail', id_card=document.cycle.id_card) }}" class="btn btn-secondary">取消</a>
                     </div>
                 </form>
+                {% endif %}
             </div>
         </div>
     </div>

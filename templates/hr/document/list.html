@@ -24,9 +24,21 @@
         padding: 2px 8px;
         border-radius: 4px;
     }
-   .bi bi-folder-open text-muted {
-        font-size: 48px;
+    .status-pending {
+        color: #8b5cf6;
+        font-weight: 500;
+        background-color: #f5f3ff;
+        padding: 2px 8px;
+        border-radius: 4px;
     }
+    .status-rejected {
+        color: #dc3545;
+        font-weight: 500;
+        background-color: #fef2f2;
+        padding: 2px 8px;
+        border-radius: 4px;
+    }
+    tr.row-pending { background-color: #faf5ff; }
 </style>
 
 <div class="row">
@@ -39,17 +51,17 @@
             </div>
             
             <div class="card-body">
-                <div class="row mb-4">
+                <form id="filter-form" method="get" class="row mb-4">
                     <div class="col-md-4">
                         <div class="input-group">
                             <span class="input-group-text"><i class="bi bi-search"></i></span>
                             <input type="text" name="search" value="{{ search }}" 
                                    class="form-control" placeholder="搜索姓名、身份证号、证件号">
-                            <button type="submit" form="filter-form" class="btn btn-primary">搜索</button>
+                            <button type="submit" class="btn btn-primary">搜索</button>
                         </div>
                     </div>
                     <div class="col-md-3">
-                        <select name="doc_type" class="form-select" title="证件类型" aria-label="证件类型" onchange="document.getElementById('filter-form').submit()">
+                        <select name="doc_type" class="form-select" title="证件类型" aria-label="证件类型" onchange="this.form.submit()">
                             <option value="">全部类型</option>
                             {% for t in doc_types %}
                             <option value="{{ t }}" {% if doc_type_filter == t %}selected{% endif %}>{{ t }}</option>
@@ -57,18 +69,13 @@
                         </select>
                     </div>
                     <div class="col-md-3">
-                        <select name="status" class="form-select" title="证件状态" onchange="document.getElementById('filter-form').submit()">
+                        <select name="status" class="form-select" title="证件状态" onchange="this.form.submit()">
                             <option value="">全部状态</option>
+                            <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>待审批</option>
                             <option value="warning" {% if status_filter == 'warning' %}selected{% endif %}>即将过期</option>
                             <option value="expired" {% if status_filter == 'expired' %}selected{% endif %}>已过期</option>
                         </select>
                     </div>
-                </div>
-                
-                <form id="filter-form" method="get" class="d-none">
-                    <input type="hidden" name="search" value="{{ search }}">
-                    <input type="hidden" name="doc_type" value="{{ doc_type_filter }}">
-                    <input type="hidden" name="status" value="{{ status_filter }}">
                 </form>
                 
                 {% if documents %}
@@ -87,7 +94,7 @@
                         </thead>
                         <tbody>
                             {% for doc in documents %}
-                            <tr>
+                            <tr class="{% if doc.pending_status == 'pending' %}row-pending{% endif %}">
                                 <td>
                                     <a href="{{ url_for('hr.hr_detail', id_card=doc.cycle.id_card) }}">
                                         {{ doc.cycle.name }}
@@ -98,22 +105,37 @@
                                 <td>{{ doc.issue_date.strftime('%Y-%m-%d') if doc.issue_date else '-' }}</td>
                                 <td>{{ doc.expire_date.strftime('%Y-%m-%d') if doc.expire_date else '长期有效' }}</td>
                                 <td>
+                                    {% if doc.pending_status == 'pending' %}
+                                    <span class="status-pending">
+                                        <i class="bi bi-clock me-1"></i>待审批
+                                    </span>
+                                    {% elif doc.pending_status == 'rejected' %}
+                                    <span class="status-rejected">
+                                        <i class="bi bi-x-circle me-1"></i>已拒绝
+                                    </span>
+                                    {% else %}
                                     <span class="status-{{ doc.status_info[0] }}">
                                         {{ doc.status_info[1] }}
                                     </span>
+                                    {% endif %}
                                 </td>
                                 <td>
+                                    {% if doc.pending_status == 'pending' and is_admin %}
+                                    <a href="{{ url_for('hr.document_view_change', doc_id=doc.id) }}" 
+                                       class="btn btn-sm btn-outline-success" title="审批">
+                                        <i class="bi bi-clipboard-check"></i>
+                                    </a>
+                                    {% elif doc.pending_status != 'pending' %}
                                     <a href="{{ url_for('hr.document_edit', doc_id=doc.id) }}" 
-                                       class="btn btn-sm btn-outline-primary"
-                                       title="编辑证件">
+                                       class="btn btn-sm btn-outline-primary" title="编辑证件">
                                         <i class="bi bi-pencil"></i>
                                     </a>
                                     <a href="{{ url_for('hr.document_delete', doc_id=doc.id) }}" 
-                                       class="btn btn-sm btn-outline-danger"
-                                       title="删除证件"
+                                       class="btn btn-sm btn-outline-danger" title="删除证件"
                                        onclick="return confirm('确定删除该证件？')">
                                         <i class="bi bi-trash"></i>
                                     </a>
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% endfor %}

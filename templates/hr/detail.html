@@ -553,7 +553,7 @@
                                             <h6 class="mb-0 fw-bold text-dark d-flex align-items-center">
                                                 <i class="bi bi-file-earmark-text text-primary me-2"></i>证件信息
                                             </h6>
-                                            {% if cycle.status == '在职' and perm.can('hr.add') %}
+                                            {% if cycle.status == '在职' %}
                                             <a href="{{ url_for('hr.document_add', cycle_id=cycle.id) }}" 
                                                class="btn btn-sm btn-success btn-action">
                                                 <i class="bi bi-plus-circle me-1"></i>添加证件
@@ -564,29 +564,42 @@
                                             {% if cycle.documents %}
                                             <div class="list-group list-group-flush">
                                                 {% for doc in cycle.documents %}
-                                                <div class="list-group-item py-3">
+                                                <div class="list-group-item py-3 {% if doc.pending_status == 'pending' %}bg-light{% endif %}">
                                                     <div class="row align-items-center">
-                                                        <div class="col-md-3">
+                                                        <div class="col-md-2">
                                                             <span class="badge bg-primary-subtle text-primary">{{ doc.doc_type }}</span>
                                                         </div>
-                                                        <div class="col-md-3">
+                                                        <div class="col-md-2">
                                                             <small class="text-muted">证件号</small>
                                                             <div>{{ doc.doc_number or '-' }}</div>
                                                         </div>
-                                                        <div class="col-md-3">
+                                                        <div class="col-md-2">
                                                             <small class="text-muted">有效期</small>
                                                             <div>{{ doc.expire_date.strftime('%Y-%m-%d') if doc.expire_date else '长期有效' }}</div>
                                                         </div>
+                                                        <div class="col-md-3">
+                                                            {% if doc.pending_status == 'pending' %}
+                                                            <span class="badge bg-warning text-dark"><i class="bi bi-clock me-1"></i>待审批</span>
+                                                            {% elif doc.pending_status == 'rejected' %}
+                                                            <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>已拒绝</span>
+                                                            {% endif %}
+                                                        </div>
                                                         <div class="col-md-3 text-end">
+                                                            {% if doc.pending_status == 'pending' and perm.can('hr.cert_edit') %}
+                                                            <a href="{{ url_for('hr.document_view_change', doc_id=doc.id) }}" class="btn btn-sm btn-outline-success me-1" title="审批">
+                                                                <i class="bi bi-clipboard-check"></i>
+                                                            </a>
+                                                            {% elif doc.pending_status != 'pending' %}
                                                             {% if doc.front_image or doc.back_image %}
                                                             <a href="{{ url_for('hr.document_edit', doc_id=doc.id) }}" class="btn btn-sm btn-outline-primary me-1">
                                                                 <i class="bi bi-eye"></i>
                                                             </a>
                                                             {% endif %}
-                                                            {% if perm.can('hr.add') %}
+                                                            {% if perm.can('hr.cert_edit') %}
                                                             <a href="{{ url_for('hr.document_edit', doc_id=doc.id) }}" class="btn btn-sm btn-outline-primary">
                                                                 <i class="bi bi-pencil"></i>
                                                             </a>
+                                                            {% endif %}
                                                             {% endif %}
                                                         </div>
                                                     </div>

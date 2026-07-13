@@ -277,6 +277,11 @@ class EmployeeDocument(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.now)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+    # OA审批字段
+    pending_status = db.Column(db.String(10), default='none')  # none, pending, approved, rejected
+    pending_changes = db.Column(db.Text)  # 待审批的变更（JSON格式）
+    pending_approved_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    pending_approved_at = db.Column(db.DateTime)
 # ==================== 聊天模型 ====================
 class ChatMessage(db.Model):
     __tablename__ = 'chat_messages'  # 数据库表名
