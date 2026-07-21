@@ -69,12 +69,11 @@
     /* 已离职员工装备蒙版 */
     .equipment-mask-wrapper {
         position: relative;
-        max-height: 400px;
+        height: 400px;
+        overflow: hidden;
     }
     .equipment-mask-wrapper .equipped-scroll-container {
-        max-height: none;
         height: 100%;
-        max-height: 400px;
         overflow-y: auto;
     }
     .equipment-returned-overlay::after {
@@ -486,8 +485,9 @@
                                             {% if equipped_assets %}
                                             {% set can_view_asset = perm.can('asset.view') %}
                                             {% set is_resigned = cycle.status != '在职' %}
-                                            <div class="equipped-scroll-container {% if is_resigned %}equipment-returned-overlay{% endif %}">
-                                                <div class="list-group list-group-flush">
+                                            <div class="equipment-mask-wrapper {% if is_resigned %}equipment-returned-overlay{% endif %}">
+                                                <div class="equipped-scroll-container">
+                                                    <div class="list-group list-group-flush">
                                                     {% for item in equipped_assets | reverse %}
                                                     {% if can_view_asset %}
                                                     <a href="{{ url_for('asset.asset_detail', asset_id=item.asset.id) }}"
@@ -532,6 +532,7 @@
                                                     {% endif %}
                                                     {% endfor %}
                                                 </div>
+                                            </div>
                                             </div>
                                             
                                             <div class="card-footer bg-white py-3">
