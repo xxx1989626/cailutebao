@@ -237,23 +237,6 @@
         padding: 0.35em 0.65em;
         font-weight: 500;
     }
-    .form-inline-action {
-        display: inline;
-    }
-    .avatar-circle-box {
-        width: 180px;
-        height: 180px;
-        font-size: 24px;
-    }
-    .img-thumbnail {
-        width: 80px; 
-        height: 80px; 
-        object-fit: cover;
-    }
-    .text-pre-wrap {
-        white-space: pre-wrap;
-    }
-
 </style>
 
 <div class="container mt-4 mb-5">
@@ -346,7 +329,7 @@
                                 {% if current_user.role == 'admin' and associated_user %}
                                 <form action="{{ url_for('auth.reset_user_password', user_id=associated_user.id) }}" 
                                       method="POST" 
-                                      class="form-inline-action" 
+                                      style="display:inline;" 
                                       onsubmit="return confirm('确定要将该用户 [{{ associated_user.name }}] 的密码重置为 123456 吗？');">
                                     <button type="submit" class="btn btn-sm btn-outline-warning btn-action">
                                         <i class="bi bi-shield-lock me-1"></i> 重置密码
@@ -371,7 +354,8 @@
                                          alt="{{ cycle.name }}照片"
                                          loading="lazy">
                                     {% else %}
-                                    <div class="bg-light rounded-circle shadow-sm d-flex align-items-center justify-content-center text-muted border border-3 border-white avatar-circle-box"
+                                    <div class="bg-light rounded-circle shadow-sm d-flex align-items-center justify-content-center text-muted border border-3 border-white"
+                                         style="width:180px;height:180px;font-size:24px;">
                                         <span class="text-uppercase">{{ cycle.name[:1] }}</span>
                                     </div>
                                     {% endif %}
@@ -502,9 +486,8 @@
                                             {% if equipped_assets %}
                                             {% set can_view_asset = perm.can('asset.view') %}
                                             {% set is_resigned = cycle.status != '在职' %}
-                                            <div class="equipment-mask-wrapper {% if is_resigned %}equipment-returned-overlay{% endif %}">
-                                                <div class="equipped-scroll-container">
-                                                    <div class="list-group list-group-flush">
+                                            <div class="equipped-scroll-container {% if is_resigned %}equipment-returned-overlay{% endif %}">
+                                                <div class="list-group list-group-flush">
                                                     {% for item in equipped_assets | reverse %}
                                                     {% if can_view_asset %}
                                                     <a href="{{ url_for('asset.asset_detail', asset_id=item.asset.id) }}"
@@ -549,7 +532,6 @@
                                                     {% endif %}
                                                     {% endfor %}
                                                 </div>
-                                            </div>
                                             </div>
                                             
                                             <div class="card-footer bg-white py-3">
@@ -615,12 +597,12 @@
                                                             </a>
                                                             {% elif doc.pending_status != 'pending' %}
                                                             {% if doc.front_image or doc.back_image %}
-                                                            <a href="{{ url_for('hr.document_edit', doc_id=doc.id) }}" class="btn btn-sm btn-outline-primary me-1" title="查看">
+                                                            <a href="{{ url_for('hr.document_edit', doc_id=doc.id) }}" class="btn btn-sm btn-outline-primary me-1">
                                                                 <i class="bi bi-eye"></i>
                                                             </a>
                                                             {% endif %}
                                                             {% if perm.can('hr.cert_edit') %}
-                                                            <a href="{{ url_for('hr.document_edit', doc_id=doc.id) }}" class="btn btn-sm btn-outline-primary" title="编辑">
+                                                            <a href="{{ url_for('hr.document_edit', doc_id=doc.id) }}" class="btn btn-sm btn-outline-primary">
                                                                 <i class="bi bi-pencil"></i>
                                                             </a>
                                                             {% endif %}
@@ -677,7 +659,7 @@
                                             </div>
                                     
                                             {% if record.description %}
-                                            <p class="mb-3 mt-1 small text-muted border-start border-2 border-primary ps-3 text-pre-wrap">
+                                            <p class="mb-3 mt-1 small text-muted border-start border-2 border-primary ps-3" style="white-space: pre-wrap;">
                                                 {{ record.description }}
                                             </p>
                                             {% endif %}
@@ -690,7 +672,7 @@
                                                     {% for path in paths %}
                                                     {% if path.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp')) %}
                                                     <a href="/{{ path }}" target="_blank" class="d-inline-block">
-                                                        <img src="/{{ path }}" class="img-thumbnail" 
+                                                        <img src="/{{ path }}" class="img-thumbnail" style="width: 80px; height: 80px; object-fit: cover;"
                                                             alt="附件图片">
                                                     </a>
                                                     {% else %}
@@ -793,7 +775,7 @@
                                                     <h5 class="modal-title">
                                                         <i class="bi bi-person-x me-1"></i> 确认离职 - {{ cycle.name }}
                                                     </h5>
-                                                    <button type="button" class="btn-close" aria-label="关闭" title="关闭"
+                                                    <button type="button" class="btn-close"
                                                         data-bs-dismiss="modal"></button>
                                                 </div>
                                                 <form method="POST"
@@ -808,13 +790,9 @@
                                                                 <div>
                                                                     <strong>检测到未归还资产（共 {{ unreturned|length }} 件）：</strong>
                                                                     <ul class="mb-0 mt-2">
-                                                                        <template>
                                                                         {% for a in unreturned %}
-                                                                        <li>
-                                                                            {{ a.name }} (编号: {{ a.number }})
-                                                                        </li>
+                                                                        <li>{{ a.name }} (编号: {{ a.number }})</li>
                                                                         {% endfor %}
-                                                                        </template>
                                                                     </ul>
                                                                 </div>
                                                             </div>
@@ -850,17 +828,16 @@
                                                         </div>
 
                                                         <div class="mb-3">
-                                                            <label for="departure_date{{ cycle.id }}" class="form-label fw-bold">离职日期</label>
-                                                            <input id="departure_date{{ cycle.id }}" type="date" name="departure_date"
+                                                            <label class="form-label fw-bold">离职日期</label>
+                                                            <input type="date" name="departure_date"
                                                                 class="form-control" value="{{ today_str() }}"
-                                                                min="0001-01-01" max="9999-12-31" required
-                                                                title="离职日期" aria-required="true">
+                                                                min="0001-01-01" max="9999-12-31" required>
                                                         </div>
 
                                                         <div class="mb-0">
-                                                            <label for="departure_reason{{ cycle.id }}" class="form-label fw-bold">离职原因</label>
-                                                            <textarea id="departure_reason{{ cycle.id }}" name="departure_reason" class="form-control" rows="3"
-                                                                placeholder="请输入离职原因（可选）" title="离职原因（可选）"></textarea>
+                                                            <label class="form-label fw-bold">离职原因</label>
+                                                            <textarea name="departure_reason" class="form-control" rows="3"
+                                                                placeholder="请输入离职原因（可选）"></textarea>
                                                         </div>
                                                     </div>
                                                     <div class="modal-footer">
@@ -894,7 +871,7 @@
                     <h5 class="modal-title">
                         <i class="bi bi-box-seam me-1"></i> 向 {{ current_cycle.name }} 发放资产
                     </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <input type="hidden" name="user_id" value="{{ current_cycle.id }}">
@@ -926,7 +903,7 @@
                                     <td>
                                         <input type="number" name="qty_{{ asset.id }}"
                                             class="form-control form-control-sm asset-qty" value="1" min="1"
-                                            max="{{ asset.stock_quantity }}" placeholder="数量" title="发放数量" disabled>
+                                            max="{{ asset.stock_quantity }}" disabled>
                                     </td>
                                 </tr>
                                 {% endfor %}

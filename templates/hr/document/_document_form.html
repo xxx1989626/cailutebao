@@ -6,14 +6,12 @@
     .change-diff { background: #fff3cd; padding: 2px 6px; border-radius: 3px; }
     .old-value { text-decoration: line-through; color: #999; }
     .new-value { color: #0d6efd; font-weight: 500; }
-    .img-thumbnail { max-width: 200px; }
-
 </style>
 
 <div class="mb-4">
     <label class="form-label">证件类型 <span class="text-danger">*</span></label>
     {% if mode == 'view' %}
-    <input type="text" class="form-control" value="{{ document.doc_type }}" title="证件类型" readonly disabled>
+    <input type="text" class="form-control" value="{{ document.doc_type }}" readonly disabled>
     {% else %}
     <select name="doc_type" class="form-select" title="证件类型" required {% if mode == 'view' %}disabled{% endif %}>
         {% for t in doc_types %}
@@ -49,7 +47,7 @@
     <label class="form-label">证件正面照片</label>
     {% if mode == 'view' %}
         {% if document and document.front_image %}
-        <img src="/{{ document.front_image }}" class="img-thumbnail" alt="证件正面照片">
+        <img src="/{{ document.front_image }}" class="img-thumbnail" style="max-width: 200px;" alt="证件正面照片">
         {% else %}
         <span class="text-muted">暂无照片</span>
         {% endif %}
@@ -65,7 +63,7 @@
     <label class="form-label">证件反面照片</label>
     {% if mode == 'view' %}
         {% if document and document.back_image %}
-        <img src="/{{ document.back_image }}" class="img-thumbnail"  alt="证件反面照片">
+        <img src="/{{ document.back_image }}" class="img-thumbnail" style="max-width: 200px;" alt="证件反面照片">
         {% else %}
         <span class="text-muted">暂无照片</span>
         {% endif %}

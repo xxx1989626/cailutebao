@@ -194,9 +194,6 @@
                 padding-top: 70px;
             }
         }
-        .favicon-img {
-            border-radius: 4px;
-        }
     </style>
 {% block head %}{% endblock %}
 </head>
@@ -209,7 +206,8 @@
                      alt="Logo" 
                      width="32" 
                      height="32" 
-                     class="d-inline-block align-text-top me-2 favicon-img"> 
+                     class="d-inline-block align-text-top me-2"
+                     style="border-radius: 4px;"> 
                 蔡路特保队队务管理系统
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
@@ -219,7 +217,6 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <!-- 导航菜单 -->
                 <ul class="navbar-nav me-auto">
-                    <template>
                     <li class="nav-item">
                         <a class="nav-link {% if request.endpoint == 'main.index' %}active{% endif %}" 
                            href="{{ url_for('main.index') }}">
@@ -317,7 +314,6 @@
                             </a>
                         </li>
                     {% endif %}
-                    </template>
                 </ul>
 
                 <!-- 右侧：日期 + 用户信息 + 登录/登出 -->

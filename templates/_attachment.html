@@ -7,16 +7,16 @@
 
 <div class="mb-3">
     <label class="form-label fw-bold">附件</label>
-    <div id="dropZone_{{ name }}" class="border border-2 border-dashed rounded p-4 text-center bg-light drop-zone-clickable drop-zone-dashed" title="点击选择文件或将文件拖拽到上方区域上传">
+    <div id="dropZone_{{ name }}" class="border border-2 border-dashed rounded p-4 text-center bg-light" style="cursor: pointer;">
         <i class="bi bi-cloud-arrow-up fs-2 text-primary"></i>
         <p class="mb-0">将文件拖拽至此处，或点击上传</p>
-        <input type="file" name="{{ name }}" id="fileInput_{{ name }}" class="form-control d-none" multiple accept="{{ accept }}" aria-label="附件上传" title="点击选择文件或将文件拖拽到上方区域上传">
+        <input type="file" name="{{ name }}" id="fileInput_{{ name }}" class="form-control d-none" multiple accept="{{ accept }}">
     </div>
     <div id="imagePreview_{{ name }}" class="mt-2 d-flex flex-wrap gap-2">
         {% for path in existing_attachments %}
-        <div class="thumb-remove-wrapper position-relative drop-zone-clickable" data-path="{{ path }}" data-name="{{ name }}" title="点击删除">
+        <div class="thumb-remove-wrapper position-relative" data-path="{{ path }}" data-name="{{ name }}" style="cursor: pointer;" title="点击删除">
             {% if path.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp')) %}
-                <img src="/{{ path }}" class="img-thumbnail thumb-100-square" title="点击删除">
+                <img src="/{{ path }}" class="img-thumbnail" style="width: 100px; height: 100px; object-fit: cover;">
             {% else %}
                 <div class="alert alert-secondary p-2 m-0"><i class="bi bi-file-pdf"></i> PDF文件</div>
             {% endif %}
@@ -30,15 +30,14 @@
 </div>
 
 <style>
-    .drop-zone-dashed {
+    #dropZone_{{ name }} {
         transition: all 0.3s ease;
         border-style: dashed !important;
     }
-    .drop-zone-dashed:hover {
+    #dropZone_{{ name }}:hover {
         border-color: #0d6efd !important;
         background-color: #f8f9fa !important;
     }
-    
     .bi-cloud-arrow-up {
         opacity: 0.6;
     }
@@ -63,14 +62,6 @@
     .remove-overlay i {
         font-size: 1.5rem;
     }
-    .drop-zone-clickable {
-        cursor: pointer;
-    }
-    .thumb-100-square {
-        width: 100px;
-        height: 100px;
-        object-fit: cover;
-    }
 </style>
 
 <script>
@@ -93,7 +84,7 @@ function initAttachmentComponent(name) {
 
     const fileInput = document.getElementById(`fileInput_${name}`);
     const previewContainer = document.getElementById(`imagePreview_${name}`);
-    const dropZone = document.querySelector(`[data-drop-zone="${name}"]`);
+    const dropZone = document.getElementById(`dropZone_${name}`);
 
     if (!fileInput || !previewContainer || !dropZone) {
         console.error(`Attachment component "${name}" not found!`);
@@ -109,13 +100,13 @@ function initAttachmentComponent(name) {
             
             reader.onload = function(event) {
                 const div = document.createElement('div');
-                div.className = `new-preview position-relative drop-zone-clickable`;
+                div.className = `new-preview position-relative`;
                 div.setAttribute('data-name', name);
                 div.style.cursor = 'pointer';
                 div.title = '点击移除';
                 
                 let content = isImg 
-                    ? `<img src="${event.target.result}" class="img-thumbnail thumb-100-square">`
+                    ? `<img src="${event.target.result}" class="img-thumbnail" style="width: 100px; height: 100px; object-fit: cover;">`
                     : `<div class="alert alert-secondary p-2 m-0"><i class="bi bi-file-pdf"></i> PDF</div>`;
                 
                 div.innerHTML = `

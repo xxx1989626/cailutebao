@@ -12,9 +12,9 @@
             
             <form method="POST">
                 <div class="form-group">
-                    <label>实际销假（归队）日期：</label>
-                    <input type="date" name="actual_end_date" class="form-control" 
-                           value="{{ leave.end_date }}" required>
+                    <label for="actual_end_date">实际销假（归队）日期：</label>
+                    <input type="date" id="actual_end_date" name="actual_end_date" class="form-control" 
+                           value="{{ leave.end_date }}" title="实际销假（归队）日期" placeholder="请选择日期" required>
                     <small class="form-text text-muted">默认为原定结束日期，补录时请手动修正。</small>
                 </div>
                 <div class="mt-4">

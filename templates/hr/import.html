@@ -75,11 +75,11 @@
         <div class="card-body import-body">
             <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
                 <div class="mb-4">
-                    <label class="form-label fw-medium">
+                    <label for="excelFile" class="form-label fw-medium">
                         <i class="bi bi-file-earmark-excel me-1"></i> 选择Excel文件
                         <span class="text-danger">*</span>
                     </label>
-                    <input type="file" name="file" class="form-control file-input" accept=".xlsx, .xls" required>
+                    <input id="excelFile" type="file" name="file" class="form-control file-input" accept=".xlsx, .xls" title="请选择Excel文件" aria-label="选择Excel文件" required>
                     
                     <div class="file-info mt-2">
                         <h6 class="mb-2 text-primary">

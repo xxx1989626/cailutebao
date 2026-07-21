@@ -12,7 +12,6 @@
         
         <nav aria-label="Page navigation" class="pagination-container">
             <ul class="pagination justify-content-center mb-0 pagination-custom">
-                <template>
                 {# 首页 #}
                 <li class="page-item {{ 'disabled' if pagination.page == 1 }}">
                     <a class="page-link" href="{{ url_for(endpoint, page=1, **kwargs) if pagination.page > 1 else '#' }}" 
@@ -63,7 +62,7 @@
                 {# 快速跳页（新增） #}
                 <li class="page-item d-none d-md-flex">
                     <div class="px-2 d-flex align-items-center">
-                        <input type="number" id="jumpPageInput" title="输入页码后按回车或点击跳转"
+                        <input type="number" id="jumpPageInput" 
                                class="form-control form-control-sm text-center" 
                                min="1" max="{{ pagination.pages }}" 
                                value="{{ pagination.page }}" 
@@ -77,7 +76,6 @@
                         </button>
                     </div>
                 </li>
-                </template>
             </ul>
         </nav>
     </div>
@@ -200,9 +198,7 @@
             }
         }
     </style>
-    <script type="text/template-data">
-    window.currentPaginationPage = {{ pagination.page }};
-</script>
+    
     <script>
         // 确保DOM加载完成后执行
         document.addEventListener('DOMContentLoaded', function() {
@@ -236,11 +232,10 @@
                 function jumpToPage() {
                     const targetPage = parseInt(jumpPageInput.value) || 1;
                     const maxPage = parseInt(jumpPageInput.max) || 1;
-                    const currentPage = window.currentPaginationPage;
                     
                     // 验证页码有效性
-                    if (targetPage < 1 || targetPage > maxPage || targetPage === currentPage) {
-                        if (targetPage === currentPage) {
+                    if (targetPage < 1 || targetPage > maxPage || targetPage === {{ pagination.page }}) {
+                        if (targetPage === {{ pagination.page }}) {
                             // 已经在目标页，给出提示
                             showToast('已经在第 ' + targetPage + ' 页了');
                         } else {
