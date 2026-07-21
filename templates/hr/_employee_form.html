@@ -209,8 +209,13 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">身份证号码 <span class="text-danger">*</span></label>
-                    <input type="text" name="id_card" id="id_card" class="form-control" maxlength="18"
-                        value="{{ employee.id_card or '' }}" placeholder="请输入身份证号码" required>
+                    <div class="input-group">
+                        <input type="text" name="id_card" id="id_card" class="form-control" maxlength="18"
+                            value="{{ employee.id_card or '' }}" placeholder="请输入身份证号码" required>
+                        <button type="button" id="fetch_history_btn" class="btn btn-outline-secondary" title="引用历史信息">
+                            <i class="bi bi-history me-1"></i>引用
+                        </button>
+                    </div>
                     <div id="id_card_msg" class="form-text mt-1"></div>
                 </div>
             </div>
@@ -592,6 +597,102 @@
             // 身份证输入格式优化
             idInput.addEventListener('input', function() {
                 this.value = this.value.toUpperCase().replace(/\s/g, '');
+            });
+        }
+
+        // 引用历史信息（再次入职）
+        const fetchHistoryBtn = document.getElementById('fetch_history_btn');
+        if (fetchHistoryBtn) {
+            fetchHistoryBtn.addEventListener('click', function() {
+                const idCard = document.getElementById('id_card').value.trim();
+                if (!idCard) {
+                    alert('请先输入身份证号码');
+                    return;
+                }
+                if (idCard.length !== 18) {
+                    alert('请输入18位身份证号码');
+                    return;
+                }
+                
+                this.disabled = true;
+                this.innerHTML = '<span class="loading-spinner"></span> 加载中...';
+                
+                fetch('/hr/get_history_by_id_card/' + idCard)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            const info = data.data;
+                            
+                            document.getElementById('name').value = info.name || '';
+                            document.getElementById('phone').value = info.phone || '';
+                            
+                            if (document.getElementById('ethnic')) document.getElementById('ethnic').value = info.ethnic || '';
+                            if (document.getElementById('politics')) document.getElementById('politics').value = info.politics || '';
+                            if (document.getElementById('education')) document.getElementById('education').value = info.education || '';
+                            
+                            document.querySelector('input[name="household_province"]').value = info.household_province || '';
+                            document.querySelector('input[name="household_city"]').value = info.household_city || '';
+                            document.querySelector('input[name="household_district"]').value = info.household_district || '';
+                            document.querySelector('input[name="household_town"]').value = info.household_town || '';
+                            document.querySelector('input[name="household_village"]').value = info.household_village || '';
+                            document.querySelector('input[name="household_detail"]').value = info.household_detail || '';
+                            
+                            document.querySelector('input[name="residence_province"]').value = info.residence_province || '';
+                            document.querySelector('input[name="residence_city"]').value = info.residence_city || '';
+                            document.querySelector('input[name="residence_district"]').value = info.residence_district || '';
+                            document.querySelector('input[name="residence_town"]').value = info.residence_town || '';
+                            document.querySelector('input[name="residence_village"]').value = info.residence_village || '';
+                            document.querySelector('input[name="residence_detail"]').value = info.residence_detail || '';
+                            
+                            const militaryCb = document.getElementById('military_service');
+                            if (militaryCb) {
+                                militaryCb.checked = info.military_service;
+                                document.getElementById('military_fields').style.display = info.military_service ? 'block' : 'none';
+                            }
+                            document.querySelector('input[name="enlistment_date"]').value = info.enlistment_date || '';
+                            document.querySelector('input[name="unit_number"]').value = info.unit_number || '';
+                            document.querySelector('input[name="branch"]').value = info.branch || '';
+                            document.querySelector('input[name="discharge_date"]').value = info.discharge_date || '';
+                            
+                            const licenseCb = document.getElementById('has_license');
+                            if (licenseCb) {
+                                licenseCb.checked = info.has_license;
+                                document.getElementById('license_fields').style.display = info.has_license ? 'block' : 'none';
+                            }
+                            document.querySelector('input[name="license_date"]').value = info.license_date || '';
+                            document.querySelector('input[name="license_type"]').value = info.license_type || '';
+                            document.querySelector('input[name="license_expiry"]').value = info.license_expiry || '';
+                            
+                            const securityCb = document.getElementById('has_security_license');
+                            if (securityCb) {
+                                securityCb.checked = info.has_security_license;
+                                document.getElementById('security_fields').style.display = info.has_security_license ? 'block' : 'none';
+                            }
+                            document.querySelector('input[name="security_license_number"]').value = info.security_license_number || '';
+                            document.querySelector('input[name="security_license_date"]').value = info.security_license_date || '';
+                            
+                            document.querySelector('input[name="emergency_name"]').value = info.emergency_name || '';
+                            document.querySelector('input[name="emergency_relation"]').value = info.emergency_relation || '';
+                            document.querySelector('input[name="emergency_phone"]').value = info.emergency_phone || '';
+                            
+                            document.querySelector('input[name="hat_size"]').value = info.hat_size || '';
+                            document.querySelector('input[name="short_sleeve"]').value = info.short_sleeve || '';
+                            document.querySelector('input[name="long_sleeve"]').value = info.long_sleeve || '';
+                            document.querySelector('input[name="winter_uniform"]').value = info.winter_uniform || '';
+                            document.querySelector('input[name="shoe_size"]').value = info.shoe_size || '';
+                            
+                            document.getElementById('id_card_msg').innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>已加载历史信息</span>';
+                        } else {
+                            alert(data.message || '未找到历史记录');
+                        }
+                    })
+                    .catch(() => {
+                        alert('查询失败，请稍后重试');
+                    })
+                    .finally(() => {
+                        this.disabled = false;
+                        this.innerHTML = '<i class="bi bi-history me-1"></i>引用';
+                    });
             });
         }
 

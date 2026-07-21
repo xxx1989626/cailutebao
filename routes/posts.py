@@ -78,11 +78,9 @@ def export_config():
     output.seek(0)
     return send_file(output, download_name="岗位配置导出.xlsx", as_attachment=True)
 
-# ====================== 修复版：导入路由（支持夜班跨天 20:00→08:00）======================
 @posts_bp.route('/import', methods=['POST'])
 @login_required
 def import_config():
-    """从Excel导入岗位配置（修复跨天夜班、时间格式兼容）"""
     file = request.files.get('file')
     if not file:
         return jsonify({'success': False, 'message': '未选择文件'})
@@ -121,7 +119,6 @@ def import_config():
                 skip_list.append(f"第{idx+2}行：{name} 时间格式错误")
                 continue
 
-            # 4. 核心修复：支持跨天班次（夜班 20:00 → 次日08:00）
             if end_time <= start_time:
                 end_time += timedelta(days=1)
 

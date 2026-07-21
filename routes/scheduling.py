@@ -113,7 +113,6 @@ def get_matrix_data():
         p2 = SALARY_MAP.get(emp.salary_mode, 99)
         p3 = GROUP_MAP.get(emp.post, 99)
         p4 = emp.id  
-                # ============= 固定白班在前，夜班在后 =============
         shift_order = 0  # 0=白班，1=夜班
         if emp.schedules:
             month_schedules = [s for s in emp.schedules if s.date.strftime("%Y-%m") == month_str]

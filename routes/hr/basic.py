@@ -42,7 +42,9 @@ def hr_list():
         'post_asc': EmploymentCycle.post.asc(),
         'post_desc': EmploymentCycle.post.desc(),
         'salary_mode_asc': EmploymentCycle.salary_mode.asc(),
-        'salary_mode_desc': EmploymentCycle.salary_mode.desc()
+        'salary_mode_desc': EmploymentCycle.salary_mode.desc(),
+        'tenure_asc': EmploymentCycle.hire_date.asc(),
+        'tenure_desc': EmploymentCycle.hire_date.desc()
     }
     order = valid_sorts.get(sort, EmploymentCycle.hire_date.desc())
     
@@ -106,6 +108,59 @@ def hr_list():
                            status_filter=status_filter,
                            sort=sort,
                            show_fields=show_fields)
+
+# ==================== 查询历史记录（再次入职） ====================
+@hr_bp.route('/get_history_by_id_card/<id_card>')
+@login_required
+@perm.require('hr.add')
+def get_history_by_id_card(id_card):
+    history = EmploymentCycle.query.filter_by(id_card=id_card).order_by(EmploymentCycle.id.desc()).first()
+    if not history:
+        return json.dumps({'success': False, 'message': '未找到历史记录'})
+    
+    result = {
+        'success': True,
+        'data': {
+            'name': history.name,
+            'phone': history.phone,
+            'ethnic': history.ethnic,
+            'politics': history.politics,
+            'education': history.education,
+            'household_province': history.household_province,
+            'household_city': history.household_city,
+            'household_district': history.household_district,
+            'household_town': history.household_town,
+            'household_village': history.household_village,
+            'household_detail': history.household_detail,
+            'residence_province': history.residence_province,
+            'residence_city': history.residence_city,
+            'residence_district': history.residence_district,
+            'residence_town': history.residence_town,
+            'residence_village': history.residence_village,
+            'residence_detail': history.residence_detail,
+            'military_service': bool(history.military_service),
+            'enlistment_date': history.enlistment_date.strftime('%Y-%m-%d') if history.enlistment_date else '',
+            'unit_number': history.unit_number,
+            'branch': history.branch,
+            'discharge_date': history.discharge_date.strftime('%Y-%m-%d') if history.discharge_date else '',
+            'has_license': bool(history.has_license),
+            'license_date': history.license_date.strftime('%Y-%m-%d') if history.license_date else '',
+            'license_type': history.license_type,
+            'license_expiry': history.license_expiry.strftime('%Y-%m-%d') if history.license_expiry else '',
+            'has_security_license': bool(history.security_license_number),
+            'security_license_number': history.security_license_number,
+            'security_license_date': history.security_license_date.strftime('%Y-%m-%d') if history.security_license_date else '',
+            'emergency_name': history.emergency_name,
+            'emergency_relation': history.emergency_relation,
+            'emergency_phone': history.emergency_phone,
+            'hat_size': history.hat_size,
+            'short_sleeve': history.short_sleeve,
+            'long_sleeve': history.long_sleeve,
+            'winter_uniform': history.winter_uniform,
+            'shoe_size': history.shoe_size,
+        }
+    }
+    return json.dumps(result)
 
 # ==================== 新增员工 ====================
 @hr_bp.route('/add', methods=['GET', 'POST'])

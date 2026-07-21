@@ -121,8 +121,9 @@
         <div class="card-header bg-gradient bg-success text-white d-flex flex-wrap justify-content-between align-items-center gap-3 py-3 px-4">
             <h5 class="mb-0">{{ selected_year }}年{{ selected_month }}月排班管理</h5>
             <div class="d-flex align-items-center gap-3">
-                <input type="month" id="monthPicker" class="form-control form-control-sm"
-                    value="{{ selected_year }}-{{ '%02d' % selected_month }}">
+                <select id="monthPicker" class="form-control form-control-sm" title="选择年月">
+                    <option value="">选择年月</option>
+                </select>
             </div>
             <div class="d-flex gap-2">
                 <button class="btn btn-sm btn-outline-light" onclick="document.getElementById('excelImportInput').click()">
@@ -142,9 +143,9 @@
         <div class="p-2 bg-light border-bottom">
             <span class="text-muted small"><i class="bi bi-info-circle"></i> 
                 单击/拖动选择，<strong>双击</strong>设置班次，<strong>Del</strong>删除。
-                <span style="color:#ffc107;">●</span>出差 
-                <span style="color:#dc3545;">●</span>请假
-                <span style="color:#6610f2;">●</span>夜班
+                <span class="status-dot dot-trip">●</span>出差 
+                <span class="status-dot dot-leave">●</span>请假
+                <span class="status-dot dot-night">●</span>夜班
             </span>
         </div>
 
@@ -163,7 +164,7 @@
                 <input type="hidden" id="targetDate">
                 <div class="mb-3">
                     <label class="small text-muted">选择岗位</label>
-                    <select id="targetPostId" class="form-select">
+                    <select id="targetPostId" class="form-select" title="选择岗位">
                         {% for p in posts %}
                         <option value="{{p.id}}">{{p.name}}</option>
                         {% endfor %}

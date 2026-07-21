@@ -20,6 +20,7 @@
                         <i class="bi bi-calendar3 me-1"></i> 切换年份
                     </button>
                     <ul class="dropdown-menu dropdown-menu-dark">
+                        <template>
                         {% for y in years %}
                         <li>
                             <a class="dropdown-item {% if y == selected_year %}active bg-primary{% endif %}" 
@@ -28,6 +29,7 @@
                             </a>
                         </li>
                         {% endfor %}
+                        </template>
                     </ul>
                 </div>
                 
@@ -143,28 +145,27 @@
                             <!-- 操作按钮 -->
                             <td>
                                 <div class="btn-group btn-group-sm">
-                                    <a href="{{ url_for('trip.trip_edit', id=trip.id) }}" 
-                                       class="btn btn-outline-primary btn-action">
-                                       <i class="bi bi-pencil me-1"></i>
-                                       {% if not trip.end_date %}补全{% else %}编辑{% endif %}
+                                    <a href="{{ url_for('trip.trip_edit', id=trip.id) }}" class="btn btn-outline-primary btn-action">
+                                        <i class="bi bi-pencil me-1"></i>
+                                        {% if not trip.end_date %}补全{% else %}编辑{% endif %}
                                     </a>
-                                    
+                            
                                     {% if not trip.end_date %}
-                                    <button type="button" class="btn btn-outline-info btn-action copy-btn" 
-                                            onclick="copyTripStart('{{ trip.reason or '' }}', '{{ trip.participants|map(attribute='name')|join('、') }}', '{{ trip.destination or '' }}', '{{ trip.start_date.strftime('%m月%d号') }}')">
+                                    <button type="button" class="btn btn-outline-info btn-action copy-btn" data-reason="{{ trip.reason or '' }}"
+                                        data-names="{{ trip.participants|map(attribute='name')|join('、') }}"
+                                        data-dest="{{ trip.destination or '' }}" data-start="{{ trip.start_date.strftime('%m月%d号') }}">
                                         <i class="bi bi-clipboard me-1"></i> 复制出发
                                     </button>
                                     {% else %}
-                                    <button type="button" class="btn btn-outline-success btn-action copy-btn" 
-                                            onclick="copyTripEnd('{{ trip.reason or '' }}', '{{ trip.participants|map(attribute='name')|join('、') }}')">
+                                    <button type="button" class="btn btn-outline-success btn-action copy-btn" data-reason="{{ trip.reason or '' }}"
+                                        data-names="{{ trip.participants|map(attribute='name')|join('、') }}">
                                         <i class="bi bi-clipboard me-1"></i> 复制归队
                                     </button>
                                     {% endif %}
-                                    
+                            
                                     {% if current_user.username == 'admin' %}
-                                    <a href="{{ url_for('trip.trip_delete', id=trip.id) }}" 
-                                       class="btn btn-outline-danger btn-action delete-btn" 
-                                       onclick="return confirm('确定要删除这条出差记录吗？删除后将无法恢复！')">
+                                    <a href="{{ url_for('trip.trip_delete', id=trip.id) }}" class="btn btn-outline-danger btn-action delete-btn"
+                                        onclick="return confirm('确定要删除这条出差记录吗？删除后将无法恢复！')">
                                         <i class="bi bi-trash me-1"></i> 删除
                                     </a>
                                     {% endif %}
@@ -195,7 +196,7 @@
     </div>
     <!-- 统计信息卡片 -->
      {% if user_trip_stats %}
-<div class="alert alert-info mb-4 shadow-sm border-0 rounded-3" style="background-color: #e8f5e9; border-left: 5px solid #4caf50 !important;">
+<div class="alert alert-info mb-4 shadow-sm border-0 rounded-3 trip-stat-alert">
     <div class="d-flex justify-content-between align-items-center mb-2">
         <h6 class="fw-bold text-success mb-0">
             <i class="bi bi-airplane-engines-fill me-2"></i>{{ selected_year }}年度出差频次统计
@@ -206,7 +207,7 @@
     </div>
     <div class="d-flex flex-wrap gap-2">
         {% for uid, stats in user_trip_stats.items() %}
-        <span class="badge rounded-pill bg-white text-dark border px-3 py-2 shadow-sm hover-scale" style="transition: transform 0.2s;">
+        <span class="badge rounded-pill bg-white text-dark border px-3 py-2 shadow-sm hover-scale tag-hover-scale">
             <span class="text-success fw-bold">{{ stats.name }}</span>: 
             <span class="badge bg-success ms-1">{{ stats.count }} 次/ {{ stats.total_days|int }} 天</span>
         </span>
@@ -214,12 +215,7 @@
     </div>
 </div>
 
-<style>
-    .hover-scale:hover {
-        transform: scale(1.05);
-        cursor: default;
-    }
-</style>
+
 {% endif %}
 </div>
 
@@ -237,6 +233,17 @@
 
 <!-- 样式部分 -->
 <style>
+    .hover-scale:hover {
+        transform: scale(1.05);
+        cursor: default;
+    }
+    .trip-stat-alert {
+        background-color: #e8f5e9;
+        border-left: 5px solid #4caf50 !important;
+    }
+    .tag-hover-scale {
+        transition: transform 0.2s;
+    }
 /* 渐变背景 */
 .bg-gradient {
     background: linear-gradient(135deg, #212529 0%, #343a40 100%);
@@ -332,7 +339,6 @@ const toast = new bootstrap.Toast(toastEl, {
     delay: 3000
 });
 
-
 function copyToClipboard(text) {
     if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(text).then(() => {
@@ -366,7 +372,6 @@ function fallbackCopy(text) {
     document.body.removeChild(textArea);
 }
 
-
 function showToast(message, type = "success") {
     const toastMessage = document.getElementById('toastMessage');
     const toastEl = document.getElementById('copyToast');
@@ -377,19 +382,27 @@ function showToast(message, type = "success") {
     toast.show();
 }
 
-function copyTripStart(reason, names, dest, startDate) {
-    const baseTitle = "蔡路派出所驻点配合民警出差";
-    const text = `${baseTitle}${reason || ''}\n出差人员：${names || '未指定'}\n目的地: ${dest || '未填写'}\n归队时间：不详\n出发时间: ${startDate || '未填写'}`;
-    copyToClipboard(text);
-}
-
-function copyTripEnd(reason, names) {
-    const baseTitle = "蔡路派出所驻点配合民警出差";
-    const text = `${baseTitle}${reason || ''}，${names || '未指定'}，出差结束，已归队。`;
-    copyToClipboard(text);
-}
-
 document.addEventListener('DOMContentLoaded', function() {
+    // 复制按钮事件委托
+    document.querySelectorAll('.copy-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const reason = this.dataset.reason;
+            const names = this.dataset.names;
+            if(this.classList.contains('btn-outline-info')){
+                const dest = this.dataset.dest;
+                const startDate = this.dataset.start;
+                const baseTitle = "蔡路派出所驻点配合民警出差";
+                const text = `${baseTitle}${reason || ''}\n出差人员：${names || '未指定'}\n目的地: ${dest || '未填写'}\n归队时间：不详\n出发时间: ${startDate || '未填写'}`;
+                copyToClipboard(text);
+            }else{
+                const baseTitle = "蔡路派出所驻点配合民警出差";
+                const text = `${baseTitle}${reason || ''}，${names || '未指定'}，出差结束，已归队。`;
+                copyToClipboard(text);
+            }
+        })
+    });
+
+    // 删除按钮确认拦截
     document.querySelectorAll('.delete-btn').forEach(btn => {
         btn.addEventListener('click', function(e) {
             if (!confirm('确定要删除这条出差记录吗？删除后将无法恢复！')) {
@@ -398,10 +411,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
+    // 表格行过渡
     document.querySelectorAll('tbody tr').forEach(row => {
         row.style.transition = 'all 0.2s ease';
     });
     
+    // 下拉点击等待光标
     document.querySelectorAll('.dropdown-item').forEach(item => {
         item.addEventListener('click', function() {
             document.body.style.cursor = 'wait';
