@@ -472,6 +472,9 @@ def start_backup_scheduler(interval=86400):
                     print(f"[{datetime.now()}] 启动例行维护任务...")
                     cleanup_isolated_files()
                     auto_backup_database()
+                    # 执行所有提醒检查
+                    from routes.reminder import run_all_checks
+                    run_all_checks()
             except Exception as e:
                 print(f"维护线程遇到致命错误: {e}")
             time.sleep(interval)

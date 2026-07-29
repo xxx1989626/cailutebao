@@ -26,3 +26,6 @@ def register_blueprints(app):
     app.register_blueprint(notification_bp)
     app.register_blueprint(trip_bp)
     app.register_blueprint(leave_bp)
+    # 提醒模块：自动遍历动态注册
+    from .reminder import register_reminder_blueprints
+    register_reminder_blueprints(app)

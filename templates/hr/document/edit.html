@@ -17,7 +17,7 @@
                 <div class="alert alert-warning">
                     <i class="bi bi-clock me-2"></i>该证件有变更正在审批中，暂时无法编辑
                 </div>
-                <a href="{{ url_for('hr.hr_detail', id_card=document.cycle.id_card) }}" class="btn btn-secondary">返回</a>
+                <a href="javascript:history.back()" class="btn btn-secondary">返回</a>
                 {% else %}
                 <form method="POST" enctype="multipart/form-data">
                     {% include 'hr/document/_document_form.html' %}
@@ -25,7 +25,7 @@
                         <button type="submit" class="btn btn-primary flex-1">
                             {% if is_admin %}保存{% else %}提交审批{% endif %}
                         </button>
-                        <a href="{{ url_for('hr.hr_detail', id_card=document.cycle.id_card) }}" class="btn btn-secondary">取消</a>
+                        <a href="javascript:history.back()" class="btn btn-secondary">取消</a>
                     </div>
                 </form>
                 {% endif %}

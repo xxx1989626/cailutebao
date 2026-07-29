@@ -499,7 +499,12 @@
                 value="{{ employee.hire_date.strftime('%Y-%m-%d') if employee.hire_date and employee.hire_date is not string else (employee.hire_date[:10] if employee.hire_date else '') }}" min="0001-01-01" max="9999-12-31">
         </div>
     </div>
-        </div>
+    {% else %}
+    <!-- 普通队员：保留原值隐藏提交，防止后端对比误清空 -->
+    <input type="hidden" name="salary_mode" value="{{ employee.salary_mode or '' }}">
+    <input type="hidden" name="position" value="{{ employee.position or '' }}">
+    <input type="hidden" name="post" value="{{ employee.post or '' }}">
+    <input type="hidden" name="hire_date" value="{{ employee.hire_date.strftime('%Y-%m-%d') if employee.hire_date else '' }}">
     {% endif %}
 
     <!-- 紧急联系人 + 工作服尺码 -->

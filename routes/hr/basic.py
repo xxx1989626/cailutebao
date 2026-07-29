@@ -414,6 +414,21 @@ def edit_cycle(cycle_id):
             'winter_uniform': '冬装尺寸', 'shoe_size': '鞋码'
         }
 
+        # 普通队员允许自行编辑的字段（管理员字段禁止队员修改）
+        MEMBER_EDITABLE_FIELDS = {
+            'name', 'phone', 'ethnic', 'politics', 'education',
+            'household_province', 'household_city', 'household_district',
+            'household_town', 'household_village', 'household_detail',
+            'residence_province', 'residence_city', 'residence_district',
+            'residence_town', 'residence_village', 'residence_detail',
+            'emergency_name', 'emergency_relation', 'emergency_phone',
+            'has_license', 'license_type', 'license_date', 'license_expiry',
+            'hat_size', 'short_sleeve', 'long_sleeve', 'winter_uniform', 'shoe_size',
+            'military_service', 'enlistment_date', 'unit_number', 'branch', 'discharge_date',
+            'security_license_number', 'security_license_date',
+        }
+        is_member_self_edit = (cycle.id_card == current_user.username and not perm.can('hr.edit'))
+
         changes = []
         change_data = {}
 
@@ -425,8 +440,12 @@ def edit_cycle(cycle_id):
 
         # 自动对比并赋值
         for field, label in field_map.items():
+            # 普通队员不能编辑管理员字段，跳过避免误清空
+            if is_member_self_edit and field not in MEMBER_EDITABLE_FIELDS:
+                continue
+
             old_val_raw = getattr(cycle, field)
-            
+
             # 根据字段类型获取新值
             if field in ['military_service', 'has_license']:
                 new_val_raw = field in request.form
