@@ -195,10 +195,12 @@
         <!-- 在职人数 -->
         <div class="col-md col-6">
             <div class="card text-white bg-primary h-100 stat-card">
-                <div class="card-body text-center py-4">
-                    <i class="bi bi-people fs-2 mb-2 opacity-80"></i>
-                    <h6 class="mb-1 opacity-90">在职人数</h6>
-                    <h3 class="mb-0 fw-bold">{{ active_count }}</h3>
+                <div class="card-body text-center py-3">
+                    <div class="d-flex align-items-center justify-content-center gap-2 mb-1">
+                        <i class="bi bi-people fs-5 opacity-80"></i>
+                        <h6 class="mb-0 opacity-90">在职人数</h6>
+                    </div>
+                    <h4 class="mb-0 fw-bold">{{ active_count }}</h4>
                 </div>
             </div>
         </div>
@@ -206,10 +208,12 @@
         <!-- 离职人数 -->
         <div class="col-md col-6">
             <div class="card text-white bg-secondary h-100 stat-card">
-                <div class="card-body text-center py-4">
-                    <i class="bi bi-person-x fs-2 mb-2 opacity-80"></i>
-                    <h6 class="mb-1 opacity-90">离职人数</h6>
-                    <h3 class="mb-0 fw-bold">{{ departed_count }}</h3>
+                <div class="card-body text-center py-3">
+                    <div class="d-flex align-items-center justify-content-center gap-2 mb-1">
+                        <i class="bi bi-person-x fs-5 opacity-80"></i>
+                        <h6 class="mb-0 opacity-90">离职人数</h6>
+                    </div>
+                    <h4 class="mb-0 fw-bold">{{ departed_count }}</h4>
                 </div>
             </div>
         </div>
@@ -217,22 +221,26 @@
         <!-- 历史总人数 -->
         <div class="col-md col-6">
             <div class="card text-white bg-info h-100 stat-card">
-                <div class="card-body text-center py-4">
-                    <i class="bi bi-person-heart fs-2 mb-2 opacity-80"></i>
-                    <h6 class="mb-1 opacity-90">历史总人数</h6>
-                    <h3 class="mb-0 fw-bold">{{ total_unique }}</h3>
+                <div class="card-body text-center py-3">
+                    <div class="d-flex align-items-center justify-content-center gap-2 mb-1">
+                        <i class="bi bi-person-heart fs-5 opacity-80"></i>
+                        <h6 class="mb-0 opacity-90">历史总人数</h6>
+                    </div>
+                    <h4 class="mb-0 fw-bold">{{ total_unique }}</h4>
                 </div>
             </div>
         </div>
-        
+
         <!-- 当前队费 -->
         {% if perm.can('fund.view') %}
         <div class="col-md col-6">
             <div class="card text-white bg-success h-100 stat-card">
-                <div class="card-body text-center py-4">
-                    <i class="bi bi-wallet2 fs-2 mb-2 opacity-80"></i>
-                    <h6 class="mb-1 opacity-90">当前队费</h6>
-                    <h3 class="mb-0 fw-bold">¥{{ "%.0f"|format(current_balance) }}</h3>
+                <div class="card-body text-center py-3">
+                    <div class="d-flex align-items-center justify-content-center gap-2 mb-1">
+                        <i class="bi bi-wallet2 fs-5 opacity-80"></i>
+                        <h6 class="mb-0 opacity-90">当前队费</h6>
+                    </div>
+                    <h4 class="mb-0 fw-bold">¥{{ "%.0f"|format(current_balance) }}</h4>
                 </div>
             </div>
         </div>
@@ -242,14 +250,15 @@
         <div class="col-md col-6">
             <div class="card text-dark bg-warning h-100 stat-card">
                 <div class="card-body text-center py-3">
-                    <i class="bi bi-gift fs-4 mb-1 opacity-80"></i>
-                    <h6 class="mb-1 opacity-90">本月生日</h6>
-                    <h4 class="mb-1 fw-bold">{{ birthday_employees|length }} <small class="fs-6">人</small></h4>
-                    
-                    <div style="max-height: 60px; overflow-y: auto; font-size: 0.8rem;" class="mt-2 px-2">
+                    <div class="d-flex align-items-center justify-content-center gap-2 mb-1">
+                        <i class="bi bi-gift fs-5 opacity-80"></i>
+                        <h6 class="mb-0 opacity-90">本月生日</h6>
+                        <h5 class="mb-0 fw-bold ms-2">{{ birthday_employees|length }}<small class="fs-6">人</small></h5>
+                    </div>
+                    <div style="max-height: 48px; overflow-y: auto; font-size: 0.75rem;" class="mt-1 px-2">
                         {% if birthday_employees %}
                             {% for emp in birthday_employees %}
-                            <div class="d-flex justify-content-between align-items-center py-1">
+                            <div class="d-flex justify-content-between align-items-center py-0">
                                 <span class="fw-medium">{{ emp.name }}</span>
                                 <span class="text-muted">{{ emp.birthday.month }}月{{ emp.birthday.day }}日</span>
                             </div>

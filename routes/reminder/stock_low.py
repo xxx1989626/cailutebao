@@ -28,9 +28,12 @@ def _get_recipients():
 
 
 def run_check():
-    """检查所有资产库存情况，低于阈值时通知有补充库存权限的用户（供定时任务调用）"""
-    # 查询库存低于阈值的资产
-    low_assets = Asset.query.filter(Asset.stock_quantity <= LOW_STOCK_THRESHOLD).all()
+    """检查消耗品库存情况，低于阈值时通知有补充库存权限的用户（供定时任务调用）"""
+    # 仅检查消耗品类型，固定资产/装备等不触发库存提醒
+    low_assets = Asset.query.filter(
+        Asset.type == '消耗品',
+        Asset.stock_quantity <= LOW_STOCK_THRESHOLD
+    ).all()
     if not low_assets:
         return 0
 

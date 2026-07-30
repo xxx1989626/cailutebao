@@ -6,6 +6,10 @@
     .change-diff { background: #fff3cd; padding: 2px 6px; border-radius: 3px; }
     .old-value { text-decoration: line-through; color: #999; }
     .new-value { color: #0d6efd; font-weight: 500; }
+    /* 日期选择器：年/月/日并排 */
+    .date-select-group { display: flex; gap: 0.5rem; align-items: center; }
+    .date-select-group select { flex: 1; min-width: 0; }
+    .date-select-group .date-sep { color: #6c757d; font-weight: 500; }
 </style>
 
 <div class="mb-4">
@@ -30,16 +34,34 @@
 <div class="row mb-4">
     <div class="col-md-6">
         <label class="form-label">发证日期</label>
-        <input type="date" name="issue_date" class="form-control" min="0001-01-01" max="9999-12-31" title="发证日期"
-               value="{{ document.issue_date.strftime('%Y-%m-%d') if document and document.issue_date else '' }}"
-               {% if mode == 'view' %}readonly disabled{% endif %}>
+        {% if mode == 'view' %}
+        <input type="text" class="form-control" value="{{ document.issue_date.strftime('%Y-%m-%d') if document and document.issue_date else '' }}" readonly disabled>
+        {% else %}
+        <input type="hidden" name="issue_date" id="issue_date_hidden" value="{{ document.issue_date.strftime('%Y-%m-%d') if document and document.issue_date else '' }}">
+        <div class="date-select-group" data-target="issue_date">
+            <select class="form-select date-year" title="年"></select>
+            <span class="date-sep">-</span>
+            <select class="form-select date-month" title="月"></select>
+            <span class="date-sep">-</span>
+            <select class="form-select date-day" title="日"></select>
+        </div>
+        {% endif %}
     </div>
     <div class="col-md-6">
         <label class="form-label">有效期至</label>
-        <input type="date" name="expire_date" class="form-control" min="0001-01-01" max="9999-12-31" title="有效期至"
-               value="{{ document.expire_date.strftime('%Y-%m-%d') if document and document.expire_date else '' }}"
-               {% if mode == 'view' %}readonly disabled{% endif %}>
-        <small class="text-muted">不填表示长期有效</small>
+        {% if mode == 'view' %}
+        <input type="text" class="form-control" value="{{ document.expire_date.strftime('%Y-%m-%d') if document and document.expire_date else '长期有效' }}" readonly disabled>
+        {% else %}
+        <input type="hidden" name="expire_date" id="expire_date_hidden" value="{{ document.expire_date.strftime('%Y-%m-%d') if document and document.expire_date else '' }}">
+        <div class="date-select-group" data-target="expire_date">
+            <select class="form-select date-year" title="年"></select>
+            <span class="date-sep">-</span>
+            <select class="form-select date-month" title="月"></select>
+            <span class="date-sep">-</span>
+            <select class="form-select date-day" title="日"></select>
+        </div>
+        <small class="text-muted">全部留空表示长期有效</small>
+        {% endif %}
     </div>
 </div>
 
@@ -80,3 +102,87 @@
     <textarea name="note" title="备注" class="form-control" rows="3" placeholder="其他说明"
               {% if mode == 'view' %}readonly disabled{% endif %}>{{ document.note if document else '' }}</textarea>
 </div>
+
+{% if mode != 'view' %}
+<script>
+// 证件日期选择器：年/月/日独立下拉，移动端友好
+(function () {
+    const CURRENT_YEAR = new Date().getFullYear();
+    const YEAR_MIN = 1950;
+    const YEAR_MAX = CURRENT_YEAR + 30;
+
+    function daysInMonth(year, month) {
+        if (!year || !month) return 31;
+        return new Date(year, month, 0).getDate();
+    }
+
+    function fillOptions(sel, start, end, placeholder) {
+        sel.innerHTML = `<option value="">${placeholder}</option>`;
+        for (let i = start; i <= end; i++) {
+            const opt = document.createElement('option');
+            opt.value = i;
+            opt.textContent = i;
+            sel.appendChild(opt);
+        }
+    }
+
+    function parseValue(val) {
+        // 返回 {y, m, d} 或 null
+        if (!val) return null;
+        const parts = val.split('-');
+        if (parts.length !== 3) return null;
+        return { y: parts[0], m: parts[1], m_int: parseInt(parts[1], 10), d: parts[2] };
+    }
+
+    function syncHidden(group) {
+        const y = group.querySelector('.date-year').value;
+        const m = group.querySelector('.date-month').value;
+        const d = group.querySelector('.date-day').value;
+        const hidden = document.getElementById(group.dataset.target + '_hidden');
+        if (y && m && d) {
+            hidden.value = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+        } else {
+            hidden.value = '';
+        }
+    }
+
+    function rebuildDays(group) {
+        const ySel = group.querySelector('.date-year');
+        const mSel = group.querySelector('.date-month');
+        const dSel = group.querySelector('.date-day');
+        const y = parseInt(ySel.value, 10);
+        const m = parseInt(mSel.value, 10);
+        const currentDay = dSel.value;
+        const maxDay = daysInMonth(y, m);
+        // 保留已选项
+        fillOptions(dSel, 1, maxDay, '日');
+        if (currentDay && parseInt(currentDay, 10) <= maxDay) {
+            dSel.value = currentDay;
+        }
+    }
+
+    document.querySelectorAll('.date-select-group').forEach(group => {
+        const hidden = document.getElementById(group.dataset.target + '_hidden');
+        const ySel = group.querySelector('.date-year');
+        const mSel = group.querySelector('.date-month');
+        const dSel = group.querySelector('.date-day');
+
+        fillOptions(ySel, YEAR_MIN, YEAR_MAX, '年');
+        fillOptions(mSel, 1, 12, '月');
+        fillOptions(dSel, 1, 31, '日');
+
+        const parsed = parseValue(hidden.value);
+        if (parsed) {
+            ySel.value = parsed.y;
+            mSel.value = parsed.m_int;
+            rebuildDays(group);
+            dSel.value = parseInt(parsed.d, 10);
+        }
+
+        ySel.addEventListener('change', () => { rebuildDays(group); syncHidden(group); });
+        mSel.addEventListener('change', () => { rebuildDays(group); syncHidden(group); });
+        dSel.addEventListener('change', () => syncHidden(group));
+    });
+})();
+</script>
+{% endif %}
