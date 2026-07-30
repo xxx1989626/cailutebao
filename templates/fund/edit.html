@@ -114,7 +114,7 @@
                                 财务日期 <span class="text-danger">*</span>
                             </label>
                             <input type="date" name="date" class="form-control" 
-                                   value="{{ record.date.strftime('%Y-%m-%d') if record.date else '' }}" required>
+                                   value="{{ record.date.strftime('%Y-%m-%d') if record.date else '' }}" min="0001-01-01" max="9999-12-31" required>
                             <div class="invalid-feedback">请选择财务日期</div>
                         </div>
                         

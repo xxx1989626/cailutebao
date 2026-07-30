@@ -32,8 +32,13 @@
                 </div>
                 
                 <!-- 导出报表 -->
-                <a href="{{ url_for('trip.export_trip_report', year=current_year) }}" class="btn btn-sm btn-outline-success btn-action">
+                <a href="{{ url_for('trip.export_trip_report', year=selected_year) }}" class="btn btn-sm btn-outline-success btn-action">
                     <i class="bi bi-download me-1"></i> 导出报表
+                </a>
+
+                <!-- 导入报表 -->
+                <a href="{{ url_for('trip.trip_import') }}" class="btn btn-sm btn-outline-info btn-action">
+                    <i class="bi bi-upload me-1"></i> 导入报表
                 </a>
                 
                 <!-- 登记出发 -->
@@ -44,10 +49,10 @@
         </div>
         
         <!-- 卡片主体 -->
-        <div class="card-body p-4">
+        <div class="card-body p-0">
             
             <!-- 表格区域 -->
-            <div class="table-responsive rounded-2 shadow-sm border">
+            <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
@@ -63,18 +68,30 @@
                     <tbody>
                         {% for trip in trips %}
                         <tr class="{% if trip.status == '出差中' %}table-warning table-hover-warning{% endif %}">
-                            <!-- 出差次数 -->
+                            <!-- 出差次数（按年度连续计数） -->
                             <td>
                                 <span class="badge bg-light text-dark border">
-                                    第{{ trips|length - loop.index0 }}次
+                                    第{{ trip_id_to_idx.get(trip.id, loop.index) }}次
                                 </span>
                             </td>
                             
-                            <!-- 出差人员 -->
+                            <!-- 出差人员 + 逐人归队状态 -->
                             <td>
+                                {% set per_info = per_trip_participants.get(trip.id, {}) %}
                                 <div class="d-flex flex-wrap gap-1">
                                     {% for p in trip.participants %}
-                                        <span class="badge border text-dark bg-light participant-badge">
+                                        {% set info = per_info.get(p.id, {}) %}
+                                        {% set p_status = info.get('status', trip.status) %}
+                                        {% if p_status == '已归队' %}
+                                            {% set badge_cls = 'bg-success text-white border-success' %}
+                                            {% set p_icon = 'bi-check-circle-fill' %}
+                                        {% else %}
+                                            {% set badge_cls = 'bg-warning text-dark border-warning' %}
+                                            {% set p_icon = 'bi-arrow-right-circle-fill' %}
+                                        {% endif %}
+                                        <span class="badge border participant-badge d-inline-flex align-items-center gap-1 {{ badge_cls }}"
+                                              title="归队: {{ info.get('end_date', '未归队') }}{% if info.get('total_days') %} · {{ info.total_days }}天{% endif %}">
+                                            <i class="bi {{ p_icon }}"></i>
                                             {{ p.name }}
                                         </span>
                                     {% else %}
@@ -96,46 +113,59 @@
                                 {% endif %}
                             </td>
 
-                            <!-- 日期范围 -->
+                            <!-- 日期范围（主展示用出发日期 + 整批默认归队日，逐人详情在人员徽章 tooltip 里） -->
                             <td>
                                 <div class="d-flex align-items-center flex-wrap">
                                     <span class="text-primary fw-bold">
                                         {{ trip.start_date }}
                                     </span>
                                     <i class="bi bi-arrow-right mx-2 text-muted"></i>
-                                    {% if trip.end_date %}
+                                    {% if trip.status == '部分归队' %}
+                                        <span class="badge bg-info text-white d-inline-flex align-items-center">
+                                            <i class="bi bi-half-2 me-1"></i> 部分已归队
+                                        </span>
+                                    {% elif trip.end_date %}
                                         <span class="text-success">
                                             {{ trip.end_date }}
                                         </span>
                                     {% else %}
-                                        <span class="text-danger fw-medium">
-                                            （归队待定）
-                                        </span>
+                                        <span class="text-danger fw-medium">（归队待定）</span>
                                     {% endif %}
                                 </div>
                             </td>
 
-                            <!-- 时长 -->
+                            <!-- 时长：已归队者合计 -->
                             <td>
-                                {% if trip.total_days %}
-                                    <span class="badge bg-info text-white">
-                                        {{ trip.total_days }} 天
-                                    </span>
+                                {% set per_info = per_trip_participants.get(trip.id, {}) %}
+                                {% set any_day = namespace(v=false, sum=0) %}
+                                {% for p in trip.participants %}
+                                    {% set info = per_info.get(p.id, {}) %}
+                                    {% if info.get('total_days') %}
+                                        {% set any_day.sum = any_day.sum + info.total_days %}
+                                        {% set any_day.v = true %}
+                                    {% endif %}
+                                {% endfor %}
+                                {% if any_day.v %}
+                                    <span class="badge bg-info text-white">{{ any_day.sum }} 人·天</span>
                                 {% else %}
                                     <span class="text-muted fst-italic">--</span>
                                 {% endif %}
                             </td>
 
-                            <!-- 状态 -->
+                            <!-- 聚合状态 -->
                             <td>
                                 {% if trip.status == '出差中' %}
                                     <span class="badge rounded-pill bg-warning text-dark border border-warning d-flex align-items-center justify-content-center py-1">
                                         <span class="spinner-grow spinner-grow-sm text-danger me-1" role="status" aria-hidden="true"></span>
-                                        执行中
+                                        全部出差中
+                                    </span>
+                                {% elif trip.status == '部分归队' %}
+                                    <span class="badge rounded-pill bg-info text-white border border-info d-flex align-items-center justify-content-center py-1">
+                                        <i class="bi bi-half-2 me-1"></i> 部分归队
                                     </span>
                                 {% else %}
                                     <span class="badge rounded-pill bg-success text-white border border-success d-flex align-items-center justify-content-center py-1">
-                                        <i class="bi bi-check-circle me-1"></i> 已归队
+                                        <i class="bi bi-check-circle me-1"></i> 全员已归队
                                     </span>
                                 {% endif %}
                             </td>
@@ -187,11 +217,12 @@
                     </tbody>
                 </table>
             </div>
-        </div>
+        
         
         <!-- 分页控件 -->
         {% from "_pagination.html" import render_pagination %}
         {{ render_pagination(pagination, 'trip.trip_list', year=selected_year) }}
+        </div>
     </div>
     <!-- 统计信息卡片 -->
      {% if user_trip_stats %}

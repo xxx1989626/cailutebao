@@ -445,7 +445,50 @@ def init_app():
     with app.app_context():
         # 创建所有表（如果不存在）
         db.create_all()
-        
+
+        # ====== 出差逐人归队：ALTER TABLE 为已有 trip_participants 补列 + 迁移旧数据 ======
+        from sqlalchemy import inspect, text
+        insp = inspect(db.engine)
+        try:
+            cols = [c['name'] for c in insp.get_columns('trip_participants')]
+            conn = db.engine.connect()
+            try:
+                if 'end_date' not in cols:
+                    conn.execute(text('ALTER TABLE trip_participants ADD COLUMN end_date DATE'))
+                    conn.commit()
+                if 'status' not in cols:
+                    conn.execute(text("ALTER TABLE trip_participants ADD COLUMN status VARCHAR(20) DEFAULT '出差中'"))
+                    conn.commit()
+                if 'total_days' not in cols:
+                    conn.execute(text('ALTER TABLE trip_participants ADD COLUMN total_days INTEGER'))
+                    conn.commit()
+                # 迁移旧数据：把主记录的 end_date/status/total_days 回填到每个参与人的关联对象
+                from models import BusinessTrip, TripParticipant
+                for t in BusinessTrip.query.all():
+                    for p in t.participants:
+                        link = TripParticipant.query.get((t.id, p.id))
+                        if link is None:
+                            # 兼容旧关联（SQLAlchemy 可能已经自动插入过）
+                            continue
+                        changed = False
+                        if link.end_date is None and t.end_date is not None:
+                            link.end_date = t.end_date
+                            changed = True
+                        if (not link.status or link.status == '出差中') and t.end_date is not None:
+                            link.status = '已归队'
+                            changed = True
+                        if link.total_days is None and t.total_days is not None:
+                            link.total_days = t.total_days
+                            changed = True
+                        if changed:
+                            db.session.add(link)
+                db.session.commit()
+            finally:
+                conn.close()
+        except Exception as e:
+            db.session.rollback()
+            logging.warning(f'出差逐人归队字段初始化失败(可能首次建表，忽略): {e}')
+
         # 动态注册权限
         try:
             from routes.hr.permissions import HR_PERMISSIONS

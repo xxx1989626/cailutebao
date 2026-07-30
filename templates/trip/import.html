@@ -1,0 +1,74 @@
+<!-- templates/trip/import.html -->
+{% extends "base.html" %}
+{% block title %}导入出差记录{% endblock %}
+{% block content %}
+<div class="container mt-4 mb-5">
+    {% include '_common_tabs.html' %}
+    <div class="card shadow border-0 rounded-3">
+        <div class="card-header bg-gradient bg-dark text-white py-3">
+            <h5 class="mb-0">
+                <i class="bi bi-upload me-2"></i> 批量导入出差记录
+            </h5>
+        </div>
+        <div class="card-body p-4">
+            <!-- 步骤说明 -->
+            <div class="alert alert-info border-0 rounded-3 mb-4">
+                <h6 class="fw-bold mb-2"><i class="bi bi-info-circle me-1"></i> 导入说明</h6>
+                <ol class="mb-0 small">
+                    <li>请先下载模板，按模板格式填写数据</li>
+                    <li>必填列：<strong>出差人员、目的地、开始日期</strong></li>
+                    <li>出差人员多个姓名用 <code>顿号(、)</code> 或 <code>逗号(,)</code> 分隔</li>
+                    <li>开始日期格式：<code>2026-01-15</code> 或 <code>2026/01/15</code></li>
+                    <li>归队日期为空时，将自动标记为"出差中"</li>
+                    <li>人员按姓名匹配，需与花名册姓名完全一致</li>
+                </ol>
+            </div>
+
+            <!-- 下载模板 -->
+            <div class="mb-4">
+                <a href="{{ url_for('trip.trip_import_template') }}" class="btn btn-outline-primary">
+                    <i class="bi bi-download me-1"></i> 下载导入模板
+                </a>
+            </div>
+
+            <!-- 上传表单 -->
+            <form method="POST" enctype="multipart/form-data" id="importForm">
+                <div class="mb-4">
+                    <label class="form-label fw-bold">选择 Excel 文件 <span class="text-danger">*</span></label>
+                    <input type="file" name="file" class="form-control" accept=".xlsx" required>
+                    <small class="text-muted">仅支持 .xlsx 格式</small>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle me-1"></i> 确认导入
+                    </button>
+                    <a href="{{ url_for('trip.trip_list') }}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left me-1"></i> 返回列表
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.bg-gradient {
+    background: linear-gradient(135deg, #212529 0%, #343a40 100%);
+}
+</style>
+
+<script>
+document.getElementById('importForm').addEventListener('submit', function(e) {
+    const fileInput = this.querySelector('input[type=file]');
+    if (fileInput.files.length === 0) {
+        e.preventDefault();
+        alert('请先选择文件');
+        return;
+    }
+    if (!confirm('确认要导入此文件吗？')) {
+        e.preventDefault();
+    }
+});
+</script>
+{% endblock %}

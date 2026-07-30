@@ -36,7 +36,7 @@
                         <div class="col-md-6 mb-3">
                             <label class="form-label">开始日期</label>
                             <input type="date" name="start_date" class="form-control" 
-                                   value="{{ leave.start_date if leave else form_default_date }}" required>
+                                   value="{{ leave.start_date if leave else form_default_date }}" min="0001-01-01" max="9999-12-31" required>
                         </div>
                     </div>
 
@@ -44,7 +44,7 @@
                         <div class="col-md-6 mb-3">
                             <label class="form-label">预计结束日期</label>
                             <input type="date" name="end_date" class="form-control" 
-                                   value="{{ leave.end_date if leave else '' }}" required>
+                                   value="{{ leave.end_date if leave else '' }}" min="0001-01-01" max="9999-12-31" required>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label">天数估算</label>

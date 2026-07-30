@@ -25,11 +25,11 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">开始日期</label>
-                                <input type="date" name="start_date" class="form-control" value="{{ trip.start_date if trip else today }}" required>
+                                <input type="date" name="start_date" class="form-control" value="{{ trip.start_date if trip else today }}" required min="0001-01-01" max="9999-12-31">
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">归队日期 (选填)</label>
-                                <input type="date" name="end_date" class="form-control" value="{{ trip.end_date if trip else '' }}">
+                                <input type="date" name="end_date" class="form-control" value="{{ trip.end_date if trip else '' }}" min="0001-01-01" max="9999-12-31">
                             </div>
                         </div>
 

@@ -6,10 +6,10 @@
     <!-- 1. 新增时间筛选表单 -->
     <form method="GET" class="mb-3 row g-3">
         <div class="col-md-4">
-            <input type="date" name="start_date" class="form-control" placeholder="开始日期" value="{{ start_date or '' }}">
+            <input type="date" name="start_date" class="form-control" placeholder="开始日期" value="{{ start_date or '' }}" min="0001-01-01" max="9999-12-31">
         </div>
         <div class="col-md-4">
-            <input type="date" name="end_date" class="form-control" placeholder="结束日期" value="{{ end_date or '' }}">
+            <input type="date" name="end_date" class="form-control" placeholder="结束日期" value="{{ end_date or '' }}" min="0001-01-01" max="9999-12-31">
         </div>
         <div class="col-md-4">
             <button type="submit" class="btn btn-outline-primary w-100">按日期筛选</button>

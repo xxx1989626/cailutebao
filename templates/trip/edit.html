@@ -2,43 +2,73 @@
 {% extends "base.html" %}
 {% block title %}编辑出差记录{% endblock %}
 {% block content %}
-<div class="container mt-4">
+<div class="container mt-4 mb-5">
     <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card shadow">
-                <div class="card-header bg-primary text-white">编辑出差信息</div>
-                <div class="card-body">
-                    <form method="POST">
-                        <div class="mb-3">
-                            <label class="form-label">出差人员 (可多选)</label>
-                            <select name="user_ids" class="form-select select2-pinyin" multiple required data-placeholder="请选择出差人员">
-                                {% for emp in employees %}
-                                <option value="{{ emp.id }}" {% if emp.id in current_ids %}selected{% endif %}>
-                                    {{ emp.name }} - {{ emp.post }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                            <small class="text-muted">支持姓名、拼音全拼或首字母搜索</small>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">目的地</label>
-                            <input type="text" name="destination" class="form-control" value="{{ trip.destination }}" required>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">开始日期</label>
-                                <input type="date" name="start_date" class="form-control" value="{{ trip.start_date }}" required>
+        <div class="col-xl-8">
+            <div class="card shadow border-0 rounded-3">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-pencil-square me-2"></i>编辑出差信息</h5>
+                    <a href="javascript:history.back()" class="btn btn-sm btn-outline-light">
+                        <i class="bi bi-arrow-left me-1"></i>返回列表
+                    </a>
+                </div>
+                <div class="card-body p-4">
+                    <form method="POST" id="tripEditForm">
+                        <!-- 基本信息 -->
+                        <div class="mb-4">
+                            <h6 class="text-primary mb-3"><i class="bi bi-info-circle me-1"></i>基本信息</h6>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">出差人员 (可多选)</label>
+                                <select id="user_ids_select" name="user_ids" class="form-select select2-pinyin" multiple
+                                    required data-placeholder="请选择出差人员">
+                                    {% for emp in employees %}
+                                    <option value="{{ emp.id }}" {% if emp.id in current_ids %}selected{% endif %}>
+                                        {{ emp.name }}
+                                        {% if emp.status != '在职' %}<span class="text-muted">({{ emp.status }})</span>{% endif %}
+                                        - {{ emp.post }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <small class="text-muted">支持姓名、拼音全拼或首字母搜索；已选人员会在下方出现逐人归队日期输入框</small>
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">归队日期 (选填)</label>
-                                <input type="date" name="end_date" class="form-control" value="{{ trip.end_date if trip.end_date else '' }}">
-                                <div class="form-text">如尚未归队请留空</div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">目的地</label>
+                                <input type="text" name="destination" class="form-control"
+                                    value="{{ trip.destination }}" required>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold">出发日期</label>
+                                    <input type="date" name="start_date" class="form-control"
+                                        value="{{ trip.start_date.isoformat() if trip.start_date else '' }}"
+                                        min="0001-01-01" max="9999-12-31" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold">批量归队日期 <span
+                                            class="text-muted small">(选填，可下方按人分别填)</span></label>
+                                    <input id="batchEndDate" type="date" name="end_date" class="form-control"
+                                        value="{{ trip.end_date.isoformat() if trip.end_date else '' }}"
+                                        min="0001-01-01" max="9999-12-31">
+                                    <div class="form-text">填写后会一键填充下方<strong>尚未归队</strong>人员的归队日期</div>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-success">保存修改</button>
-                            <a href="{{ url_for('trip.trip_list') }}" class="btn btn-outline-secondary">取消</a>
+                        <!-- 逐人归队日期 -->
+                        <div class="mb-4">
+                            <h6 class="text-primary mb-3"><i class="bi bi-person-check me-1"></i>逐人归队状态
+                                <small class="text-muted fw-normal ms-1">(绿色=已归队，黄色=出差中)</small>
+                            </h6>
+                            <div id="perPersonList" class="border rounded-3 p-3 bg-light" style="min-height: 60px;">
+                                <p class="text-muted small mb-0" id="noPersonHint">请先选择出差人员（上方下拉框）</p>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="submit" class="btn btn-primary px-4">
+                                <i class="bi bi-save me-1"></i>保存修改
+                            </button>
+                            <a href="javascript:history.back()" class="btn btn-outline-secondary">取消</a>
                         </div>
                     </form>
                 </div>
@@ -49,5 +79,127 @@
 {% endblock %}
 
 {% block scripts %}
-{# 此处不需要再写初始化脚本，base.html 会自动处理 class="select2-pinyin" 的元素 #}
+<script>
+(function () {
+    // 后端传入的初始数据
+    const PER_END_DATES = {{ per_end_dates | tojson }};
+    const PER_STATUS = {{ per_status | tojson }};
+    const PER_DAYS = {{ per_days | tojson }};
+    const EMP_DATA = {
+        {% for emp in employees %}
+        "{{ emp.id }}": { name: "{{ emp.name }}", post: "{{ emp.post }}" }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    };
+
+    const userSelect = document.getElementById('user_ids_select');
+    const batchInput = document.getElementById('batchEndDate');
+    const listBox = document.getElementById('perPersonList');
+    const noHint = document.getElementById('noPersonHint');
+
+    // 人员 id 顺序（保持选择顺序）
+    let orderedIds = Array.from(userSelect.selectedOptions).map(o => String(o.value));
+    // 逐人字段（字符串），以 PID 为 key
+    const perValues = {};
+    Object.keys(PER_END_DATES).forEach(k => perValues[k] = PER_END_DATES[k] || '');
+
+    function renderList() {
+        orderedIds = Array.from(userSelect.selectedOptions).map(o => String(o.value));
+        if (orderedIds.length === 0) {
+            listBox.innerHTML = '<p class="text-muted small mb-0">请先选择出差人员（上方下拉框）</p>';
+            return;
+        }
+        const rows = orderedIds.map(pid => {
+            const emp = EMP_DATA[pid] || { name: '未知', post: '' };
+            const curVal = perValues[pid] || '';
+            const status = PER_STATUS[pid] || '出差中';
+            const prevReturned = !!curVal;
+            const badgeClass = prevReturned
+                ? 'bg-success text-white border-success'
+                : 'bg-warning text-dark border-warning';
+            const badgeLabel = prevReturned ? '已归队' : '出差中';
+            return `
+                <div class="d-flex flex-wrap gap-2 align-items-center py-2 border-bottom per-person-row" data-pid="${pid}">
+                    <span class="badge rounded-pill ${badgeClass} border px-3 py-2 fs-6 d-flex align-items-center">
+                        ${prevReturned ? '<i class="bi bi-check-circle me-1"></i>' : '<i class="bi bi-arrow-right-circle me-1"></i>'}
+                        ${badgeLabel}
+                    </span>
+                    <div class="flex-grow-1 fw-bold ps-1">
+                        ${emp.name}
+                        <small class="text-muted fw-normal ms-1">${emp.post}</small>
+                    </div>
+                    <div class="d-flex align-items-center gap-2" style="min-width: 260px;">
+                        <span class="text-muted small">归队日:</span>
+                        <input type="date" name="end_date_${pid}"
+                            class="form-control per-end-date form-control-sm"
+                            value="${curVal}"
+                            data-pid="${pid}"
+                            min="0001-01-01" max="9999-12-31">
+                        <button type="button" class="btn btn-sm btn-outline-danger clear-date-btn"
+                                data-pid="${pid}" title="清空此人员归队日期">
+                            <i class="bi bi-x-circle"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        listBox.innerHTML = rows;
+
+        // 绑定清空按钮
+        listBox.querySelectorAll('.clear-date-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const pid = btn.dataset.pid;
+                const input = listBox.querySelector(`input[data-pid="${pid}"]`);
+                if (input) { input.value = ''; perValues[pid] = ''; PER_STATUS[pid] = '出差中'; }
+                renderList();
+            });
+        });
+
+        // 绑定日期变化，即时更新状态颜色
+        listBox.querySelectorAll('.per-end-date').forEach(inp => {
+            inp.addEventListener('change', () => {
+                perValues[inp.dataset.pid] = inp.value;
+                PER_STATUS[inp.dataset.pid] = inp.value ? '已归队' : '出差中';
+                renderList();
+            });
+        });
+    }
+
+    // 监听批量归队日期：仅对尚未填写归队日期的人生效
+    batchInput.addEventListener('change', () => {
+        const batchDate = batchInput.value;
+        if (!batchDate) return;
+        orderedIds.forEach(pid => {
+            if (!perValues[pid]) {
+                perValues[pid] = batchDate;
+                PER_STATUS[pid] = '已归队';
+            }
+        });
+        renderList();
+    });
+
+    // 监听人员选择变化
+    userSelect.addEventListener('change', () => {
+        renderList();
+    });
+
+    // 表单提交时：确保逐人输入框被完整带上
+    document.getElementById('tripEditForm').addEventListener('submit', () => {
+        // 同步 perValues 到现有 input（renderList 已经正确填好，这里只是兜底）
+        Object.entries(perValues).forEach(([pid, val]) => {
+            let inp = listBox.querySelector(`input[name="end_date_${pid}"]`);
+            if (!inp) {
+                // 如果人员被选中但还没渲染对应 input（极少情况），动态插入
+                inp = document.createElement('input');
+                inp.type = 'hidden';
+                inp.name = `end_date_${pid}`;
+                document.getElementById('tripEditForm').appendChild(inp);
+            }
+            inp.value = val || '';
+        });
+    });
+
+    // 首次渲染
+    renderList();
+})();
+</script>
 {% endblock %}

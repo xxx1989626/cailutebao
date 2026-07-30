@@ -232,19 +232,47 @@ class Notification(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.now)  # 通知创建时间
     user = db.relationship('User', backref=db.backref('notifications', cascade='all, delete-orphan'))  # 建立与 User 模型的关联关系
 # ==================== 出差管理模型 ====================
-trip_participants = db.Table('trip_participants',
-    db.Column('trip_id', db.Integer, db.ForeignKey('business_trips.id'), primary_key=True),
-    db.Column('employee_id', db.Integer, db.ForeignKey('employment_cycles.id'), primary_key=True)
-)  #出差参与人员关联表（多对多）
+# 带逐人归队日期/状态的关联对象模型（替代简单 association table）
+class TripParticipant(db.Model):
+    __tablename__ = 'trip_participants'
+    trip_id = db.Column(db.Integer, db.ForeignKey('business_trips.id'), primary_key=True)
+    employee_id = db.Column(db.Integer, db.ForeignKey('employment_cycles.id'), primary_key=True)
+    # 逐人归队日期：为空表示尚未归队
+    end_date = db.Column(db.Date, nullable=True)
+    # 逐人状态：出差中 / 已归队（不依赖主记录 end_date）
+    status = db.Column(db.String(20), default='出差中')
+    # 逐人出差天数：end_date - start_date + 1
+    total_days = db.Column(db.Integer, nullable=True)
+    # 反向关联
+    trip = db.relationship('BusinessTrip', backref=db.backref('participant_links', cascade='all, delete-orphan'))
+    employee = db.relationship('EmploymentCycle', backref=db.backref('trip_links', cascade='all, delete-orphan'))
+
+
 class BusinessTrip(db.Model):
     __tablename__ = 'business_trips'  # 数据库表名
     id = db.Column(db.Integer, primary_key=True)  # 主键ID
     destination = db.Column(db.String(100), nullable=False)  # 出差目的地
     start_date = db.Column(db.Date, nullable=False)  # 出差开始日期
-    end_date = db.Column(db.Date, nullable=True)  # 出差结束日期
-    total_days = db.Column(db.Integer)  # 出差总天数
-    status = db.Column(db.String(20), default='进行中')  # 出差状态
-    participants = db.relationship('EmploymentCycle',secondary=trip_participants,backref=db.backref('trips', lazy='dynamic'))  # 建立与 EmploymentCycle 模型的多对多关联
+    end_date = db.Column(db.Date, nullable=True)  # 出差结束日期（整批默认值）
+    total_days = db.Column(db.Integer)  # 出差总天数（整批默认值）
+    status = db.Column(db.String(20), default='出差中')  # 出差状态（聚合展示用）
+    # 通过关联对象读取参与人员，兼容旧 participants 语义
+    participants = db.relationship(
+        'EmploymentCycle',
+        secondary='trip_participants',
+        backref=db.backref('trips', lazy='dynamic'),
+        viewonly=True
+    )
+    # 便捷方法：获取某员工的参与对象
+    def get_link(self, employee_id):
+        for link in self.participant_links:
+            if link.employee_id == employee_id:
+                return link
+        return None
+    # 便捷方法：按人判断是否归队
+    def is_returned(self, employee_id):
+        link = self.get_link(employee_id)
+        return bool(link and link.end_date is not None)
 # ==================== 请假管理模型 ====================
 class LeaveRecord(db.Model):
     __tablename__ = 'leave_records'  # 数据库表名

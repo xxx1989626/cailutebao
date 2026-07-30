@@ -8,7 +8,7 @@
     <!-- 请假管理主卡片 -->
     <div class="card card-custom border-0 shadow-sm rounded-3 overflow-hidden">
         <!-- 卡片头部 -->
-        <div class="card-header bg-gradient bg-success text-white d-flex flex-wrap justify-content-between align-items-center gap-3 py-3 px-4">
+        <div class="card-header bg-gradient bg-success text-white d-flex flex-wrap justify-content-between align-items-center gap-3 py-3">
             <h4 class="mb-0 d-flex align-items-center">
                 <i class="bi bi-calendar-check me-2"></i>{{ selected_year }}年度 请假记录管理
             </h4>
@@ -32,7 +32,7 @@
                 </div>
                 
                 <!-- 新增请假记录 -->
-                <a href="{{ url_for('leave.add_leave') }}" class="btn btn-light fw-bold shadow-sm btn-hover-lift">
+                <a href="{{ url_for('leave.add_leave') }}" class="btn btn-sm btn-light fw-bold shadow-sm btn-hover-lift">
                     <i class="bi bi-plus-lg text-success me-1"></i> 登记请假记录
                 </a>
             </div>
@@ -200,34 +200,35 @@
                     </tbody>
                 </table>
             </div>
-            
+
             <!-- 分页控件 -->
             {% from "_pagination.html" import render_pagination %}
             {{ render_pagination(pagination, 'leave.leave_list', year=selected_year) }}
         </div>
-            <!-- 统计信息卡片 -->
-    {% if user_leave_stats %}
-    <div class="alert alert-info mb-4 shadow-sm border-0 rounded-3" style="background-color: #e3f2fd;">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-            <h6 class="fw-bold text-primary mb-0">
-                <i class="bi bi-bar-chart-fill me-2"></i>{{ selected_year }}年度请假频次统计
-            </h6>
-            <span class="badge bg-primary text-white">
-                总计 {{ user_leave_stats|length }} 人
-            </span>
-        </div>
-        <div class="d-flex flex-wrap gap-2">
-            {% for uid, stats in user_leave_stats.items() %}
-            <span class="badge rounded-pill bg-white text-dark border px-3 py-2 shadow-sm hover-scale">
-                <span class="text-primary fw-bold">{{ stats.name }}</span>: 
-                <span class="badge bg-primary ms-1">{{ stats.count }} 次/{{ stats.days }} 天</span>
-            </span>
-            {% endfor %}
-        </div>
     </div>
-    {% endif %}
+<!-- 统计信息卡片 -->
+{% if user_leave_stats %}
+<div class="alert alert-info mb-4 shadow-sm border-0 rounded-3"  style="background-color: #e3f2fd; border-left: 5px solid #4caf50 !important;">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h6 class="fw-bold text-primary mb-0">
+            <i class="bi bi-bar-chart-fill me-2"></i>{{ selected_year }}年度请假频次统计
+        </h6>
+        <span class="badge bg-primary text-white">
+                总计 {{ user_leave_stats|length }} 人
+        </span>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+    {% for uid, stats in user_leave_stats.items() %}
+        <span class="badge rounded-pill bg-white text-dark border px-3 py-2 shadow-sm hover-scale">
+            <span class="text-primary fw-bold">{{ stats.name }}</span>: 
+            <span class="badge bg-primary ms-1">{{ stats.count }} 次/{{ stats.days }} 天</span>
+        </span>
+        {% endfor %}
     </div>
 </div>
+{% endif %}
+    </div>
+
 
 <!-- 复制成功提示框 -->
 <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer">

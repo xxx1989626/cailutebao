@@ -84,7 +84,7 @@
         <label for="asset_purchase_date" class="form-label fw-bold">
             购置/入库日期
         </label>
-        <input type="date" name="purchase_date" id="asset_purchase_date" class="form-control asset-form-control" value="{{ default_date }}" title="购置或入库日期">
+        <input type="date" name="purchase_date" id="asset_purchase_date" class="form-control asset-form-control" value="{{ default_date }}" title="购置或入库日期" min="0001-01-01" max="9999-12-31">
     </div>
 
     <!-- 床位容量 -->
