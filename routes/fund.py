@@ -195,10 +195,14 @@ def fund_add():
 # ==================== 编辑收支记录 ====================
 @fund_bp.route('/edit/<int:record_id>', methods=['GET', 'POST'])
 @login_required
-@perm.require('fund.edit')
 def fund_edit(record_id):
+    # 兜底操作：仅管理员可修改资金记录（不开放给普通权限分配）
+    if current_user.role != 'admin':
+        flash('权限不足，仅管理员可修改资金记录', 'danger')
+        return redirect(url_for('fund.fund_list'))
+
     record = FundsRecord.query.get_or_404(record_id)
-    
+
     if request.method == 'POST':
         try:
             # 更新字段
@@ -207,8 +211,18 @@ def fund_edit(record_id):
             record.item = request.form.get('item')
             record.amount = float(request.form.get('amount'))
             record.note = request.form.get('note', '')
-            
-            # 处理附件
+
+            # 处理已有附件删除（由 _attachment.html 组件通过 delete_attachments 隐藏字段提交 JSON 数组）
+            delete_paths_raw = request.form.get('delete_attachments', '')
+            if delete_paths_raw:
+                try:
+                    delete_paths = json.loads(delete_paths_raw)
+                    current_attachments = list(record.attachment or [])
+                    record.attachment = [p for p in current_attachments if p not in delete_paths]
+                except (json.JSONDecodeError, TypeError):
+                    pass
+
+            # 处理新附件上传
             if 'attachment' in request.files:
                 uploaded_files = request.files.getlist('attachment')
                 for file in uploaded_files:
@@ -219,25 +233,18 @@ def fund_edit(record_id):
                                 record.attachment.append(path)
                             else:
                                 record.attachment = [path]
-            
+
             # 重新计算所有余额
             recalculate_balances()
-            
-            log_action(
-                action_type="财务编辑",
-                target_type="FundsRecord",
-                target_id=record.id,
-                description=f"修改记录 {record.item} 金额 {record.amount}"
-            )
-            
+
             db.session.commit()
             flash('财务记录已更新', 'success')
             return redirect(url_for('fund.fund_list'))
-            
+
         except Exception as e:
             db.session.rollback()
             flash(f'更新失败：{str(e)}', 'danger')
-    
+
     return render_template('fund/edit.html', record=record)
 
 # ==================== 删除收支记录 ====================

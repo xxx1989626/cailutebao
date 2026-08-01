@@ -1,13 +1,17 @@
 <!-- templates/fund/_partial_fund_form.html -->
+{% set record = record|default(None) %}
+{% set is_edit = record is not none %}
 <div class="row g-3 finance-form-container">
     <!-- 财务日期 -->
     <div class="col-md-6">
         <label class="form-label fw-bold">
-            财务日期 
+            财务日期
             <span class="text-danger">*</span>
             <i class="bi bi-info-circle text-info ms-1" data-bs-toggle="tooltip" data-bs-title="交易发生的实际日期"></i>
         </label>
-        <input type="date" name="date" class="form-control finance-form-control" value="{{ default_date }}" title="请选择财务日期" placeholder="请选择财务日期" min="0001-01-01" max="9999-12-31" required>
+        <input type="date" name="date" class="form-control finance-form-control"
+               value="{{ record.date.strftime('%Y-%m-%d') if is_edit else default_date }}"
+               title="请选择财务日期" placeholder="请选择财务日期" min="0001-01-01" max="9999-12-31" required>
         <div class="invalid-feedback">
             请选择财务日期
         </div>
@@ -16,11 +20,13 @@
     <!-- 资方/付款人 -->
     <div class="col-md-6">
         <label class="form-label fw-bold">
-            资方/付款人 
+            资方/付款人
             <span class="text-danger">*</span>
             <i class="bi bi-info-circle text-info ms-1" data-bs-toggle="tooltip" data-bs-title="资金的来源方或实际付款人"></i>
         </label>
-        <input type="text" name="payer" class="form-control finance-form-control" placeholder="如：特保队、某某公司" required>
+        <input type="text" name="payer" class="form-control finance-form-control"
+               value="{{ record.payer if is_edit else '' }}"
+               placeholder="如：特保队、某某公司" required>
         <div class="invalid-feedback">
             请输入资方/付款人信息
         </div>
@@ -29,11 +35,13 @@
     <!-- 费用项目 -->
     <div class="col-md-12">
         <label class="form-label fw-bold">
-            费用项目 
+            费用项目
             <span class="text-danger">*</span>
             <i class="bi bi-info-circle text-info ms-1" data-bs-toggle="tooltip" data-bs-title="详细描述费用用途，便于财务核算"></i>
         </label>
-        <input type="text" name="item" class="form-control finance-form-control" placeholder="如：采购资产支出、日常办公支出" required>
+        <input type="text" name="item" class="form-control finance-form-control"
+               value="{{ record.item if is_edit else '' }}"
+               placeholder="如：采购资产支出、日常办公支出" required>
         <div class="invalid-feedback">
             请输入费用项目说明
         </div>
@@ -45,14 +53,15 @@
     <!-- 支出金额 -->
     <div class="col-md-6">
         <label class="form-label fw-bold">
-            支出金额 (元) 
+            支出金额 (元)
             <span class="text-danger">*</span>
             <i class="bi bi-exclamation-triangle text-warning ms-1" data-bs-toggle="tooltip" data-bs-title="支出金额请填写负数，收入填写正数"></i>
         </label>
         <div class="input-group">
-            <span class="input-group-text bg-danger text-white rounded-start-3">¥</span>
-            <input type="number" step="0.01" name="amount" id="finance_amount" 
-                   class="form-control finance-form-control border-danger rounded-end-3" 
+            <span class="input-group-text {% if is_edit and record.amount >= 0 %}bg-success{% else %}bg-danger{% endif %} text-white rounded-start-3">¥</span>
+            <input type="number" step="0.01" name="amount" id="finance_amount"
+                   class="form-control finance-form-control {% if is_edit and record.amount >= 0 %}border-success{% else %}border-danger{% endif %} rounded-end-3"
+                   value="{{ record.amount if is_edit else '' }}"
                    placeholder="支出请填写负数，如 -500" required>
         </div>
         <div class="invalid-feedback amount-invalid">
@@ -63,7 +72,7 @@
     <!-- 凭证上传 -->
     <div class="col-md-6">
         {% set name = 'attachment' %}
-        {% set existing_attachments = [] %}
+        {% set existing_attachments = record.attachment if is_edit else [] %}
         {% set accept = 'image/*,.pdf,.zip,.rar,.doc,.docx,.xls,.xlsx' %}
         {% include "_attachment.html" with context %}
         <div class="form-text">
@@ -77,8 +86,8 @@
             财务备注
             <i class="bi bi-info-circle text-info ms-1" data-bs-toggle="tooltip" data-bs-title="补充说明财务相关信息"></i>
         </label>
-        <textarea name="note" class="form-control finance-form-control" rows="3" 
-                  placeholder="填写相关的报销说明、流水号、审批人等备注信息..."></textarea>
+        <textarea name="note" class="form-control finance-form-control" rows="3"
+                  placeholder="填写相关的报销说明、流水号、审批人等备注信息...">{{ record.note if is_edit else '' }}</textarea>
         <div class="form-text">
             建议填写：交易流水号、审批人、报销事由等详细信息
         </div>
