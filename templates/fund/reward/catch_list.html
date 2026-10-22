@@ -1,0 +1,281 @@
+<!-- templates/fund/reward/catch_list.html -->
+{% extends "base.html" %}
+{% block title %}抓狗出勤登记{% endblock %}
+{% block content %}
+<style>
+    .reward-table th { font-weight: 600; color: #212529; text-align: center; white-space: nowrap; vertical-align: middle; }
+    .reward-table td { vertical-align: middle; text-align: center; border-color: #f1f3f5; }
+    .reward-table tr:hover { background-color: #f8f9fa; transition: background-color .2s ease; }
+    .stat-card { border: 1px solid #e9ecef; border-radius: 8px; background: #fff; }
+    .stat-card .stat-value { font-size: 1.6rem; font-weight: 700; line-height: 1.2; }
+    .stat-card .stat-label { color: #6c757d; font-size: .8rem; }
+</style>
+
+<div class="container mt-4">
+    {% include 'fund/reward/_nav.html' %}
+
+    <!-- 笼存池概览 -->
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-md-3">
+            <div class="stat-card p-3 h-100">
+                <div class="stat-label">累计抓捕</div>
+                <div class="stat-value text-dark">{{ stats.catch }} <small class="fs-6 text-muted">只</small></div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card p-3 h-100">
+                <div class="stat-label">累计交付</div>
+                <div class="stat-value text-primary">{{ stats.delivered }} <small class="fs-6 text-muted">只</small></div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card p-3 h-100">
+                <div class="stat-label">累计损耗</div>
+                <div class="stat-value text-danger">{{ stats.loss }} <small class="fs-6 text-muted">只</small></div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card p-3 h-100">
+                <div class="stat-label">当前笼存</div>
+                <div class="stat-value {% if stats.cage < 0 %}text-danger{% else %}text-success{% endif %}">{{ stats.cage }} <small class="fs-6 text-muted">只</small></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 笼存池校验条 -->
+    <div class="alert {% if stats.cage < 0 %}alert-danger{% elif stats.cage == 0 %}alert-success{% else %}alert-info{% endif %} d-flex flex-wrap justify-content-between align-items-center py-2">
+        <span>
+            <i class="bi bi-calculator me-1"></i>
+            笼存池核对：抓捕 {{ stats.catch }} − 交付 {{ stats.delivered }} − 损耗 {{ stats.loss }} =
+            <strong>{{ stats.cage }}</strong> 只
+        </span>
+        {% if stats.cage < 0 %}
+        <small class="fw-bold">数据异常：笼存为负，请检查交付/损耗登记是否重复</small>
+        {% else %}
+        <small class="text-muted">损耗必须归属到具体某次出勤</small>
+        {% endif %}
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-success text-white d-flex flex-wrap justify-content-between align-items-center gap-2 py-3">
+            <h4 class="mb-0"><i class="bi bi-calendar-check me-2"></i>抓狗出勤登记</h4>
+            <div class="d-flex align-items-center gap-2">
+                <form method="GET" class="d-flex align-items-center gap-2 mb-0">
+                    <select name="year" class="form-select form-select-sm" onchange="this.form.submit()" style="width: 110px;">
+                        {% for y in years %}
+                        <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}年</option>
+                        {% endfor %}
+                    </select>
+                </form>
+                {% if can_add %}
+                <button type="button" class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#addCatchModal">
+                    <i class="bi bi-plus-circle me-1"></i>新增出勤
+                </button>
+                {% endif %}
+            </div>
+        </div>
+        <div class="card-body p-3">
+            <div class="table-responsive rounded shadow-sm">
+                <table class="table table-hover align-middle mb-0 reward-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 12%;">出勤日期</th>
+                            <th style="width: 10%;">抓捕只数</th>
+                            <th>参与人员</th>
+                            <th style="width: 10%;">本次损耗</th>
+                            <th style="width: 10%;">计酬只数</th>
+                            <th style="width: 9%;">状态</th>
+                            <th style="width: 16%;">备注</th>
+                            {% if can_edit or can_delete %}<th style="width: 10%;">操作</th>{% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in catches %}
+                        <tr>
+                            <td>{{ c.catch_date.strftime('%Y-%m-%d %H:%M') if c.catch_date else '-' }}</td>
+                            <td class="fw-bold">{{ c.dog_count }}</td>
+                            <td class="text-start">
+                                {% for p in c.persons %}
+                                <span class="badge bg-light text-dark border me-1 mb-1">
+                                    {{ p.employee.name if p.employee else '未知' }}{% if p.employee and p.employee.status == '离职' %}<span class="text-muted">（离职）</span>{% endif %}
+                                </span>
+                                {% else %}
+                                <span class="text-muted small">未指定</span>
+                                {% endfor %}
+                            </td>
+                            <td class="{% if c.loss_count > 0 %}text-danger fw-bold{% else %}text-muted{% endif %}">{{ c.loss_count }}</td>
+                            <td class="fw-bold text-success">{{ c.payable_count }}</td>
+                            <td>
+                                <span class="badge rounded-pill {% if c.status == '已结算' %}bg-secondary{% else %}bg-warning text-dark{% endif %}">{{ c.status }}</span>
+                            </td>
+                            <td class="text-truncate text-start" style="max-width: 180px;" title="{{ c.remark or '无' }}">{{ c.remark or '-' }}</td>
+                            {% if can_edit or can_delete %}
+                            <td>
+                                {% if c.status == '未结算' %}
+                                <div class="btn-group btn-group-sm">
+                                    {% if can_edit %}
+                                    <button type="button" class="btn btn-outline-warning" title="编辑"
+                                            data-bs-toggle="modal" data-bs-target="#editCatchModal"
+                                            data-id="{{ c.id }}"
+                                            data-date="{{ c.catch_date.strftime('%Y-%m-%dT%H:%M') if c.catch_date else '' }}"
+                                            data-count="{{ c.dog_count }}"
+                                            data-remark="{{ c.remark or '' }}"
+                                            data-persons="{{ c.persons | map(attribute='employee_id') | list | tojson }}">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    {% endif %}
+                                    {% if can_delete %}
+                                    <form method="POST" action="{{ url_for('reward.catch_delete', catch_id=c.id) }}"
+                                          class="d-inline" onsubmit="return confirm('确定删除该出勤记录？归属该次出勤的损耗记录也会一并删除。');">
+                                        <button type="submit" class="btn btn-outline-danger" title="删除"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                                {% else %}
+                                <span class="text-muted small">已锁定</span>
+                                {% endif %}
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="{{ 8 if (can_edit or can_delete) else 7 }}">
+                                <div class="text-center py-5 text-muted">
+                                    <i class="bi bi-calendar-x" style="font-size: 2.5rem;"></i>
+                                    <p class="mt-3 mb-0">{{ selected_year }} 年暂无出勤记录</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <p class="text-muted small mt-3 mb-0">
+                <i class="bi bi-info-circle me-1"></i>
+                计酬只数 = 抓捕只数 − 本次归属损耗；每人每只 20 元，分账金额可在「经费分账」页单独调整。
+            </p>
+            {% from "_pagination.html" import render_pagination %}
+            {{ render_pagination(pagination, 'reward.catch_list', year=selected_year) }}
+        </div>
+    </div>
+</div>
+
+{% if can_add %}
+<!-- 新增出勤 -->
+<div class="modal fade" id="addCatchModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('reward.catch_add') }}">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i class="bi bi-plus-circle me-1"></i>新增抓狗出勤</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">出勤日期</label>
+                        <input type="datetime-local" name="catch_date" class="form-control" value="{{ now_str() }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">抓捕只数</label>
+                        <input type="number" name="dog_count" class="form-control" min="1" step="1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">参与人员（可多选）</label>
+                        <select name="employee_ids" class="form-select select2-pinyin" multiple required data-placeholder="请选择参与人员（可多选）">
+                            {% for emp in employees %}
+                            <option value="{{ emp.id }}">{{ emp.name }} - {{ emp.post or '无岗位' }}{% if emp.status == '离职' %}（离职）{% endif %}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">只能从花名册选择，不允许手工填写姓名</small>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label">备注</label>
+                        <input type="text" name="remark" class="form-control" placeholder="选填，如出勤地点">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-success">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if can_edit %}
+<!-- 编辑出勤 -->
+<div class="modal fade" id="editCatchModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="editCatchForm" action="#">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title"><i class="bi bi-pencil me-1"></i>编辑抓狗出勤</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">出勤时间</label>
+                        <input type="datetime-local" name="catch_date" id="editCatchDate" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">抓捕只数</label>
+                        <input type="number" name="dog_count" id="editCatchCount" class="form-control" min="1" step="1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">参与人员（可多选）</label>
+                        <select name="employee_ids" id="editCatchEmployees" class="form-select select2-pinyin" multiple required data-placeholder="请选择参与人员（可多选）">
+                            {% for emp in employees %}
+                            <option value="{{ emp.id }}">{{ emp.name }} - {{ emp.post or '无岗位' }}{% if emp.status == '离职' %}（离职）{% endif %}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label">备注</label>
+                        <input type="text" name="remark" id="editCatchRemark" class="form-control">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-warning">保存修改</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // 弹窗内的 Select2 需要指定 dropdownParent，否则下拉框会被弹窗遮挡
+    if (window.jQuery && jQuery.fn.select2) {
+        jQuery('.modal .select2-pinyin').each(function () {
+            var $el = jQuery(this);
+            if ($el.hasClass('select2-hidden-accessible')) { $el.select2('destroy'); }
+            $el.select2({
+                dropdownParent: $el.closest('.modal'),
+                placeholder: $el.data('placeholder') || '请选择',
+                allowClear: true
+            });
+        });
+    }
+
+    var editModal = document.getElementById('editCatchModal');
+    if (editModal) {
+        editModal.addEventListener('show.bs.modal', function (event) {
+            var btn = event.relatedTarget;
+            if (!btn) { return; }
+            document.getElementById('editCatchForm').action = '/fund/reward/catch/edit/' + btn.dataset.id;
+            document.getElementById('editCatchDate').value = btn.dataset.date || '';
+            document.getElementById('editCatchCount').value = btn.dataset.count || '';
+            document.getElementById('editCatchRemark').value = btn.dataset.remark || '';
+            var persons = [];
+            try { persons = JSON.parse(btn.dataset.persons || '[]'); } catch (e) { persons = []; }
+            jQuery('#editCatchEmployees').val(persons).trigger('change');
+        });
+    }
+});
+</script>
+{% endblock %}

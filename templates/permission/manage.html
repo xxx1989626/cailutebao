@@ -59,13 +59,17 @@
                             当前设置权限：<span id="display_name" class="text-primary fw-bold">请从左侧选择员工</span>
                         </h5>
                         <div class="d-flex align-items-center gap-3">
+                            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal"
+                                data-bs-target="#batchModal">
+                                <i class="bi bi-collection me-1"></i>批量分配
+                            </button>
                             <div class="form-check form-switch">
                                 <input class="form-check-input" type="checkbox" id="globalSelectAll"
                                     onclick="toggleAll(this)">
                                 <label class="form-check-label fw-bold text-primary" for="globalSelectAll">全选 /
                                     反选</label>
                             </div>
-                            
+
                         </div>
                     </div>
 
@@ -91,6 +95,14 @@
                                 <div id="collapse_{{ loop.index }}"
                                     class="accordion-collapse collapse {% if loop.first %}show{% endif %}">
                                     <div class="accordion-body bg-light">
+                                        <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                                            <span class="fw-bold text-muted"><i class="bi bi-ui-checks me-1"></i>{{ module_name.upper() }} 模块全选</span>
+                                            <div class="form-check form-switch mb-0">
+                                                <input class="form-check-input module-toggle" type="checkbox"
+                                                    data-module-idx="{{ loop.index }}"
+                                                    onclick="toggleModule(this, {{ loop.index }})">
+                                            </div>
+                                        </div>
                                         <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
                                             {% for p in perms %}
                                             <div class="col">
@@ -118,12 +130,120 @@
     </div>
 </div>
 
+<!-- 批量分配权限弹窗 -->
+<div class="modal fade" id="batchModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('permission.permission_batch_update') }}" onsubmit="return confirmBatch();">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="bi bi-collection me-2"></i>批量分配权限</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="fw-bold d-block mb-2">操作类型</label>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="mode" value="grant" id="modeGrant"
+                                checked>
+                            <label class="form-check-label" for="modeGrant"><i class="bi bi-plus-circle text-success me-1"></i>批量赋予</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="mode" value="revoke" id="modeRevoke">
+                            <label class="form-check-label" for="modeRevoke"><i class="bi bi-dash-circle text-danger me-1"></i>批量移除</label>
+                        </div>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-7">
+                            <label class="fw-bold mb-1"><i class="bi bi-shield-lock me-1"></i>选择权限</label>
+                            <div class="border rounded p-2 bg-light" style="max-height: 320px; overflow-y: auto;">
+                                {% for module_name, perms in modules.items() %}
+                                <div class="fw-bold text-primary mt-2 mb-1">{{ module_name.upper() }}</div>
+                                {% for p in perms %}
+                                <div class="form-check ms-2">
+                                    <input class="form-check-input batch-perm" type="checkbox" name="perm_ids"
+                                        value="{{ p.id }}" id="bp_{{ p.id }}">
+                                    <label class="form-check-label" for="bp_{{ p.id }}">{{ p.name }}
+                                        <small class="text-muted">({{ p.key }})</small>
+                                    </label>
+                                </div>
+                                {% endfor %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="fw-bold mb-1"><i class="bi bi-people me-1"></i>选择员工</label>
+                            <div class="border rounded p-2 bg-light" style="max-height: 320px; overflow-y: auto;">
+                                {% for emp in employees %}
+                                {% set real_user_id = id_map.get(emp.id_card) %}
+                                {% if real_user_id %}
+                                <div class="form-check">
+                                    <input class="form-check-input batch-user" type="checkbox" name="user_ids"
+                                        value="{{ real_user_id }}" id="bu_{{ real_user_id }}">
+                                    <label class="form-check-label" for="bu_{{ real_user_id }}">{{ emp.name }}
+                                        <small class="text-muted">{{ emp.position or '队员' }}</small>
+                                    </label>
+                                </div>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check2-all me-1"></i>执行批量操作
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
     const allUserPermissions = {{ user_perms | tojson }};
 
     function toggleAll(master) {
         const checkboxes = document.querySelectorAll('.perm-checkbox');
         checkboxes.forEach(cb => cb.checked = master.checked);
+        syncModuleToggles();
+    }
+
+    // 模块级全选
+    function toggleModule(cb, idx) {
+        const box = document.getElementById('collapse_' + idx);
+        if (!box) return;
+        box.querySelectorAll('.perm-checkbox').forEach(c => c.checked = cb.checked);
+    }
+
+    // 根据已勾选项同步每个模块开关的状态
+    function syncModuleToggles() {
+        document.querySelectorAll('.module-toggle').forEach(mod => {
+            const box = document.getElementById('collapse_' + mod.dataset.moduleIdx);
+            if (!box) return;
+            const all = box.querySelectorAll('.perm-checkbox');
+            const checked = box.querySelectorAll('.perm-checkbox:checked');
+            mod.checked = all.length > 0 && all.length === checked.length;
+        });
+    }
+
+    // 单个权限勾选变化时同步所属模块开关
+    document.addEventListener('change', function (e) {
+        if (e.target.classList && e.target.classList.contains('perm-checkbox')) {
+            syncModuleToggles();
+        }
+    });
+
+    function confirmBatch() {
+        const permCount = document.querySelectorAll('.batch-perm:checked').length;
+        const userCount = document.querySelectorAll('.batch-user:checked').length;
+        if (!permCount || !userCount) {
+            alert('请至少选择一个权限和一名员工');
+            return false;
+        }
+        const modeWord = document.getElementById('modeRevoke').checked ? '移除' : '赋予';
+        return confirm(`确定要批量${modeWord}所选的 ${permCount} 项权限（涉及 ${userCount} 名员工）吗？`);
     }
 
     function selectUser(userId, userName, element) {
@@ -149,6 +269,7 @@
             const cb = document.getElementById('perm_' + permId);
             if (cb) cb.checked = true;
         });
+        syncModuleToggles();
 
         // 展开第一个模块
         const firstCollapse = document.querySelector('.accordion-collapse');

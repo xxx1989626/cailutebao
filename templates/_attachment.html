@@ -66,9 +66,25 @@
 
 <script>
 function initAttachmentComponent(name) {
+    // ========== 全局状态 ==========
     window.deletedFiles = window.deletedFiles || {};
     window.deletedFiles[name] = window.deletedFiles[name] || [];
-    
+
+    // 累积已选文件（每次选新文件追加，不覆盖）
+    window._fileStore = window._fileStore || {};
+    if (!window._fileStore[name]) window._fileStore[name] = [];
+
+    // 已渲染过的文件签名（防重复渲染）
+    window._renderedSigs = window._renderedSigs || {};
+    if (!window._renderedSigs[name]) window._renderedSigs[name] = new Set();
+
+    // 重入锁：防止 fileInput.files = ... 触发二次 change
+    let _suppressChange = false;
+
+    function fileSig(f) {
+        return f.name + '|' + f.size + '|' + f.lastModified;
+    }
+
     const initExistingAttachments = () => {
         document.querySelectorAll(`.thumb-remove-wrapper[data-name="${name}"]`).forEach(wrapper => {
             wrapper.onclick = function() {
@@ -77,7 +93,7 @@ function initAttachmentComponent(name) {
                     window.deletedFiles[name].push(path);
                     document.getElementById(`deleteAttachmentsInput_${name}`).value = JSON.stringify(window.deletedFiles[name]);
                 }
-                this.remove(); 
+                this.remove();
             };
         });
     };
@@ -91,41 +107,77 @@ function initAttachmentComponent(name) {
         return;
     }
 
+    // 根据 window._fileStore[name] 重建 fileInput.files
+    function syncFileInput() {
+        const dt = new DataTransfer();
+        for (const f of window._fileStore[name]) dt.items.add(f);
+        _suppressChange = true;
+        fileInput.files = dt.files;
+        // 下一帧解除锁，避免同一事件循环内重入
+        setTimeout(() => { _suppressChange = false; }, 0);
+    }
+
+    // 渲染一个文件预览（不检查重复，调用方负责）
+    function renderOne(file) {
+        const div = document.createElement('div');
+        div.className = 'new-preview position-relative';
+        div.setAttribute('data-name', name);
+        div.style.cursor = 'pointer';
+        div.title = '点击移除';
+
+        const isImg = file.type.startsWith('image/');
+        const makeContent = (dataUrl) => isImg
+            ? `<img src="${dataUrl}" class="img-thumbnail" style="width:100px;height:100px;object-fit:cover;">`
+            : `<div class="alert alert-secondary p-2 m-0" style="width:100px;height:100px;display:flex;align-items:center;justify-content:center;"><i class="bi bi-file-pdf" style="font-size:2rem;"></i></div>`;
+
+        div.innerHTML = makeContent('') + `
+            <div class="remove-overlay"><i class="bi bi-x-circle-fill text-danger"></i></div>`;
+
+        div.onclick = () => {
+            const sig = fileSig(file);
+            // 从 store 中移除
+            window._fileStore[name] = window._fileStore[name].filter(f => fileSig(f) !== sig);
+            window._renderedSigs[name].delete(sig);
+            syncFileInput();
+            div.remove();
+        };
+        previewContainer.appendChild(div);
+
+        if (isImg) {
+            const reader = new FileReader();
+            reader.onload = e => div.querySelector('img').src = e.target.result;
+            reader.readAsDataURL(file);
+        }
+    }
+
+    // ========== change 事件：只处理用户从文件对话框选择的新文件 ==========
     fileInput.addEventListener('change', function(e) {
-        previewContainer.querySelectorAll(`.new-preview[data-name="${name}"]`).forEach(el => el.remove());
+        if (_suppressChange) return;  // 程序化赋值触发的 change 直接忽略
+
+        const store = window._fileStore[name];
+        const sigs = window._renderedSigs[name];
+        let addedNew = false;
 
         for (const file of e.target.files) {
-            const reader = new FileReader();
-            const isImg = file.type.startsWith('image/');
-            
-            reader.onload = function(event) {
-                const div = document.createElement('div');
-                div.className = `new-preview position-relative`;
-                div.setAttribute('data-name', name);
-                div.style.cursor = 'pointer';
-                div.title = '点击移除';
-                
-                let content = isImg 
-                    ? `<img src="${event.target.result}" class="img-thumbnail" style="width: 100px; height: 100px; object-fit: cover;">`
-                    : `<div class="alert alert-secondary p-2 m-0"><i class="bi bi-file-pdf"></i> PDF</div>`;
-                
-                div.innerHTML = `
-                    ${content}
-                    <div class="remove-overlay">
-                        <i class="bi bi-x-circle-fill text-danger"></i>
-                    </div>
-                `;
-                
-                div.onclick = () => {
-                    div.remove();
-                };
-                previewContainer.appendChild(div);
+            const sig = fileSig(file);
+            if (!sigs.has(sig)) {
+                store.push(file);
+                sigs.add(sig);
+                renderOne(file);
+                addedNew = true;
             }
-            if (isImg) reader.readAsDataURL(file);
-            else reader.onload({target: {result: ''}});
         }
+
+        if (addedNew) syncFileInput();
+
+        // 清空 input，保证下次选同样文件也能触发 change
+        // （但清空前先解除锁，因为 value='' 不会触发 change）
+        _suppressChange = true;
+        fileInput.value = '';
+        setTimeout(() => { _suppressChange = false; }, 0);
     });
 
+    // ========== 拖拽上传 ==========
     dropZone.addEventListener('click', () => fileInput.click());
 
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -134,21 +186,29 @@ function initAttachmentComponent(name) {
             e.stopPropagation();
         }, false);
     });
-
     ['dragenter', 'dragover'].forEach(eventName => {
         dropZone.addEventListener(eventName, () => dropZone.classList.add('border-primary', 'bg-white'), false);
     });
     ['dragleave', 'drop'].forEach(eventName => {
         dropZone.addEventListener(eventName, () => dropZone.classList.remove('border-primary', 'bg-white'), false);
     });
-
     dropZone.addEventListener('drop', e => {
-        const dt = e.dataTransfer;
-        const files = dt.files;
-        
+        const files = e.dataTransfer.files;
         if (files.length > 0) {
-            fileInput.files = files;
-            fileInput.dispatchEvent(new Event('change'));
+            // 模拟 change：把 FileList 转成数组逐个处理
+            const store = window._fileStore[name];
+            const sigs = window._renderedSigs[name];
+            let addedNew = false;
+            for (const file of files) {
+                const sig = fileSig(file);
+                if (!sigs.has(sig)) {
+                    store.push(file);
+                    sigs.add(sig);
+                    renderOne(file);
+                    addedNew = true;
+                }
+            }
+            if (addedNew) syncFileInput();
         }
     });
 

@@ -33,7 +33,7 @@ def get_doc_status(expire_date):
 
 def is_admin():
     """判断当前用户是否为管理员（有证件审批权限）"""
-    return perm.can('hr.cert_edit') or perm.can('hr.cert_delete')
+    return perm.can('hr.edit') or perm.can('hr.delete')
 
 @hr_bp.route('/document/list')
 @login_required
@@ -188,7 +188,7 @@ def document_edit(doc_id):
     cycle = document.cycle
 
     # 水平越权：非管理员只能编辑自己的证件
-    if cycle.id_card != current_user.username and not perm.can('hr.cert_edit'):
+    if cycle.id_card != current_user.username and not perm.can('hr.edit'):
         flash('无权编辑他人的证件', 'danger')
         return redirect(url_for('hr.hr_detail', id_card=current_user.username))
 
@@ -483,7 +483,7 @@ def document_delete(doc_id):
     cycle = document.cycle
 
     # 水平越权：非管理员只能删除自己的证件
-    if cycle.id_card != current_user.username and not perm.can('hr.cert_delete'):
+    if cycle.id_card != current_user.username and not perm.can('hr.delete'):
         flash('无权删除他人的证件', 'danger')
         return redirect(url_for('hr.document_list'))
     doc_type = document.doc_type

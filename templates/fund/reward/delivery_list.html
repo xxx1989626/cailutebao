@@ -1,0 +1,622 @@
+<!-- templates/fund/reward/delivery_list.html -->
+{% extends "base.html" %}
+{% block title %}交付与损耗{% endblock %}
+{% block content %}
+<style>
+    .reward-table th { font-weight: 600; color: #212529; text-align: center; white-space: nowrap; vertical-align: middle; }
+    .reward-table td { vertical-align: middle; text-align: center; border-color: #f1f3f5; }
+    .reward-table tr:hover { background-color: #f8f9fa; transition: background-color .2s ease; }
+    .thumb-link { width: 38px; height: 38px; display: inline-block; }
+    .thumb-link:hover { transform: scale(1.08); }
+</style>
+
+<div class="container mt-4">
+    {% include 'fund/reward/_nav.html' %}
+
+    <div class="alert {% if stats.cage < 0 %}alert-danger{% elif stats.cage == 0 %}alert-success{% else %}alert-info{% endif %} d-flex flex-wrap justify-content-between align-items-center py-2">
+        <span>
+            <i class="bi bi-calculator me-1"></i>
+            笼存池核对：抓捕 {{ stats.catch }} − 交付 {{ stats.delivered }} − 损耗 {{ stats.loss }} =
+            <strong>{{ stats.cage }}</strong> 只
+        </span>
+        {% if stats.cage < 0 %}
+        <small class="fw-bold">数据异常：笼存为负，请检查登记</small>
+        {% endif %}
+    </div>
+
+    <!-- 交付记录 -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-primary text-white d-flex flex-wrap justify-content-between align-items-center gap-2 py-3">
+            <h5 class="mb-0"><i class="bi bi-truck me-2"></i>交付狗记录</h5>
+            <div class="d-flex align-items-center gap-2">
+                <form method="GET" class="d-flex align-items-center gap-2 mb-0">
+                    <select name="year" class="form-select form-select-sm" onchange="this.form.submit()" style="width: 110px;">
+                        {% for y in years %}
+                        <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}年</option>
+                        {% endfor %}
+                    </select>
+                </form>
+                {% if can_add %}
+                <button type="button" class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#addDeliveryModal">
+                    <i class="bi bi-plus-circle me-1"></i>登记交付
+                </button>
+                {% endif %}
+            </div>
+        </div>
+        <div class="card-body p-3">
+            <div class="table-responsive rounded shadow-sm">
+                <table class="table table-hover align-middle mb-0 reward-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 12%;">交付日期</th>
+                            <th style="width: 9%;">交付只数</th>
+                            <th style="width: 15%;">接收单位/接收人</th>
+                            <th style="width: 26%;">来源出勤</th>
+                            <th>备注</th>
+                            <th style="width: 14%;">送狗凭证</th>
+                            {% if can_edit or can_delete %}<th style="width: 10%;">操作</th>{% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in deliveries %}
+                        {% set alloc_sum = d.delivery_links | map(attribute='dog_count') | sum | int %}
+                        {% set mismatch = alloc_sum != d.dog_count %}
+                        <tr{% if mismatch %} class="table-warning"{% endif %}>
+                            <td>{{ d.delivery_date.strftime('%Y-%m-%d %H:%M') if d.delivery_date else '-' }}</td>
+                            <td class="fw-bold text-primary">
+                                {{ d.dog_count }}
+                                {% if d.id in delivery_settle_map %}
+                                <span class="badge bg-success" title="经费已到账并随分账批次 #{{ delivery_settle_map[d.id].id }} 结算">已结算</span>
+                                {% elif d.is_reward is not false %}
+                                <span class="badge bg-info text-dark">计酬</span>
+                                {% endif %}
+                                {% if d.is_reward is false %}
+                                <span class="badge bg-secondary">不计酬</span>
+                                {% endif %}
+                                {% if mismatch %}
+                                <span class="badge bg-danger" title="来源出勤分配合计 {{ alloc_sum }} 只，与单据 {{ d.dog_count }} 只不一致">不匹配 ⚠</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ d.receiver or '-' }}</td>
+                            <td class="text-start">
+                                {% for link in d.delivery_links %}
+                                <span class="badge bg-light text-dark border me-1 mb-1">
+                                    {{ link.catch.catch_date.strftime('%m-%d %H:%M') if link.catch and link.catch.catch_date else '?' }}：{{ link.dog_count }} 只
+                                </span>
+                                {% else %}
+                                <span class="text-muted small">未关联</span>
+                                {% endfor %}
+                            </td>
+                            <td class="text-truncate text-start" style="max-width: 220px;" title="{{ d.remark or '无' }}">{{ d.remark or '-' }}</td>
+                            <td>
+                                {% if d.attachment and d.attachment|length > 0 %}
+                                <div class="d-flex flex-wrap gap-1 justify-content-center">
+                                    {% for path in d.attachment %}
+                                    <a href="/{{ path }}" target="_blank" class="thumb-link rounded overflow-hidden shadow-sm" title="查看送狗凭证">
+                                        {% if path.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp')) %}
+                                        <img src="/{{ path }}" style="width: 100%; height: 100%; object-fit: cover;">
+                                        {% else %}
+                                        <span class="d-flex align-items-center justify-content-center bg-light h-100 w-100">
+                                            <i class="bi bi-file-earmark-pdf text-danger"></i>
+                                        </span>
+                                        {% endif %}
+                                    </a>
+                                    {% endfor %}
+                                </div>
+                                {% else %}
+                                <span class="text-muted small">未上传</span>
+                                {% endif %}
+                            </td>
+                            {% if can_edit or can_delete %}
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    {% if can_edit and d.id not in delivery_settle_map %}
+                                    <button type="button" class="btn btn-outline-warning" title="编辑"
+                                            data-bs-toggle="modal" data-bs-target="#editDeliveryModal"
+                                            data-id="{{ d.id }}"
+                                            data-date="{{ d.delivery_date.strftime('%Y-%m-%dT%H:%M') if d.delivery_date else '' }}"
+                                            data-count="{{ d.dog_count }}"
+                                            data-receiver="{{ d.receiver or '' }}"
+                                            data-remark="{{ d.remark or '' }}"
+                                            data-is-reward="{{ '1' if d.is_reward is not false else '0' }}"
+                                            data-attachments="{{ d.attachment | tojson }}"
+                                            data-allocs="{{ d.delivery_links | map(attribute='catch_id') | list | tojson }}__{{ d.delivery_links | map(attribute='dog_count') | list | tojson }}">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    {% endif %}
+                                    {% if can_delete %}
+                                    <form method="POST" action="{{ url_for('reward.delivery_delete', delivery_id=d.id) }}"
+                                          class="d-inline" onsubmit="return confirm('确定删除该交付记录？已上传的送狗凭证文件也会一并清理。{% if d.id in delivery_settle_map %}注意：该交付已被分账批次结算，无法删除。{% endif %}');">
+                                        <button type="submit" class="btn btn-outline-danger" title="删除"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="{{ 7 if (can_edit or can_delete) else 6 }}" class="text-center text-muted py-4">
+                                <i class="bi bi-inbox me-1"></i>{{ selected_year }} 年暂无交付记录
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 损耗记录 -->
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-danger text-white d-flex flex-wrap justify-content-between align-items-center gap-2 py-3">
+            <h5 class="mb-0"><i class="bi bi-exclamation-triangle me-2"></i>损耗记录（必须归属到某次出勤）</h5>
+            {% if can_add %}
+            <button type="button" class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#addLossModal">
+                <i class="bi bi-plus-circle me-1"></i>登记损耗
+            </button>
+            {% endif %}
+        </div>
+        <div class="card-body p-3">
+            <div class="table-responsive rounded shadow-sm">
+                <table class="table table-hover align-middle mb-0 reward-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 14%;">损耗日期</th>
+                            <th style="width: 18%;">归属出勤</th>
+                            <th style="width: 10%;">损耗只数</th>
+                            <th style="width: 10%;">原因</th>
+                            <th>备注</th>
+                            {% if can_delete %}<th style="width: 8%;">操作</th>{% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for l in losses %}
+                        <tr>
+                            <td>{{ l.loss_date.strftime('%Y-%m-%d') if l.loss_date else '-' }}</td>
+                            <td>
+                                {% if l.catch %}
+                                {{ l.catch.catch_date.strftime('%Y-%m-%d %H:%M') }}（抓捕 {{ l.catch.dog_count }} 只）
+                                {% else %}-{% endif %}
+                            </td>
+                            <td class="fw-bold text-danger">{{ l.dog_count }}</td>
+                            <td><span class="badge bg-light text-dark border">{{ l.reason }}</span></td>
+                            <td class="text-truncate text-start" style="max-width: 220px;" title="{{ l.remark or '无' }}">{{ l.remark or '-' }}</td>
+                            {% if can_delete %}
+                            <td>
+                                {% if l.catch and l.catch.status == '未结算' %}
+                                <form method="POST" action="{{ url_for('reward.loss_delete', loss_id=l.id) }}"
+                                      onsubmit="return confirm('确定删除该损耗记录？该次出勤的计酬只数将恢复。');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="删除"><i class="bi bi-trash"></i></button>
+                                </form>
+                                {% else %}
+                                <span class="text-muted small">已锁定</span>
+                                {% endif %}
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="{{ 6 if can_delete else 5 }}" class="text-center text-muted py-4">
+                                <i class="bi bi-emoji-smile me-1"></i>{{ selected_year }} 年暂无损耗记录
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <p class="text-muted small mt-3 mb-0">
+                <i class="bi bi-info-circle me-1"></i>
+                狗只没有个体编码，所以损耗必须挂到具体某次出勤上：抓捕 − 该次损耗 = 该次计酬只数。损耗后计酬只数自动下调。
+            </p>
+        </div>
+    </div>
+</div>
+
+{% if can_add %}
+<!-- 登记交付 -->
+<div class="modal fade" id="addDeliveryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('reward.delivery_add') }}" enctype="multipart/form-data">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="bi bi-truck me-1"></i>登记交付</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">交付日期</label>
+                        <input type="datetime-local" name="delivery_date" class="form-control" value="{{ now_str() }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">来源出勤分配（本次交付的狗来自哪些出勤）</label>
+                        {% if allocatable_catches %}
+                        <div class="table-responsive border rounded" style="max-height: 240px; overflow-y: auto;">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 34px;"></th>
+                                        <th>出勤日期</th>
+                                        <th style="width: 18%;">未交付</th>
+                                        <th style="width: 26%;">本次分配</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for c in allocatable_catches %}
+                                    <tr>
+                                        <td><input type="checkbox" class="form-check-input alloc-check" value="{{ c.id }}"></td>
+                                        <td>{{ c.catch_date.strftime('%m-%d %H:%M') if c.catch_date else '-' }}
+                                            <span class="text-muted small">（抓{{ c.dog_count }}，损{{ c.loss_count }}）</span></td>
+                                        <td class="fw-bold text-success alloc-remain" data-remain="{{ c.undelivered_count }}">{{ c.undelivered_count }}</td>
+                                        <td>
+                                            <input type="number" class="form-control form-control-sm alloc-input"
+                                                   name="alloc_{{ c.id }}" min="0" max="{{ c.undelivered_count }}" step="1"
+                                                   value="0" disabled>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <small class="text-muted">勾选出勤并逐条填写分配只数</small>
+                            <small>分配合计：<strong id="allocSum" class="text-primary">0</strong> 只</small>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-light border mb-0 py-2 small text-muted">
+                            <i class="bi bi-info-circle me-1"></i>暂无可关联的出勤（需要先登记出勤，且出勤有未交付结余）
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">交付只数（须等于分配合计）</label>
+                        <input type="number" name="dog_count" id="deliveryDogCount" class="form-control" min="1" step="1" required>
+                        <small class="text-muted">仅作参考，实际登记以来源出勤分配合计为准</small>
+                    </div>
+                    <div class="mb-3 form-check form-switch">
+                        <input type="checkbox" name="is_reward" value="1" class="form-check-input" id="addIsReward" checked>
+                        <label class="form-check-label fw-bold" for="addIsReward">
+                            走奖励费通道（计入经费分账结算）
+                        </label>
+                        <div class="form-text text-muted">
+                            <i class="bi bi-info-circle me-1"></i>
+                            不计酬交付照常扣减笼存，但不参与经费分账结算（如被治安总队直接带走的情况）
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">接收单位/接收人</label>
+                        <input type="text" name="receiver" class="form-control" placeholder="如：XX派出所 / 张警官">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">送狗凭证（可多张，支持图片/PDF）</label>
+                        <input type="file" name="attachment" class="form-control" multiple accept="image/*,.pdf">
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label">备注</label>
+                        <input type="text" name="remark" class="form-control" placeholder="选填">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary" {% if not allocatable_catches %}disabled{% endif %}>保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 登记损耗 -->
+<div class="modal fade" id="addLossModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('reward.loss_add') }}">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-1"></i>登记损耗</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">损耗日期</label>
+                        <input type="date" name="loss_date" class="form-control" value="{{ today_str() }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">归属出勤记录</label>
+                        <select name="catch_id" class="form-select" required>
+                            <option value="">请选择归属的出勤</option>
+                            {% for c in lossable_catches %}
+                            {% set cage_remain = c.dog_count - c.delivered_count - c.loss_count %}
+                            <option value="{{ c.id }}">
+                                {{ c.catch_date.strftime('%Y-%m-%d %H:%M') }}（抓捕 {{ c.dog_count }}，已交付 {{ c.delivered_count }}，已损耗 {{ c.loss_count }}，笼中剩余 {{ cage_remain }}）
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">狗只没有独立编码，损耗必须挂到某次出勤；只能损耗笼中剩余的狗</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">损耗只数</label>
+                        <input type="number" name="dog_count" class="form-control" min="1" step="1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">损耗原因</label>
+                        <select name="reason" class="form-select">
+                            <option value="领养">领养</option>
+                            <option value="归还">归还</option>
+                            <option value="死亡">死亡</option>
+                            <option value="逃跑">逃跑</option>
+                            <option value="其他">其他</option>
+                        </select>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label">备注</label>
+                        <input type="text" name="remark" class="form-control" placeholder="选填，如具体原因说明">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-danger">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑交付 -->
+{% if can_edit %}
+<div class="modal fade" id="editDeliveryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="POST" id="editDeliveryForm" action="#" enctype="multipart/form-data">
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title"><i class="bi bi-pencil me-1"></i>编辑交付</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label class="form-label">交付时间</label>
+                                <input type="datetime-local" name="delivery_date" id="editDeliveryDate" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="mb-3 form-check form-switch mt-4 pt-2">
+                                <input type="checkbox" name="is_reward" value="1" class="form-check-input" id="editIsReward" checked>
+                                <label class="form-check-label fw-bold" for="editIsReward">走奖励费通道</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">来源出勤分配（本次交付的狗来自哪些出勤）</label>
+                        {% if lossable_catches %}
+                        <div class="table-responsive border rounded" style="max-height: 260px; overflow-y: auto;">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 34px;"></th>
+                                        <th>出勤日期</th>
+                                        <th style="width: 18%;">可分配上限</th>
+                                        <th style="width: 26%;">本次分配</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="editAllocBody">
+                                    {% for c in lossable_catches %}
+                                    <tr data-catch-id="{{ c.id }}">
+                                        <td><input type="checkbox" class="form-check-input edit-alloc-check" value="{{ c.id }}"></td>
+                                        <td>{{ c.catch_date.strftime('%m-%d %H:%M') if c.catch_date else '-' }}
+                                            <span class="text-muted small">（抓{{ c.dog_count }}，损{{ c.loss_count }}，余{{ c.undelivered_count }}）</span></td>
+                                        <td class="fw-bold text-success edit-alloc-max" data-base="{{ c.undelivered_count }}">{{ c.undelivered_count }}</td>
+                                        <td>
+                                            <input type="number" class="form-control form-control-sm edit-alloc-input"
+                                                   name="alloc_{{ c.id }}" min="0" step="1"
+                                                   value="0" disabled>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <small class="text-muted">勾选出勤并逐条填写分配只数</small>
+                            <small>分配合计：<strong id="editAllocSum" class="text-primary">0</strong> 只</small>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-light border mb-0 py-2 small text-muted">
+                            <i class="bi bi-info-circle me-1"></i>暂无可关联的出勤（需要先登记出勤，且出勤未结算）
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">接收单位/接收人</label>
+                        <input type="text" name="receiver" id="editDeliveryReceiver" class="form-control" placeholder="如：XX派出所 / 张警官">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">已有送狗凭证（点击 × 移除）</label>
+                        <div id="editExistingAttachments" class="d-flex flex-wrap gap-2 mb-2"></div>
+                        <input type="file" name="attachment" class="form-control" multiple accept="image/*,.pdf">
+                        <small class="text-muted">可上传新凭证；勾选已有凭证旁的 × 按钮可移除</small>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label">备注</label>
+                        <input type="text" name="remark" id="editDeliveryRemark" class="form-control" placeholder="选填">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-warning">保存修改</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // ========== 新增交付弹窗 ==========
+    var modal = document.getElementById('addDeliveryModal');
+    if (modal) {
+        var sumEl = document.getElementById('allocSum');
+        var dogCountEl = document.getElementById('deliveryDogCount');
+        var submitBtn = modal.querySelector('.modal-footer .btn-primary');
+
+        function recalc() {
+            var total = 0;
+            modal.querySelectorAll('.alloc-check').forEach(function (cb) {
+                var row = cb.closest('tr');
+                var input = row.querySelector('.alloc-input');
+                var remain = parseInt(row.querySelector('.alloc-remain').dataset.remain, 10) || 0;
+                input.disabled = !cb.checked;
+                if (!cb.checked) { input.value = 0; }
+                var v = parseInt(input.value, 10) || 0;
+                if (v > remain) { v = remain; input.value = remain; }
+                if (v < 0) { v = 0; input.value = 0; }
+                total += cb.checked ? v : 0;
+            });
+            sumEl.textContent = total;
+            dogCountEl.value = total > 0 ? total : '';
+            if (submitBtn) { submitBtn.disabled = (total <= 0); }
+        }
+
+        modal.querySelectorAll('.alloc-check').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                var row = cb.closest('tr');
+                var input = row.querySelector('.alloc-input');
+                if (cb.checked && (parseInt(input.value, 10) || 0) === 0) {
+                    input.value = row.querySelector('.alloc-remain').dataset.remain;
+                }
+                recalc();
+            });
+        });
+        modal.querySelectorAll('.alloc-input').forEach(function (input) {
+            input.addEventListener('input', recalc);
+        });
+
+        modal.addEventListener('show.bs.modal', function () {
+            modal.querySelectorAll('.alloc-check').forEach(function (cb) { cb.checked = false; });
+            modal.querySelectorAll('.alloc-input').forEach(function (input) { input.value = 0; });
+            recalc();
+        });
+    }
+
+    // ========== 编辑交付弹窗 ==========
+    var editModal = document.getElementById('editDeliveryModal');
+    if (editModal) {
+        var editSumEl = document.getElementById('editAllocSum');
+
+        function editRecalc() {
+            var total = 0;
+            editModal.querySelectorAll('.edit-alloc-check').forEach(function (cb) {
+                var row = cb.closest('tr');
+                var input = row.querySelector('.edit-alloc-input');
+                var max = parseInt(row.querySelector('.edit-alloc-max').textContent, 10) || 0;
+                input.disabled = !cb.checked;
+                if (!cb.checked) { input.value = 0; }
+                var v = parseInt(input.value, 10) || 0;
+                if (v > max) { v = max; input.value = max; }
+                if (v < 0) { v = 0; input.value = 0; }
+                total += cb.checked ? v : 0;
+            });
+            editSumEl.textContent = total;
+        }
+
+        editModal.querySelectorAll('.edit-alloc-check').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                var row = cb.closest('tr');
+                var input = row.querySelector('.edit-alloc-input');
+                if (cb.checked && (parseInt(input.value, 10) || 0) === 0) {
+                    input.value = parseInt(row.querySelector('.edit-alloc-max').textContent, 10) || 0;
+                }
+                editRecalc();
+            });
+        });
+        editModal.querySelectorAll('.edit-alloc-input').forEach(function (input) {
+            input.addEventListener('input', editRecalc);
+        });
+
+        // 打开编辑弹窗
+        editModal.addEventListener('show.bs.modal', function (event) {
+            var btn = event.relatedTarget;
+            if (!btn) { return; }
+            var id = btn.dataset.id;
+            document.getElementById('editDeliveryForm').action = '/fund/reward/delivery/edit/' + id;
+            document.getElementById('editDeliveryDate').value = btn.dataset.date || '';
+            document.getElementById('editDeliveryReceiver').value = btn.dataset.receiver || '';
+            document.getElementById('editDeliveryRemark').value = btn.dataset.remark || '';
+            document.getElementById('editIsReward').checked = (btn.dataset.isReward !== '0');
+
+            // 解析原分配：格式 "catch_ids_json__dog_counts_json"
+            var allocsRaw = btn.dataset.allocs || '';
+            var catchIds = [], dogCounts = [];
+            if (allocsRaw.indexOf('__') > -1) {
+                try {
+                    var parts = allocsRaw.split('__');
+                    catchIds = JSON.parse(parts[0] || '[]');
+                    dogCounts = JSON.parse(parts[1] || '[]');
+                } catch (e) { catchIds = []; dogCounts = []; }
+            }
+            var origAllocMap = {};
+            catchIds.forEach(function (cid, i) { origAllocMap[cid] = dogCounts[i] || 0; });
+
+            // 重置所有行
+            editModal.querySelectorAll('.edit-alloc-check').forEach(function (cb) { cb.checked = false; });
+            editModal.querySelectorAll('.edit-alloc-input').forEach(function (input) { input.value = 0; });
+            // 更新每行的可分配上限（加上原分配量）并预填
+            editModal.querySelectorAll('#editAllocBody tr').forEach(function (row) {
+                var cid = parseInt(row.dataset.catchId, 10);
+                var base = parseInt(row.querySelector('.edit-alloc-max').dataset.base, 10) || 0;
+                var orig = origAllocMap[cid] || 0;
+                var maxCell = row.querySelector('.edit-alloc-max');
+                maxCell.textContent = base + orig;
+                var input = row.querySelector('.edit-alloc-input');
+                var cb = row.querySelector('.edit-alloc-check');
+                if (orig > 0) {
+                    cb.checked = true;
+                    input.value = orig;
+                    input.disabled = false;
+                }
+            });
+            editRecalc();
+
+            // 已有凭证
+            var existingDiv = document.getElementById('editExistingAttachments');
+            existingDiv.innerHTML = '';
+            var attachments = [];
+            try { attachments = JSON.parse(btn.dataset.attachments || '[]'); } catch (e) { attachments = []; }
+            attachments.forEach(function (path) {
+                var isImage = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(path);
+                var thumb = isImage
+                    ? '<img src="/' + path + '" style="width:60px;height:60px;object-fit:cover;border-radius:4px;">'
+                    : '<i class="bi bi-file-earmark-pdf text-danger" style="font-size:2rem;"></i>';
+                var item = document.createElement('div');
+                item.className = 'position-relative border rounded p-1';
+                item.innerHTML = thumb +
+                    '<button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 remove-attach" ' +
+                    'data-path="' + path + '" style="padding:0 4px;font-size:12px;line-height:1;">×</button>';
+                existingDiv.appendChild(item);
+            });
+            // 移除按钮绑定
+            existingDiv.querySelectorAll('.remove-attach').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var path = btn.dataset.path;
+                    // 标记为待删除：加 hidden input
+                    var hidden = document.createElement('input');
+                    hidden.type = 'hidden';
+                    hidden.name = 'remove_attachment';
+                    hidden.value = path;
+                    editModal.appendChild(hidden);
+                    btn.closest('.position-relative').remove();
+                });
+            });
+        });
+
+        // 关闭时清理待删除的 hidden input（防止误删）
+        editModal.addEventListener('hidden.bs.modal', function () {
+            editModal.querySelectorAll('input[name="remove_attachment"]').forEach(function (el) { el.remove(); });
+        });
+    }
+});
+</script>
+{% endblock %}

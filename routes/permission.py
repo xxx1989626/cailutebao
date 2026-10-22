@@ -125,6 +125,70 @@ def permission_update():
     
     return redirect(url_for('permission.permission_manage'))
 
+# ==================== 批量赋予/移除权限 ====================
+@permission_bp.route('/batch_update', methods=['POST'])
+@login_required
+@perm.require('manage')
+def permission_batch_update():
+    from utils import log_action
+
+    try:
+        perm_ids = [int(pid) for pid in request.form.getlist('perm_ids')]
+        user_ids = [int(uid) for uid in request.form.getlist('user_ids')]
+        mode = request.form.get('mode', 'grant')
+        if mode not in ('grant', 'revoke'):
+            mode = 'grant'
+    except ValueError:
+        flash('参数错误，请重试', 'danger')
+        return redirect(url_for('permission.permission_manage'))
+
+    if not perm_ids or not user_ids:
+        flash('请至少选择一个权限和一名员工', 'warning')
+        return redirect(url_for('permission.permission_manage'))
+
+    perms = Permission.query.filter(Permission.id.in_(perm_ids)).all()
+    perm_names = {p.id: p.name for p in perms}
+    users = User.query.filter(User.id.in_(user_ids)).all()
+    user_names = {u.id: u.name for u in users}
+    # 身份证 -> 任职周期ID（记录被操作人）
+    cycles = EmploymentCycle.query.filter(EmploymentCycle.id_card.in_([u.username for u in users])).all()
+    cycle_map = {c.id_card: c.id for c in cycles}
+    user_cycle = {u.id: cycle_map.get(u.username) for u in users}
+
+    action_word = '赋予' if mode == 'grant' else '移除'
+    affected_total = 0
+    try:
+        for uid in user_ids:
+            changed = []
+            for pid in perm_ids:
+                up = UserPermission.query.filter_by(user_id=uid, permission_id=pid).first()
+                if mode == 'grant' and not up:
+                    db.session.add(UserPermission(user_id=uid, permission_id=pid))
+                    changed.append(perm_names.get(pid, str(pid)))
+                elif mode == 'revoke' and up:
+                    db.session.delete(up)
+                    changed.append(perm_names.get(pid, str(pid)))
+            if changed:
+                affected_total += 1
+                log_action(
+                    action_type='权限变更',
+                    target_type='UserPermission',
+                    target_id=uid,
+                    description=f"批量{action_word}了用户【{user_names.get(uid, uid)}】的权限：{', '.join(changed)}",
+                    cycle_id=user_cycle.get(uid),
+                )
+        db.session.commit()
+        if affected_total:
+            flash(f'批量{action_word}完成，共影响 {affected_total} 名员工', 'success')
+        else:
+            flash('没有需要变更的权限（所选员工已具备/已不具备所选权限）', 'info')
+    except Exception as e:
+        db.session.rollback()
+        print(f"批量权限操作失败，原因: {str(e)}")
+        flash(f'批量操作失败: {str(e)}', 'danger')
+
+    return redirect(url_for('permission.permission_manage'))
+
 # ==================== 审计日志（Audit Log） ====================
 @permission_bp.route('/operations')
 @login_required

@@ -9,7 +9,7 @@ from . import asset_bp
 # ==================== 全局资产盘点 ====================
 @asset_bp.route('/inventory')
 @login_required
-@perm.require('asset.inventory')
+@perm.require('asset.add')
 def asset_inventory():
     """全局资产盘点：显示所有资产，支持按状态/类型筛选"""
     type_filter = request.args.get('type', '')
@@ -44,7 +44,7 @@ def asset_inventory():
 
 @asset_bp.route('/inventory/update/<int:asset_id>', methods=['POST'])
 @login_required
-@perm.require('asset.inventory')
+@perm.require('asset.add')
 def update_inventory(asset_id):
     """标记资产盘点状态"""
     asset = AssetInstance.query.get_or_404(asset_id)
@@ -59,7 +59,7 @@ def update_inventory(asset_id):
 
 @asset_bp.route('/inventory/quick_check', methods=['POST'])
 @login_required
-@perm.require('asset.inventory')
+@perm.require('asset.add')
 def quick_check():
     """连续扫码盘点接口：通过 SN 编号快速标记"""
     data = request.get_json()
@@ -92,7 +92,7 @@ def quick_check():
 
 @asset_bp.route('/inventory/export')
 @login_required
-@perm.require('asset.inventory')
+@perm.require('asset.add')
 def export_inventory():
     """导出全局盘点清单"""
     from io import BytesIO

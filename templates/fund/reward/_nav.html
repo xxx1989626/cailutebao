@@ -1,0 +1,20 @@
+{# 抓狗奖励模块内部导航 #}
+<div class="d-flex flex-wrap gap-2 mb-3">
+    <a href="{{ url_for('reward.catch_list') }}" class="btn btn-sm {% if active == 'catch' %}btn-success{% else %}btn-outline-secondary{% endif %}">
+        <i class="bi bi-calendar-check me-1"></i>出勤登记
+    </a>
+    <a href="{{ url_for('reward.delivery_list') }}" class="btn btn-sm {% if active == 'delivery' %}btn-success{% else %}btn-outline-secondary{% endif %}">
+        <i class="bi bi-truck me-1"></i>交付与损耗
+    </a>
+    <a href="{{ url_for('reward.settle_list') }}" class="btn btn-sm {% if active == 'settle' %}btn-success{% else %}btn-outline-secondary{% endif %}">
+        <i class="bi bi-cash-coin me-1"></i>经费分账
+    </a>
+    <a href="{{ url_for('reward.reward_list') }}" class="btn btn-sm {% if active == 'list' %}btn-success{% else %}btn-outline-secondary{% endif %}">
+        <i class="bi bi-bar-chart-line me-1"></i>年度汇总
+    </a>
+    {% if not (can_add or can_edit or can_delete) %}
+    <span class="ms-auto align-self-center text-muted small">
+        <i class="bi bi-lock me-1"></i>只读模式：当前账号没有登记/编辑/删除权限
+    </span>
+    {% endif %}
+</div>

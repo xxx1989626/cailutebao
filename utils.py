@@ -101,6 +101,31 @@ def format_date(date_obj, fmt='%Y-%m-%d') -> str:
 def today_str(fmt='%Y-%m-%d') -> str:
     return datetime.today().strftime(fmt)
 
+
+def now_str(fmt='%Y-%m-%dT%H:%M') -> str:
+    """返回当前时间，用于 datetime-local input 默认值"""
+    return datetime.now().strftime(fmt)
+
+
+def parse_datetime(s):
+    """解析 datetime-local 提交的 'YYYY-MM-DDTHH:MM' 或带秒的格式为 datetime；date 也兼容"""
+    if s is None or s == '':
+        return None
+    if isinstance(s, datetime):
+        return s
+    if isinstance(s, date):
+        return datetime.combine(s, datetime.min.time())
+    t = str(s).strip()
+    if not t:
+        return None
+    for fmt in ('%Y-%m-%dT%H:%M:%S', '%Y-%m-%dT%H:%M', '%Y-%m-%d %H:%M:%S',
+                '%Y-%m-%d %H:%M', '%Y-%m-%d'):
+        try:
+            return datetime.strptime(t, fmt)
+        except ValueError:
+            continue
+    return None
+
 def format_datetime(dt_obj, fmt='%Y年%m月%d日 %H:%M') -> str:
     if not dt_obj:
         return ''

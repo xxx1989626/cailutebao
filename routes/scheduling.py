@@ -14,8 +14,7 @@ scheduling_bp = Blueprint('scheduling', __name__, url_prefix='/scheduling')
 # 权限定义
 SCHEDULING_PERMISSIONS = [
     ('view', '查看排班', '查看全员排班表'),
-    ('edit', '管理排班', '拖拽排班、保存排班数据'),
-    ('post', '岗位管理', '增删改查排班岗位')
+    ('edit', '管理排班', '拖拽排班、保存排班数据、岗位管理')
 ]
 # --- 路由 1：重构后的排班主页 ---
 @scheduling_bp.route('/list')

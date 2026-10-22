@@ -271,12 +271,28 @@
                             </a>
                         </li>
                     {% endif %}
-                    {% if perm.can('fund.view') %}
-                        <li class="nav-item">
-                            <a class="nav-link {% if request.endpoint and 'fund.' in request.endpoint %}active{% endif %}" 
-                               href="{{ url_for('fund.fund_list') }}">
+                    {% if current_user.is_authenticated %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle {% if request.endpoint and ('fund.' in request.endpoint or 'reward.' in request.endpoint) %}active{% endif %}" 
+                               data-bs-toggle="dropdown" href="#" role="button">
                                 <i class="bi bi-currency-exchange me-1"></i> 资金管理
                             </a>
+                            <ul class="dropdown-menu">
+                                {% if perm.can('fund.view') %}
+                                <li>
+                                    <a class="dropdown-item {% if request.endpoint and 'fund.' in request.endpoint %}active{% endif %}" 
+                                       href="{{ url_for('fund.fund_list') }}">
+                                        <i class="bi bi-list-ul me-2"></i>收支明细
+                                    </a>
+                                </li>
+                                {% endif %}
+                                <li>
+                                    <a class="dropdown-item {% if request.endpoint and 'reward.' in request.endpoint %}active{% endif %}" 
+                                       href="{{ url_for('reward.reward_list') }}">
+                                        <i class="bi bi-coin me-2"></i>抓狗奖励登记
+                                    </a>
+                                </li>
+                            </ul>
                         </li>
                     {% endif %}
                     {% if perm.can('dorm.view') %}

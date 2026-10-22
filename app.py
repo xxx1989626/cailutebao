@@ -2,7 +2,7 @@
 from flask_migrate import Migrate
 from flask import Flask, jsonify, request, send_from_directory
 from flask_login import LoginManager, current_user
-from utils import today_str, perm, format_date, format_datetime, validate_id_card, get_gender_from_id_card, get_birthday_from_id_card, get_unreturned_assets, register_module_permissions
+from utils import today_str, now_str, perm, format_date, format_datetime, validate_id_card, get_gender_from_id_card, get_birthday_from_id_card, get_unreturned_assets, register_module_permissions
 from config import Config, SECRET_KEY, DATABASE_PATH, UPLOAD_FOLDER, SALARY_MODES, POSITIONS, POSTS
 from models import db, Asset, User, Permission, ChatMessage  # 如需彻底清理可删除 ChatMessage
 from routes import register_blueprints
@@ -180,6 +180,7 @@ def fromjson_filter(value):
 def inject_global_variables():
     return {
         'today_str': today_str,
+        'now_str': now_str,
         'format_date': format_date,
         'format_datetime': format_datetime,
         'perm': perm
@@ -489,11 +490,59 @@ def init_app():
             db.session.rollback()
             logging.warning(f'出差逐人归队字段初始化失败(可能首次建表，忽略): {e}')
 
+        # ====== 抓狗链式关联：为已有 dog_settlements 补 delivery_ids 列 ======
+        try:
+            cols = [c['name'] for c in insp.get_columns('dog_settlements')]
+            conn = db.engine.connect()
+            try:
+                if 'delivery_ids' not in cols:
+                    conn.execute(text('ALTER TABLE dog_settlements ADD COLUMN delivery_ids JSON'))
+                    conn.commit()
+            finally:
+                conn.close()
+        except Exception as e:
+            db.session.rollback()
+            logging.warning(f'抓狗分账 delivery_ids 字段初始化失败(可能首次建表，忽略): {e}')
+
+        # ====== 抓狗时间字段：把已有的 'YYYY-MM-DD' 短日期补成 'YYYY-MM-DD 00:00:00' ======
+        try:
+            conn = db.engine.connect()
+            try:
+                for col, tbl in [('catch_date', 'dog_catches'), ('delivery_date', 'dog_deliveries')]:
+                    row = conn.execute(text(f"SELECT {col} FROM {tbl} LIMIT 1")).first()
+                    if row and row[0]:
+                        s = str(row[0])
+                        import re as _re
+                        if _re.fullmatch(r'\d{4}-\d{2}-\d{2}', s):
+                            conn.execute(text(f"UPDATE {tbl} SET {col} = {col} || ' 00:00:00' "
+                                             f"WHERE {col} LIKE '____-__-__' AND {col} NOT LIKE '% %'"))
+                conn.commit()
+            finally:
+                conn.close()
+        except Exception as e:
+            db.session.rollback()
+            logging.warning(f'抓狗日期补全初始化失败(可能首次建表，忽略): {e}')
+
+        # ====== 抓狗交付 is_reward 字段：为已有 dog_deliveries 补 is_reward 列（默认 True） ======
+        try:
+            cols = [c['name'] for c in insp.get_columns('dog_deliveries')]
+            conn = db.engine.connect()
+            try:
+                if 'is_reward' not in cols:
+                    conn.execute(text('ALTER TABLE dog_deliveries ADD COLUMN is_reward BOOLEAN DEFAULT 1'))
+                    conn.commit()
+            finally:
+                conn.close()
+        except Exception as e:
+            db.session.rollback()
+            logging.warning(f'抓狗交付 is_reward 字段初始化失败(可能首次建表，忽略): {e}')
+
         # 动态注册权限
         try:
             from routes.hr.permissions import HR_PERMISSIONS
             from routes.asset.core import ASSET_PERMISSIONS
             from routes.fund import FUND_PERMISSIONS
+            from routes.fund_reward import REWARD_PERMISSIONS
             from routes.scheduling import SCHEDULING_PERMISSIONS
             from routes.dorm import DORM_PERMISSIONS
             from routes.trip import TRIP_PERMISSIONS
@@ -502,6 +551,7 @@ def init_app():
             register_module_permissions('hr', HR_PERMISSIONS)
             register_module_permissions('asset', ASSET_PERMISSIONS)
             register_module_permissions('fund', FUND_PERMISSIONS)
+            register_module_permissions('reward', REWARD_PERMISSIONS)
             register_module_permissions('scheduling', SCHEDULING_PERMISSIONS)
             register_module_permissions('dorm', DORM_PERMISSIONS)
             register_module_permissions('trip', TRIP_PERMISSIONS)
@@ -509,6 +559,67 @@ def init_app():
             logging.info("权限注册完成")
         except ImportError as e:
             logging.warning(f"部分模块权限未注册: {e}")
+
+        # ====== 权限大整理：旧权限 → 新权限迁移（幂等，旧权限不存在时自动跳过） ======
+        try:
+            from models import UserPermission
+            PERM_MIGRATION_MAP = {
+                # 旧权限key -> 新权限key
+                'hr.departure': 'hr.edit',
+                'hr.cert_edit': 'hr.edit',
+                'hr.cert_delete': 'hr.delete',
+                'asset.issue': 'asset.add',
+                'asset.return': 'asset.add',
+                'asset.consume': 'asset.add',
+                'asset.supplement': 'asset.add',
+                'asset.repair': 'asset.add',
+                'asset.inventory': 'asset.add',
+                'asset.complete_repair': 'asset.edit',
+                'asset.scrap': 'asset.delete',
+                'scheduling.post': 'scheduling.edit',
+            }
+            # 旧权限持有者额外补发的权限（asset.supplement 持有者 → 库存提醒接收人）
+            EXTRA_GRANT = {
+                'asset.supplement': ['asset.alert'],
+            }
+            # 无映射直接删除的死权限
+            DEAD_PERMS = ['hr.approve', 'reward.manage']
+
+            changed_users = set()
+            for old_key, new_key in PERM_MIGRATION_MAP.items():
+                old_p = Permission.query.filter_by(key=old_key).first()
+                if not old_p:
+                    continue
+                new_p = Permission.query.filter_by(key=new_key).first()
+                if not new_p:
+                    logging.warning(f'权限迁移跳过：目标权限 {new_key} 不存在')
+                    continue
+                holders = UserPermission.query.filter_by(permission_id=old_p.id).all()
+                for up in holders:
+                    if not UserPermission.query.filter_by(user_id=up.user_id, permission_id=new_p.id).first():
+                        db.session.add(UserPermission(user_id=up.user_id, permission_id=new_p.id))
+                    db.session.delete(up)
+                    changed_users.add(up.user_id)
+                # 额外补发（不删除用户，仅追加）
+                for extra_key in EXTRA_GRANT.get(old_key, []):
+                    extra_p = Permission.query.filter_by(key=extra_key).first()
+                    if extra_p:
+                        for up in holders:
+                            if not UserPermission.query.filter_by(user_id=up.user_id, permission_id=extra_p.id).first():
+                                db.session.add(UserPermission(user_id=up.user_id, permission_id=extra_p.id))
+                # 删旧权限定义及其残留分配
+                UserPermission.query.filter_by(permission_id=old_p.id).delete()
+                db.session.delete(old_p)
+            for dead_key in DEAD_PERMS:
+                dead_p = Permission.query.filter_by(key=dead_key).first()
+                if dead_p:
+                    UserPermission.query.filter_by(permission_id=dead_p.id).delete()
+                    db.session.delete(dead_p)
+            db.session.commit()
+            logging.info(f'权限整理迁移完成，涉及用户 {len(changed_users)} 个')
+        except Exception as e:
+            db.session.rollback()
+            logging.warning(f'权限整理迁移失败(忽略): {e}')
         
         # 创建管理员账号
         admin_user = User.query.filter_by(username='admin').first()

@@ -1,0 +1,166 @@
+<!-- templates/fund/reward/list.html -->
+{% extends "base.html" %}
+{% block title %}抓狗奖励年度汇总{% endblock %}
+{% block content %}
+<style>
+    .reward-table th { font-weight: 600; color: #212529; text-align: center; white-space: nowrap; vertical-align: middle; }
+    .reward-table td { vertical-align: middle; text-align: center; border-color: #f1f3f5; }
+    .reward-table tr:hover { background-color: #f8f9fa; transition: background-color .2s ease; }
+    .stat-card { border: 1px solid #e9ecef; border-radius: 8px; background: #fff; }
+    .stat-card .stat-value { font-size: 1.35rem; font-weight: 700; line-height: 1.2; }
+    .stat-card .stat-label { color: #6c757d; font-size: .8rem; }
+</style>
+
+<div class="container mt-4">
+    {% include 'fund/reward/_nav.html' %}
+
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-success text-white d-flex flex-wrap justify-content-between align-items-center gap-2 py-3">
+            <h4 class="mb-0"><i class="bi bi-bar-chart-line me-2"></i>{{ selected_year }} 年抓狗奖励汇总</h4>
+            <div class="d-flex align-items-center gap-2">
+                <form method="GET" class="d-flex align-items-center gap-2 mb-0">
+                    <select name="year" class="form-select form-select-sm" onchange="this.form.submit()" style="width: 110px;">
+                        {% for y in years %}
+                        <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}年</option>
+                        {% endfor %}
+                    </select>
+                </form>
+                {% if can_add %}
+                <a href="{{ url_for('reward.reward_export', year=selected_year) }}" class="btn btn-light btn-sm">
+                    <i class="bi bi-download me-1"></i>导出 Excel
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        <div class="card-body p-3">
+            <!-- 数据概览 -->
+            <div class="row g-3 mb-3">
+                <div class="col-6 col-md-3 col-xl-2">
+                    <div class="stat-card p-3 h-100">
+                        <div class="stat-label">抓捕只数</div>
+                        <div class="stat-value">{{ summary.catch }}</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3 col-xl-2">
+                    <div class="stat-card p-3 h-100">
+                        <div class="stat-label">交付只数</div>
+                        <div class="stat-value text-primary">{{ summary.delivered }}</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3 col-xl-2">
+                    <div class="stat-card p-3 h-100">
+                        <div class="stat-label">损耗只数</div>
+                        <div class="stat-value text-danger">{{ summary.loss }}</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3 col-xl-2">
+                    <div class="stat-card p-3 h-100">
+                        <div class="stat-label">经费到账</div>
+                        <div class="stat-value">{{ "%.2f"|format(summary.received) }}</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3 col-xl-2">
+                    <div class="stat-card p-3 h-100">
+                        <div class="stat-label">分账合计</div>
+                        <div class="stat-value text-primary">{{ "%.2f"|format(summary.paid) }}</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3 col-xl-2">
+                    <div class="stat-card p-3 h-100">
+                        <div class="stat-label">未并入留存</div>
+                        <div class="stat-value text-warning">{{ "%.2f"|format(summary.pending_retained) }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-light border-start border-4 border-success py-2 small mb-3">
+                <i class="bi bi-calculator me-1"></i>
+                留存合计 {{ "%.2f"|format(summary.retained) }} 元，其中已并入总账 {{ "%.2f"|format(summary.retained - summary.pending_retained) }} 元；
+                个人已发放 {{ "%.2f"|format(summary.paid_out) }} 元，未发放 {{ "%.2f"|format(summary.paid - summary.paid_out) }} 元。
+            </div>
+
+            <!-- 个人分账统计 -->
+            <h6 class="mb-2"><i class="bi bi-people me-1"></i>个人分账统计</h6>
+            <div class="table-responsive rounded shadow-sm mb-4">
+                <table class="table table-hover align-middle mb-0 reward-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 22%;">姓名</th>
+                            <th style="width: 16%;">参与出勤</th>
+                            <th style="width: 16%;">计酬只数</th>
+                            <th style="width: 16%;">应分账金额</th>
+                            <th style="width: 15%;">已发</th>
+                            <th style="width: 15%;">未发</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in person_stats %}
+                        <tr>
+                            <td class="text-start">
+                                {{ p.name }}{% if p.status == '离职' %} <span class="badge bg-secondary">离职</span>{% endif %}
+                            </td>
+                            <td>{{ p.times }} 次</td>
+                            <td>{{ p.dog_count }}</td>
+                            <td class="fw-bold">{{ "%.2f"|format(p.amount) }}</td>
+                            <td class="text-success">{{ "%.2f"|format(p.paid) }}</td>
+                            <td class="text-danger">{{ "%.2f"|format(p.unpaid) }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="6" class="text-center text-muted py-4">该年度暂无数据</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 分账批次 -->
+            <h6 class="mb-2"><i class="bi bi-receipt me-1"></i>分账批次</h6>
+            <div class="table-responsive rounded shadow-sm">
+                <table class="table table-hover align-middle mb-0 reward-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 8%;">批次</th>
+                            <th>关联资金记录</th>
+                            <th style="width: 12%;">到账金额</th>
+                            <th style="width: 12%;">分账合计</th>
+                            <th style="width: 10%;">留存</th>
+                            <th style="width: 10%;">并入总账</th>
+                            <th style="width: 14%;">创建时间</th>
+                            <th style="width: 8%;">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in settlements %}
+                        <tr>
+                            <td>#{{ s.id }}</td>
+                            <td class="text-start small">
+                                {% if s.fund_record %}
+                                {{ s.fund_record.date.strftime('%Y-%m-%d') }} · {{ s.fund_record.item or '收入' }}
+                                {% else %}<span class="text-muted">未关联</span>{% endif %}
+                            </td>
+                            <td>{{ "%.2f"|format(s.total_received) }}</td>
+                            <td class="text-primary fw-bold">{{ "%.2f"|format(s.total_paid) }}</td>
+                            <td class="fw-bold">{{ "%.2f"|format(s.retained) }}</td>
+                            <td>
+                                {% if s.is_transferred %}
+                                <span class="badge bg-success">已并入</span>
+                                {% else %}
+                                <span class="badge bg-warning text-dark">未并入</span>
+                                {% endif %}
+                            </td>
+                            <td class="small">{{ s.created_at.strftime('%Y-%m-%d %H:%M') if s.created_at else '-' }}</td>
+                            <td>
+                                <a href="{{ url_for('reward.settle_detail', settlement_id=s.id) }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="8" class="text-center text-muted py-4">该年度暂无分账批次</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

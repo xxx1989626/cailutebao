@@ -14,8 +14,8 @@ bp = Blueprint('reminder_stock', __name__, url_prefix='/reminder/stock')
 LOW_STOCK_THRESHOLD = 2
 # 通知去重周期（天）
 DEDUP_DAYS = 3
-# 接收人所需的权限key（补充库存）
-REQUIRED_PERM_KEY = 'asset.supplement'
+# 接收人所需的权限key（资产提醒）
+REQUIRED_PERM_KEY = 'asset.alert'
 
 
 def _get_recipients():

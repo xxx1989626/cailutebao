@@ -1,0 +1,309 @@
+<!-- templates/fund/reward/settle_detail.html -->
+{% extends "base.html" %}
+{% block title %}分账批次 #{{ settlement.id }}{% endblock %}
+{% block content %}
+<style>
+    .reward-table th { font-weight: 600; color: #212529; text-align: center; white-space: nowrap; vertical-align: middle; }
+    .reward-table td { vertical-align: middle; text-align: center; border-color: #f1f3f5; }
+    .info-item { border-right: 1px solid #e9ecef; padding: 0.5rem 1rem; }
+    .info-item:last-child { border-right: none; }
+    .info-item .label { color: #6c757d; font-size: .8rem; }
+    .info-item .value { font-weight: 700; font-size: 1.05rem; }
+
+    /* ========== 打印样式 ========== */
+    .print-header { display: none; }
+    @media print {
+        @page { size: A4; margin: 12mm 10mm; }
+
+        body { background: #fff !important; }
+
+        /* 隐藏不需要的东西 */
+        nav.navbar, footer, .toast-container,
+        .card-header form, .card-header .btn,
+        .btn-sm, .reward-table tbody form,
+        .alert.alert-light,
+        .pagination,
+        div.container > div:first-child { display: none !important; }
+        .card-header a.btn { display: none !important; }
+        .card-header .btn { display: none !important; }
+        .shadow-sm { box-shadow: none !important; }
+
+        /* 显示打印头部 */
+        .print-header {
+            display: flex !important;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 2px solid #333;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+        }
+        .print-header .brand {
+            display: flex; align-items: center; gap: 10px;
+        }
+        .print-header .brand img { height: 32px; }
+        .print-header .brand .title { font-size: 16pt; font-weight: 700; }
+        .print-header .meta { font-size: 9pt; color: #666; text-align: right; }
+
+        /* 卡片去阴影 */
+        .card { box-shadow: none !important; border: none !important; }
+        .card-header-bg-success, .card-header.bg-success {
+            background: none !important;
+            color: #000 !important;
+            border-bottom: 2px solid #333 !important;
+            font-size: 14pt;
+            font-weight: 700;
+            padding: 4px 0 !important;
+        }
+
+        /* 表格 */
+        .table-responsive { box-shadow: none !important; }
+        .reward-table th { background: #f0f0f0 !important; font-size: 10pt; border-color: #ccc !important; }
+        .reward-table td { font-size: 10pt; border-color: #ddd !important; }
+        .table { margin-bottom: 8px !important; }
+
+        /* 信息条 */
+        .d-flex.flex-wrap.border-bottom { border-bottom: 1px solid #ccc !important; }
+        .info-item .label { font-size: 9pt; }
+        .info-item .value { font-size: 11pt; }
+
+        /* 底部签名 */
+        .print-footer {
+            display: flex !important;
+            justify-content: space-between;
+            margin-top: 20px;
+            font-size: 10pt;
+            color: #555;
+        }
+    }
+</style>
+
+<div class="print-header">
+    <div class="brand">
+        <img src="/static/favicon.ico" alt="logo" onerror="this.style.display='none'">
+        <div class="title">蔡路特保队队务管理系统 · 抓狗经费分账单</div>
+    </div>
+    <div class="meta">
+        <div>批次号 #{{ settlement.id }}</div>
+        <div>打印时间：<span class="print-time"></span></div>
+    </div>
+</div>
+
+<div class="container mt-4">
+    {% include 'fund/reward/_nav.html' %}
+
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-success text-white d-flex flex-wrap justify-content-between align-items-center gap-2 py-3">
+            <h4 class="mb-0"><i class="bi bi-receipt me-2"></i>分账批次 #{{ settlement.id }}</h4>
+            <div class="d-flex flex-wrap gap-2">
+                <button type="button" class="btn btn-light btn-sm" onclick="window.print()">
+                    <i class="bi bi-printer me-1"></i>打印分账单
+                </button>
+                <a href="{{ url_for('reward.settle_list') }}" class="btn btn-light btn-sm">
+                    <i class="bi bi-arrow-left me-1"></i>返回分账
+                </a>
+                {% if can_edit %}
+                <form method="POST" action="{{ url_for('reward.settle_pay_all', settlement_id=settlement.id) }}" class="d-inline"
+                      onsubmit="return confirm('将本批次所有未发放人员标记为已发放？');">
+                    <button type="submit" class="btn btn-light btn-sm"><i class="bi bi-check2-all me-1"></i>全部标记已发</button>
+                </form>
+                <form method="POST" action="{{ url_for('reward.settle_transfer', settlement_id=settlement.id) }}" class="d-inline"
+                      onsubmit="return confirm('{% if settlement.is_transferred %}取消并入标记后，该笔留存将重新计入未并入合计。确定取消？{% else %}确认把这笔留存标记为已并入总账？此操作只做标记，不会自动写入资金记录。{% endif %}');">
+                    <button type="submit" class="btn btn-sm {% if settlement.is_transferred %}btn-outline-light{% else %}btn-warning{% endif %}">
+                        {% if settlement.is_transferred %}
+                        <i class="bi bi-arrow-counterclockwise me-1"></i>取消并入
+                        {% else %}
+                        <i class="bi bi-box-arrow-in-right me-1"></i>留存并入总账
+                        {% endif %}
+                    </button>
+                </form>
+                {% endif %}
+                {% if can_delete %}
+                <form method="POST" action="{{ url_for('reward.settle_delete', settlement_id=settlement.id) }}" class="d-inline"
+                      onsubmit="return confirm('删除该分账批次？关联出勤会恢复为未结算，发放记录将一并删除。');">
+                    <button type="submit" class="btn btn-outline-light btn-sm"><i class="bi bi-trash me-1"></i>删除</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="d-flex flex-wrap border-bottom">
+                <div class="info-item">
+                    <div class="label">关联资金记录</div>
+                    <div class="value">
+                        {% if settlement.fund_record %}
+                        {{ settlement.fund_record.date.strftime('%Y-%m-%d') }} · {{ settlement.fund_record.item or '收入' }}
+                        {% else %}<span class="text-muted">未关联</span>{% endif %}
+                    </div>
+                </div>
+                <div class="info-item">
+                    <div class="label">到账金额</div>
+                    <div class="value">{{ "%.2f"|format(settlement.total_received) }} 元</div>
+                </div>
+                <div class="info-item">
+                    <div class="label">分账合计</div>
+                    <div class="value text-primary">{{ "%.2f"|format(settlement.total_paid) }} 元</div>
+                </div>
+                <div class="info-item">
+                    <div class="label">留存</div>
+                    <div class="value {% if settlement.retained < 0 %}text-danger{% else %}text-success{% endif %}">{{ "%.2f"|format(settlement.retained) }} 元</div>
+                    {% if settlement.is_transferred %}
+                    <div class="small text-muted">已并入，未并入合计中归零</div>
+                    {% endif %}
+                </div>
+                <div class="info-item">
+                    <div class="label">并入总账</div>
+                    <div class="value">
+                        {% if settlement.is_transferred %}
+                        <span class="badge bg-success">已并入</span>
+                        {% else %}
+                        <span class="badge bg-warning text-dark">未并入</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="info-item">
+                    <div class="label">创建时间</div>
+                    <div class="value small">{{ settlement.created_at.strftime('%Y-%m-%d %H:%M') if settlement.created_at else '-' }}</div>
+                </div>
+                {% if settlement.transferred_at %}
+                <div class="info-item">
+                    <div class="label">并入时间</div>
+                    <div class="value small">{{ settlement.transferred_at.strftime('%Y-%m-%d %H:%M') }}</div>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="alert alert-light border-start border-4 border-info m-3 mb-0 py-2 small">
+                <i class="bi bi-info-circle me-1"></i>
+                「留存并入总账」只做状态标记：标记后该笔留存会从「未并入留存合计」中归零，但不会自动生成任何资金记录。
+                请先在「资金管理 → 收支明细」中手动入账，再回到这里标记。
+            </div>
+
+            <div class="p-3">
+                <h6 class="mb-2"><i class="bi bi-people me-1"></i>个人分账明细</h6>
+                <div class="table-responsive rounded shadow-sm">
+                    <table class="table table-hover align-middle mb-0 reward-table">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 18%;">姓名</th>
+                                <th style="width: 14%;">计酬只数</th>
+                                <th style="width: 16%;">分账金额</th>
+                                <th style="width: 12%;">发放状态</th>
+                                <th style="width: 16%;">发放日期</th>
+                                {% if can_edit %}<th style="width: 12%;">操作</th>{% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sh in settlement.shares %}
+                            <tr>
+                                <td>{{ sh.employee.name if sh.employee else '未知' }}{% if sh.employee and sh.employee.status == '离职' %} <span class="badge bg-secondary">离职</span>{% endif %}</td>
+                                <td>{{ sh.dog_count }}</td>
+                                <td class="fw-bold text-primary">{{ "%.2f"|format(sh.amount) }}</td>
+                                <td>
+                                    {% if sh.is_paid %}
+                                    <span class="badge bg-success">已发</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">未发</span>
+                                    {% endif %}
+                                </td>
+                                <td class="small">{{ sh.paid_date.strftime('%Y-%m-%d') if sh.paid_date else '-' }}</td>
+                                {% if can_edit %}
+                                <td>
+                                    <form method="POST" action="{{ url_for('reward.settle_toggle_paid', settlement_id=settlement.id, employee_id=sh.employee_id) }}">
+                                        <button type="submit" class="btn btn-sm {% if sh.is_paid %}btn-outline-secondary{% else %}btn-outline-success{% endif %}">
+                                            {% if sh.is_paid %}撤销{% else %}标记已发{% endif %}
+                                        </button>
+                                    </form>
+                                </td>
+                                {% endif %}
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="{{ 6 if can_edit else 5 }}" class="text-center text-muted py-4">无分账明细</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="p-3 pt-0">
+                <h6 class="mb-2"><i class="bi bi-truck me-1"></i>本批关联的交付单（到账 ↔ 交付 ↔ 出勤）</h6>
+                <div class="table-responsive rounded shadow-sm mb-3">
+                    <table class="table table-sm align-middle mb-0 reward-table">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 15%;">交付日期</th>
+                                <th style="width: 10%;">只数</th>
+                                <th style="width: 18%;">接收方</th>
+                                <th>来源出勤分配</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for d in deliveries %}
+                            <tr>
+                                <td>{{ d.delivery_date.strftime('%Y-%m-%d %H:%M') if d.delivery_date else '-' }}</td>
+                                <td class="fw-bold text-primary">{{ d.dog_count }}</td>
+                                <td>{{ d.receiver or '-' }}</td>
+                                <td class="text-start">
+                                    {% for link in d.delivery_links %}
+                                    <span class="badge bg-light text-dark border me-1 mb-1">
+                                        {{ link.catch.catch_date.strftime('%m-%d') if link.catch and link.catch.catch_date else '?' }}：{{ link.dog_count }} 只
+                                    </span>
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="4" class="text-center text-muted py-3">本批未关联交付单（兜底直选出勤模式）</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <h6 class="mb-2"><i class="bi bi-calendar-check me-1"></i>本批包含的出勤</h6>
+                <div class="table-responsive rounded shadow-sm">
+                    <table class="table table-sm align-middle mb-0 reward-table">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 20%;">出勤日期</th>
+                                <th style="width: 15%;">抓捕只数</th>
+                                <th style="width: 15%;">本次损耗</th>
+                                <th style="width: 15%;">计酬只数</th>
+                                <th>参与人员</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for c in catches %}
+                            <tr>
+                                <td>{{ c.catch_date.strftime('%Y-%m-%d %H:%M') if c.catch_date else '-' }}</td>
+                                <td>{{ c.dog_count }}</td>
+                                <td>{{ c.loss_count }}</td>
+                                <td class="fw-bold text-success">{{ c.payable_count }}</td>
+                                <td class="text-start">
+                                    {% for p in c.persons %}
+                                    <span class="badge bg-light text-dark border me-1">
+                                        {{ p.employee.name if p.employee else '未知' }}{% if p.employee and p.employee.status == '离职' %}<span class="text-muted">（离职）</span>{% endif %}
+                                    </span>
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="5" class="text-center text-muted py-3">无关联出勤</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var now = new Date();
+    var pad = function(n){ return n < 10 ? '0'+n : n; };
+    var s = now.getFullYear() + '-' + pad(now.getMonth()+1) + '-' + pad(now.getDate()) + ' '
+          + pad(now.getHours()) + ':' + pad(now.getMinutes());
+    document.querySelectorAll('.print-time').forEach(function(el){ el.textContent = s; });
+});
+</script>
+{% endblock %}

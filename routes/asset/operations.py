@@ -11,7 +11,7 @@ from . import asset_bp
 # ==================== 发放资产（支持多数量） ====================
 @asset_bp.route('/issue/<int:asset_id>', methods=['POST'])
 @login_required
-@perm.require('asset.issue')
+@perm.require('asset.add')
 def asset_issue(asset_id):
     asset = Asset.query.get_or_404(asset_id)
     user_id = request.form.get('user_id')
@@ -67,7 +67,7 @@ def asset_issue(asset_id):
 # ==================== 更换资产（归还+报废+发放） ====================
 @asset_bp.route('/exchange/<int:asset_id>', methods=['POST'])
 @login_required
-@perm.require('asset.issue')
+@perm.require('asset.add')
 def asset_exchange(asset_id):
     asset = Asset.query.get_or_404(asset_id)
     user_id = request.form.get('user_id')
@@ -160,7 +160,7 @@ def asset_exchange(asset_id):
 # ==================== 归还资产 ====================
 @asset_bp.route('/return/<int:asset_id>', methods=['POST'])
 @login_required
-@perm.require('asset.return')
+@perm.require('asset.add')
 def asset_return(asset_id):
     asset = Asset.query.get_or_404(asset_id)
     user_id = request.form.get('user_id')
@@ -231,7 +231,7 @@ def asset_return(asset_id):
 # ==================== 批量发放归还 ====================
 @asset_bp.route('/issue_from_hr', methods=['POST'])
 @login_required
-@perm.require('asset.issue')
+@perm.require('asset.add')
 def asset_issue_from_hr():
     user_id = request.form.get('user_id')
     id_card = request.form.get('id_card')
@@ -307,7 +307,7 @@ def asset_issue_from_hr():
 # ==================== 消耗品消耗 ====================
 @asset_bp.route('/consume/<int:asset_id>', methods=['POST'])
 @login_required
-@perm.require('asset.consume')
+@perm.require('asset.add')
 def asset_consume(asset_id):
     asset = Asset.query.get_or_404(asset_id)
     if asset.type != '消耗品':
@@ -351,7 +351,7 @@ def asset_consume(asset_id):
 # ==================== 补充库存 ====================
 @asset_bp.route('/supplement/<int:asset_id>', methods=['POST'])
 @login_required
-@perm.require('asset.supplement')
+@perm.require('asset.add')
 def asset_supplement(asset_id):
     asset = Asset.query.get_or_404(asset_id)
     quantity = int(request.form.get('quantity', 0))
@@ -402,7 +402,7 @@ def asset_supplement(asset_id):
 # ==================== 报废资产 ====================
 @asset_bp.route('/scrap/<int:asset_id>', methods=['POST'])
 @login_required
-@perm.require('asset.scrap')
+@perm.require('asset.delete')
 def asset_scrap(asset_id):
     asset = Asset.query.get_or_404(asset_id)
     
@@ -462,7 +462,7 @@ def asset_scrap(asset_id):
 # ==================== 固定资产维修 ====================
 @asset_bp.route('/repair/<int:asset_id>', methods=['POST'])
 @login_required
-@perm.require('asset.repair')
+@perm.require('asset.add')
 def asset_repair(asset_id):
     asset = Asset.query.get_or_404(asset_id)
     if asset.type != '固定资产':
@@ -505,7 +505,7 @@ def asset_repair(asset_id):
 # ==================== 固定资产修复完成 ====================
 @asset_bp.route('/complete_repair/<int:asset_id>', methods=['POST'])
 @login_required
-@perm.require('asset.complete_repair')
+@perm.require('asset.edit')
 def asset_complete_repair(asset_id):
     asset = Asset.query.get_or_404(asset_id)
     if asset.type != '固定资产':
@@ -553,7 +553,7 @@ def asset_complete_repair(asset_id):
 # 子资产维修
 @asset_bp.route('/repair_sub', methods=['POST'])
 @login_required
-@perm.require('asset.repair')
+@perm.require('asset.add')
 def asset_repair_sub():
     sub_asset_id = request.form.get('sub_asset_id')
     note = request.form.get('note', '').strip()
@@ -584,7 +584,7 @@ def asset_repair_sub():
 # 子资产报废
 @asset_bp.route('/scrap_sub', methods=['POST'])
 @login_required
-@perm.require('asset.scrap')
+@perm.require('asset.delete')
 def asset_scrap_sub():
     sub_asset_id = request.form.get('sub_asset_id')
     reason = request.form.get('note', '').strip()
@@ -620,7 +620,7 @@ def asset_scrap_sub():
 # 子资产维修完成
 @asset_bp.route('/complete_repair_sub', methods=['POST'])
 @login_required
-@perm.require('asset.complete_repair')
+@perm.require('asset.edit')
 def asset_complete_repair_sub():
     sub_asset_id = request.form.get('sub_asset_id')
     note = request.form.get('note', '').strip()

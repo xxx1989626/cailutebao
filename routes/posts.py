@@ -14,7 +14,7 @@ posts_bp = Blueprint('posts', __name__, url_prefix='/posts')
 @login_required
 def posts_list():
     """岗位管理主页"""
-    if not perm.can('scheduling.post'):
+    if not perm.can('scheduling.edit'):
         flash("权限不足", "danger")
         return redirect(url_for('scheduling.schedule_list'))
     
@@ -45,7 +45,7 @@ def posts_list():
 @login_required
 def delete(id):
     """删除岗位（含关联检查）"""
-    if not perm.can('scheduling.post'):
+    if not perm.can('scheduling.edit'):
         flash("无权操作", "danger")
         return redirect(url_for('posts.posts_list'))
         

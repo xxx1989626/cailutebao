@@ -7,6 +7,7 @@ def register_blueprints(app):
     from .hr import hr_bp
     from .asset import asset_bp
     from .fund import fund_bp
+    from .fund_reward import reward_bp
     from .permission import permission_bp
     from .scheduling import scheduling_bp
     from .posts import posts_bp
@@ -19,6 +20,7 @@ def register_blueprints(app):
     app.register_blueprint(hr_bp)
     app.register_blueprint(asset_bp)
     app.register_blueprint(fund_bp)
+    app.register_blueprint(reward_bp)
     app.register_blueprint(permission_bp)
     app.register_blueprint(scheduling_bp)
     app.register_blueprint(posts_bp)

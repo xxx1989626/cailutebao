@@ -320,3 +320,105 @@ class ChatMessage(db.Model):
     timestamp = db.Column(db.DateTime, default=datetime.now) # 消息发送时间戳
     is_group = db.Column(db.Boolean, default=False) # 是否为群聊消息
     sender = db.relationship('User', foreign_keys=[sender_id]) # 建立与 User 模型的关联关系（发送人）
+# ==================== 抓狗奖励费模块 ====================
+class DogCatch(db.Model):
+    """抓狗出勤记录：一次出勤抓了多少只、哪些人参与"""
+    __tablename__ = 'dog_catches'  # 数据库表名
+    id = db.Column(db.Integer, primary_key=True)  # 主键ID
+    catch_date = db.Column(db.DateTime, nullable=False, index=True)  # 出勤时间（日期+时分）
+    dog_count = db.Column(db.Integer, nullable=False, default=0)  # 抓捕只数
+    remark = db.Column(db.Text)  # 备注
+    status = db.Column(db.String(10), default='未结算')  # 结算状态：未结算/已结算
+    created_at = db.Column(db.DateTime, default=datetime.now)  # 创建时间
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # 登记人
+    persons = db.relationship('DogCatchPerson', backref='catch', cascade='all, delete-orphan')  # 参与人
+    losses = db.relationship('DogLoss', backref='catch', cascade='all, delete-orphan')  # 归属该次出勤的损耗
+    delivery_links = db.relationship('DogDeliveryCatch', backref='catch')  # 被交付引用的明细
+
+    @property
+    def loss_count(self):
+        """该次出勤归属的损耗只数"""
+        return sum((l.dog_count or 0) for l in self.losses)
+
+    @property
+    def payable_count(self):
+        """计酬只数 = 抓捕只数 - 损耗只数（不小于0）"""
+        return max((self.dog_count or 0) - self.loss_count, 0)
+
+    @property
+    def delivered_count(self):
+        """已交付只数（所有交付单分配到本出勤的数量之和）"""
+        return sum((l.dog_count or 0) for l in self.delivery_links)
+
+    @property
+    def undelivered_count(self):
+        """未交付结余 = 计酬只数 - 已交付（不小于0）"""
+        return max(self.payable_count - self.delivered_count, 0)
+
+class DogCatchPerson(db.Model):
+    """抓狗出勤参与人（一名员工可参与多次出勤）"""
+    __tablename__ = 'dog_catch_persons'  # 数据库表名
+    catch_id = db.Column(db.Integer, db.ForeignKey('dog_catches.id'), primary_key=True)  # 出勤ID（联合主键）
+    employee_id = db.Column(db.Integer, db.ForeignKey('employment_cycles.id'), primary_key=True)  # 员工ID（联合主键）
+    employee = db.relationship('EmploymentCycle', backref='dog_catch_links')  # 关联员工
+
+class DogDelivery(db.Model):
+    """交付狗记录：送狗凭证可多张"""
+    __tablename__ = 'dog_deliveries'  # 数据库表名
+    id = db.Column(db.Integer, primary_key=True)  # 主键ID
+    delivery_date = db.Column(db.DateTime, nullable=False, index=True)  # 交付时间（日期+时分）
+    dog_count = db.Column(db.Integer, nullable=False, default=0)  # 交付只数
+    receiver = db.Column(db.String(100))  # 接收单位/接收人
+    remark = db.Column(db.Text)  # 备注
+    attachment = db.Column(db.JSON, default=[])  # 送狗凭证（图片/PDF路径列表）
+    is_reward = db.Column(db.Boolean, default=True)  # 是否走奖励费通道（False=不计酬，如被治安总队直接带走）
+    created_at = db.Column(db.DateTime, default=datetime.now)  # 创建时间
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # 登记人
+    delivery_links = db.relationship('DogDeliveryCatch', backref='delivery', cascade='all, delete-orphan')  # 关联出勤分配明细
+
+class DogDeliveryCatch(db.Model):
+    """交付-出勤分配明细：一次交付的狗精确来自哪几次出勤、各几只"""
+    __tablename__ = 'dog_delivery_catches'  # 数据库表名
+    delivery_id = db.Column(db.Integer, db.ForeignKey('dog_deliveries.id'), primary_key=True)  # 交付ID（联合主键）
+    catch_id = db.Column(db.Integer, db.ForeignKey('dog_catches.id'), primary_key=True)  # 出勤ID（联合主键）
+    dog_count = db.Column(db.Integer, nullable=False, default=0)  # 本次交付中来自该出勤的只数
+
+class DogLoss(db.Model):
+    """狗只损耗记录：必须归属到某次出勤（狗无个体编码）"""
+    __tablename__ = 'dog_losses'  # 数据库表名
+    id = db.Column(db.Integer, primary_key=True)  # 主键ID
+    loss_date = db.Column(db.Date, nullable=False, index=True)  # 损耗日期
+    dog_count = db.Column(db.Integer, nullable=False, default=0)  # 损耗只数
+    reason = db.Column(db.String(20), default='其他')  # 领养/归还/死亡/逃跑/其他
+    catch_id = db.Column(db.Integer, db.ForeignKey('dog_catches.id'), nullable=False)  # 归属出勤记录
+    remark = db.Column(db.Text)  # 备注
+    created_at = db.Column(db.DateTime, default=datetime.now)  # 创建时间
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # 登记人
+
+class DogSettlement(db.Model):
+    """抓狗经费分账批次：只引用资金记录，不自动写入总账"""
+    __tablename__ = 'dog_settlements'  # 数据库表名
+    id = db.Column(db.Integer, primary_key=True)  # 主键ID
+    fund_record_id = db.Column(db.Integer, db.ForeignKey('funds_records.id'), nullable=True)  # 引用到账收入条目
+    total_received = db.Column(db.Float, default=0.0)  # 本批到账金额
+    total_paid = db.Column(db.Float, default=0.0)  # 本批分账合计
+    retained = db.Column(db.Float, default=0.0)  # 留存 = 到账 - 分账合计
+    is_transferred = db.Column(db.Boolean, default=False)  # 是否已并入总账（并入后不再计入未并入留存）
+    transferred_at = db.Column(db.DateTime)  # 并入总账时间
+    catch_ids = db.Column(db.JSON, default=[])  # 本批包含的出勤ID列表（含交付带出+直接勾选）
+    delivery_ids = db.Column(db.JSON, default=[])  # 本批关联的交付单ID列表（到账↔交付关联）
+    created_at = db.Column(db.DateTime, default=datetime.now)  # 创建时间
+    created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # 操作人
+    fund_record = db.relationship('FundsRecord')  # 关联资金记录
+    shares = db.relationship('DogSettlementShare', backref='settlement', cascade='all, delete-orphan')  # 分账明细
+
+class DogSettlementShare(db.Model):
+    """分账明细：一人一行，同一批次内同一人合并"""
+    __tablename__ = 'dog_settlement_shares'  # 数据库表名
+    settlement_id = db.Column(db.Integer, db.ForeignKey('dog_settlements.id'), primary_key=True)  # 分账批次ID（联合主键）
+    employee_id = db.Column(db.Integer, db.ForeignKey('employment_cycles.id'), primary_key=True)  # 员工ID（联合主键）
+    dog_count = db.Column(db.Integer, default=0)  # 计酬只数
+    amount = db.Column(db.Float, default=0.0)  # 分账金额
+    is_paid = db.Column(db.Boolean, default=False)  # 是否已发放
+    paid_date = db.Column(db.Date)  # 发放日期
+    employee = db.relationship('EmploymentCycle')  # 关联员工

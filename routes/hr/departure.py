@@ -13,7 +13,7 @@ from utils import parse_date, log_action,perm
 # ==================== 办理离职 ====================
 @hr_bp.route('/departure/<int:cycle_id>', methods=['POST'])
 @login_required
-@perm.require('hr.departure')
+@perm.require('hr.edit')
 def departure(cycle_id):
     cycle = EmploymentCycle.query.get_or_404(cycle_id)
     
