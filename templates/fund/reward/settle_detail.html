@@ -106,6 +106,22 @@
                       onsubmit="return confirm('将本批次所有未发放人员标记为已发放？');">
                     <button type="submit" class="btn btn-light btn-sm"><i class="bi bi-check2-all me-1"></i>全部标记已发</button>
                 </form>
+                {% if expense_record %}
+                <a href="{{ url_for('fund.fund_list') }}" class="btn btn-outline-light btn-sm"
+                   title="该批次支出已登记（资金记录 #{{ expense_record.id }}），点击查看资金明细">
+                    <i class="bi bi-journal-check me-1"></i>支出已登记
+                </a>
+                {% elif current_user.role == 'admin' or perm.can('fund.add') %}
+                <button type="button" class="btn btn-light btn-sm" id="btn-register-expense"
+                        data-settlement="{{ settlement.id }}" data-context="{{ request.path }}"
+                        {% if paid_total <= 0 %}disabled title="还没有已发放的分账，先标记发放"{% endif %}>
+                    <i class="bi bi-journal-plus me-1"></i>登记支出
+                </button>
+                {% else %}
+                <span class="btn btn-light btn-sm disabled" title="需要资金管理新增权限（fund.add）才能登记支出">
+                    <i class="bi bi-journal-plus me-1"></i>登记支出
+                </span>
+                {% endif %}
                 <form method="POST" action="{{ url_for('reward.settle_transfer', settlement_id=settlement.id) }}" class="d-inline"
                       onsubmit="return confirm('{% if settlement.is_transferred %}取消并入标记后，该笔留存将重新计入未并入合计。确定取消？{% else %}确认把这笔留存标记为已并入总账？此操作只做标记，不会自动写入资金记录。{% endif %}');">
                     <button type="submit" class="btn btn-sm {% if settlement.is_transferred %}btn-outline-light{% else %}btn-warning{% endif %}">
@@ -192,12 +208,12 @@
                                 {% if can_edit %}<th style="width: 12%;">操作</th>{% endif %}
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="share-tbody">
                             {% for sh in settlement.shares %}
-                            <tr>
-                                <td>{{ sh.employee.name if sh.employee else '未知' }}{% if sh.employee and sh.employee.status == '离职' %} <span class="badge bg-secondary">离职</span>{% endif %}</td>
-                                <td>{{ sh.dog_count }}</td>
-                                <td class="fw-bold text-primary">{{ "%.2f"|format(sh.amount) }}</td>
+                            <tr data-employee="{{ sh.employee_id }}" class="share-row" title="点击可高亮本批中该人参与的出勤">
+                                <td class="share-name"><i class="bi bi-person me-1 text-muted"></i>{{ sh.employee.name if sh.employee else '未知' }}{% if sh.employee and sh.employee.status == '离职' %} <span class="badge bg-secondary">离职</span>{% endif %}</td>
+                                <td {% if not sh.dog_count %}class="text-muted" title="仅参与不计酬出勤（如被治安总队直接带走），无计酬只数"{% endif %}>{{ sh.dog_count }}</td>
+                                <td class="fw-bold {% if sh.amount > 0 %}text-primary{% else %}text-muted{% endif %}">{{ "%.2f"|format(sh.amount) }}</td>
                                 <td>
                                     {% if sh.is_paid %}
                                     <span class="badge bg-success">已发</span>
@@ -265,20 +281,20 @@
                                 <th style="width: 20%;">出勤日期</th>
                                 <th style="width: 15%;">抓捕只数</th>
                                 <th style="width: 15%;">本次损耗</th>
-                                <th style="width: 15%;">计酬只数</th>
+                                <th style="width: 15%;">可结算只数</th>
                                 <th>参与人员</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="catch-tbody">
                             {% for c in catches %}
-                            <tr>
+                            <tr data-persons="{{ c.persons | map(attribute='employee_id') | join(',') }}">
                                 <td>{{ c.catch_date.strftime('%Y-%m-%d %H:%M') if c.catch_date else '-' }}</td>
                                 <td>{{ c.dog_count }}</td>
                                 <td>{{ c.loss_count }}</td>
-                                <td class="fw-bold text-success">{{ c.payable_count }}</td>
+                                <td class="fw-bold text-success">{{ c.settleable_count }}{% if c.non_reward_delivered_count %} <span class="badge bg-secondary" title="另有 {{ c.non_reward_delivered_count }} 只已被不计酬交付带走，不计入分账">排{{ c.non_reward_delivered_count }}</span>{% endif %}</td>
                                 <td class="text-start">
                                     {% for p in c.persons %}
-                                    <span class="badge bg-light text-dark border me-1">
+                                    <span class="badge bg-light text-dark border me-1 person-badge" data-person="{{ p.employee_id }}">
                                         {{ p.employee.name if p.employee else '未知' }}{% if p.employee and p.employee.status == '离职' %}<span class="text-muted">（离职）</span>{% endif %}
                                     </span>
                                     {% endfor %}
@@ -297,6 +313,41 @@
 {% endblock %}
 
 {% block scripts %}
+<!-- 登记支出弹窗：表单为主账 /fund/get_form_snippet 片段，提交走主账 /fund/add -->
+<div class="modal fade" id="expenseModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <form id="expense-form" action="{{ url_for('fund.fund_add') }}" method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="next" id="expense-next" value="">
+                <div class="modal-header bg-success text-white py-2">
+                    <h6 class="modal-title"><i class="bi bi-journal-plus me-1"></i>登记支出 · 走资金管理主账入口</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="关闭"></button>
+                </div>
+                <div class="modal-body" id="expense-modal-body">
+                    <div class="text-center py-4 text-muted" id="expense-loading">
+                        <div class="spinner-border spinner-border-sm me-2"></div>正在加载资金表单...
+                    </div>
+                </div>
+                <div class="modal-footer py-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-sm btn-success">
+                        <i class="bi bi-check-lg me-1"></i>确认保存（由资金管理完成入账）
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* 选人联动高亮样式 */
+    .share-row { cursor: pointer; }
+    .share-row.active-row { background: #d1e7dd !important; }
+    #catch-tbody tr.hl-catch { background: #d1e7dd !important; }
+    #catch-tbody tr.dim-catch { opacity: .35; }
+    #catch-tbody tr.hl-catch .person-badge[data-person].on { background: #198754 !important; color: #fff !important; border-color: #198754 !important; }
+</style>
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     var now = new Date();
@@ -304,6 +355,110 @@ document.addEventListener('DOMContentLoaded', function () {
     var s = now.getFullYear() + '-' + pad(now.getMonth()+1) + '-' + pad(now.getDate()) + ' '
           + pad(now.getHours()) + ':' + pad(now.getMinutes());
     document.querySelectorAll('.print-time').forEach(function(el){ el.textContent = s; });
+
+    /* ========== 1. 个人分账明细 → 高亮该人参与的出勤 ========== */
+    var selectedEmp = null;
+    document.querySelectorAll('#share-tbody .share-row').forEach(function (row) {
+        row.addEventListener('click', function (e) {
+            // 点"标记已发/撤销"按钮时不触发选人
+            if (e.target.closest('button') || e.target.closest('a')) return;
+            var empId = row.dataset.employee;
+            var isActive = row.classList.contains('active-row');
+            // 清除上次
+            document.querySelectorAll('#share-tbody .share-row').forEach(function (r) { r.classList.remove('active-row'); });
+            document.querySelectorAll('#catch-tbody tr').forEach(function (r) { r.classList.remove('hl-catch', 'dim-catch'); });
+            document.querySelectorAll('#catch-tbody .person-badge').forEach(function (b) { b.classList.remove('on'); });
+            selectedEmp = null;
+            if (isActive) return; // 再点一次取消
+
+            // 高亮该人
+            row.classList.add('active-row');
+            selectedEmp = empId;
+            var hit = 0;
+            document.querySelectorAll('#catch-tbody tr[data-persons]').forEach(function (cr) {
+                var ids = (cr.dataset.persons || '').split(',');
+                if (ids.indexOf(empId) !== -1) {
+                    cr.classList.add('hl-catch');
+                    hit++;
+                    cr.querySelectorAll('.person-badge[data-person="' + empId + '"]').forEach(function (b) { b.classList.add('on'); });
+                } else {
+                    cr.classList.add('dim-catch');
+                }
+            });
+            var name = row.querySelector('.share-name').textContent.trim();
+            row.setAttribute('title', name + ' 参与本批 ' + hit + ' 次出勤（再次点击取消高亮）');
+        });
+    });
+
+    /* ========== 2. 登记支出弹窗：拉主账表单片段 + 预填，提交走主账 /fund/add ========== */
+    var btn = document.getElementById('btn-register-expense');
+    if (!btn) return;
+    var modalEl = document.getElementById('expenseModal');
+    var modal = new bootstrap.Modal(modalEl);
+    var bodyEl = document.getElementById('expense-modal-body');
+    var formEl = document.getElementById('expense-form');
+    var snippetCache = null; // 表单片段只拉一次
+
+    function prefill(formRoot, prefillData) {
+        var set = function (name, val) {
+            var el = formRoot.querySelector('[name="' + name + '"]');
+            if (el) el.value = val;
+        };
+        set('date', prefillData.date);
+        set('payer', prefillData.payer);
+        set('item', prefillData.item);
+        set('amount', prefillData.amount);
+        set('note', prefillData.note);
+    }
+
+    btn.addEventListener('click', function () {
+        var sid = btn.dataset.settlement;
+        // next 指向当前分账详情页：主账保存成功后跳回这里
+        document.getElementById('expense-next').value = btn.dataset.context;
+
+        modal.show();
+        // 已加载过就直接复用
+        if (snippetCache) return;
+
+        // 并行拉：主账表单片段 + 本批次预填数据（均为只读，不写任何账）
+        Promise.all([
+            fetch('{{ url_for("fund.get_fund_form_snippet") }}').then(function (r) { return r.text(); }),
+            fetch('{{ url_for("reward.settle_expense_prefill", settlement_id=0) }}'.replace('/settle/0/', '/settle/' + sid + '/')).then(function (r) { return r.json(); })
+        ]).then(function (results) {
+            var html = results[0], data = results[1];
+            if (data.registered) {
+                bodyEl.innerHTML = '<div class="alert alert-warning m-3"><i class="bi bi-exclamation-triangle me-1"></i>该批次的支出已登记过（资金记录 #' + data.fund_record_id + '），无需重复登记。刷新页面后按钮会变为「支出已登记」。</div>';
+                formEl.querySelector('button[type="submit"]').disabled = true;
+                snippetCache = 'done';
+                return;
+            }
+            snippetCache = html;
+            bodyEl.innerHTML = html;
+            // 片段里的 <script> 不会自动执行，手工重建执行（表单样式/校验依赖它）
+            bodyEl.querySelectorAll('script').forEach(function (oldScript) {
+                var newScript = document.createElement('script');
+                newScript.text = oldScript.text;
+                oldScript.parentNode.replaceChild(newScript, oldScript);
+            });
+            prefill(bodyEl, data.prefill);
+        }).catch(function () {
+            bodyEl.innerHTML = '<div class="alert alert-danger m-3">表单加载失败，请重试或直接到「资金管理 → 添加收支」手动登记。</div>';
+        });
+    });
+
+    // 弹窗每次打开时重置提交按钮（上一次提交可能把它禁用了）
+    modalEl.addEventListener('show.bs.modal', function () {
+        var submitBtn = formEl.querySelector('button[type="submit"]');
+        if (submitBtn && !snippetCache) { submitBtn.disabled = false; }
+    });
+    // 弹窗完全关闭后：如果表单已成功提交过（页面将跳转），无需处理；否则恢复按钮
+    modalEl.addEventListener('hidden.bs.modal', function () {
+        var submitBtn = formEl.querySelector('button[type="submit"]');
+        if (submitBtn && snippetCache && snippetCache !== 'done') {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i>确认保存（由资金管理完成入账）';
+        }
+    });
 });
 </script>
 {% endblock %}

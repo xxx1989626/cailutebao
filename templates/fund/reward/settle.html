@@ -51,7 +51,12 @@
                                     <tr>
                                         <td><input type="checkbox" class="form-check-input delivery-check" name="delivery_ids" value="{{ d.id }}"></td>
                                         <td>{{ d.delivery_date.strftime('%Y-%m-%d %H:%M') if d.delivery_date else '-' }}</td>
-                                        <td class="fw-bold text-primary">{{ d.dog_count }}</td>
+                                        <td class="fw-bold {% if d.is_reward is not false %}text-primary{% else %}text-muted{% endif %}">
+                                            {{ d.dog_count }}
+                                            {% if d.is_reward is false %}
+                                            <span class="badge bg-secondary" title="不计酬交付（如被治安总队直接带走）：勾选不产生分账金额，只把关联出勤带进批次一起结算关账">不计酬</span>
+                                            {% endif %}
+                                        </td>
                                         <td class="text-truncate" style="max-width: 140px;" title="{{ d.receiver or '' }}">{{ d.receiver or '-' }}</td>
                                         <td class="text-start">
                                             {% for link in d.delivery_links %}
@@ -91,7 +96,7 @@
                                         <th style="width: 16%;">出勤日期</th>
                                         <th style="width: 10%;">抓捕</th>
                                         <th style="width: 10%;">损耗</th>
-                                        <th style="width: 12%;">计酬只数</th>
+                                        <th style="width: 12%;">可结算只数</th>
                                         <th>参与人员</th>
                                     </tr>
                                 </thead>
@@ -102,7 +107,12 @@
                                         <td>{{ c.catch_date.strftime('%Y-%m-%d %H:%M') if c.catch_date else '-' }}</td>
                                         <td class="fw-bold">{{ c.dog_count }}</td>
                                         <td class="{% if c.loss_count > 0 %}text-danger{% else %}text-muted{% endif %}">{{ c.loss_count }}</td>
-                                        <td class="fw-bold text-success">{{ c.payable_count }}</td>
+                                        <td class="fw-bold text-success">
+                                            {{ c.settleable_count }}
+                                            {% if c.non_reward_delivered_count %}
+                                            <span class="badge bg-secondary" title="另有 {{ c.non_reward_delivered_count }} 只已被不计酬交付带走（如治安总队直接收取），不计入分账金额">排{{ c.non_reward_delivered_count }}</span>
+                                            {% endif %}
+                                        </td>
                                         <td class="text-start">
                                             {% for p in c.persons %}
                                             <span class="badge bg-light text-dark border me-1 mb-1">{{ p.employee.name if p.employee else '未知' }}{% if p.employee and p.employee.status == '离职' %}<span class="text-muted">（离职）</span>{% endif %}</span>

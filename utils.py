@@ -215,6 +215,8 @@ def register_module_permissions(module, permissions):
 
 # ==================== 审计日志（Audit Log）+通知 ====================
 def log_action(action_type, target_type, target_id, description, **kwargs):
+    # notify=False 时只写审计日志、不发系统操作通知（用于高频操作避免通知刷屏）
+    notify = kwargs.get('notify', True)
     try:
         from models import db, OperationLog, Notification, User, EmploymentCycle
         from flask_login import current_user
@@ -250,7 +252,7 @@ def log_action(action_type, target_type, target_id, description, **kwargs):
                 operated_user = User.query.filter_by(username=operated_emp.id_card).first()
                 if operated_user:
                     receiver_ids.add(operated_user.id)
-        if receiver_ids:
+        if notify and receiver_ids:
             notify_title = f"系统操作通知：{action_type}"
             notify_content = f"""
             <p>操作人：{current_user.name}</p>

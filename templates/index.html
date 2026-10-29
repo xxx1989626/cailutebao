@@ -518,9 +518,11 @@
                     </td>
                     <td>
                         ${item.phone ? 
-                            `<a href="tel:${item.phone}" class="text-decoration-none text-primary">
-                                <i class="bi bi-telephone-outbound me-1"></i>${item.phone}
-                            </a>` : 
+                            (item.phone.includes('*') ?
+                                `<span class="text-muted"><i class="bi bi-telephone me-1"></i>${item.phone}</span>` :
+                                `<a href="tel:${item.phone}" class="text-decoration-none text-primary">
+                                    <i class="bi bi-telephone-outbound me-1"></i>${item.phone}
+                                </a>`) :
                             '<span class="text-muted"><i class="bi bi-phone-slash me-1"></i>未记录</span>'
                         }
                     </td>

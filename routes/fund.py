@@ -3,6 +3,7 @@
 
 import os
 import json
+import re
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, current_app
 from flask_login import login_required, current_user
 from models import db, FundsRecord, Asset, User
@@ -70,7 +71,14 @@ def fund_list():
     # 使用分页
     pagination = query.order_by(order).paginate(page=page, per_page=per_page, error_out=False)
     records = pagination.items
-    
+
+    # 备注含「分账批次#N」的支出记录 → 附上分账批次详情反向链接
+    settle_map = {}
+    for rec in records:
+        m = re.search(r'分账批次#(\d+)', rec.note or '')
+        if m:
+            settle_map[rec.id] = int(m.group(1))
+
     # 使用最新记录的余额作为总余额（更准确）
     latest_record = FundsRecord.query.order_by(FundsRecord.date.desc(), FundsRecord.id.desc()).first()
     total_balance = latest_record.balance if latest_record else 0
@@ -82,6 +90,7 @@ def fund_list():
                            date_filter=date_filter,
                            payer_filter=payer_filter,
                            item_filter=item_filter,
+                           settle_map=settle_map,
                            sort=sort)
 
 # ==================== 核心财务保存逻辑函数 ==================== 
@@ -160,6 +169,7 @@ def get_fund_form_snippet():
 
 @fund_bp.route('/add', methods=['GET', 'POST'])
 @login_required
+@perm.require('fund.add')
 def fund_add():
     if request.method == 'POST':
         try:
@@ -183,6 +193,10 @@ def fund_add():
 
             db.session.commit()
             flash(f'财务记录保存成功{sync_msg}', 'success')
+            # 可选 next：其他模块（如抓狗分账弹窗）提交后跳回原页面；只允许站内路径防开放重定向
+            next_url = (request.form.get('next') or '').strip()
+            if next_url.startswith('/') and not next_url.startswith('//'):
+                return redirect(next_url)
             return redirect(url_for('fund.fund_list'))
 
         except Exception as e:

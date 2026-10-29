@@ -351,6 +351,21 @@ class DogCatch(db.Model):
         return sum((l.dog_count or 0) for l in self.delivery_links)
 
     @property
+    def non_reward_delivered_count(self):
+        """不计酬交付只数：分配到本出勤、但交付标记为不计酬（如被治安总队直接带走）的只数"""
+        return sum(
+            (l.dog_count or 0) for l in self.delivery_links
+            if l.delivery and l.delivery.is_reward is False
+        )
+
+    @property
+    def settleable_count(self):
+        """可结算只数 = 计酬只数 - 不计酬交付只数（不小于0）。
+        计酬交付的狗照样算钱（交付后凭批次结算奖励费）；
+        不计酬交付的狗不算钱，分账时要排除。"""
+        return max(self.payable_count - self.non_reward_delivered_count, 0)
+
+    @property
     def undelivered_count(self):
         """未交付结余 = 计酬只数 - 已交付（不小于0）"""
         return max(self.payable_count - self.delivered_count, 0)

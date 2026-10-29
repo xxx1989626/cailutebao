@@ -216,18 +216,24 @@
                 <i class="bi bi-currency-exchange me-2"></i> 资金收支记录
             </h4>
             <div class="btn-group-actions">
-                <a href="{{ url_for('fund.fund_export', date=date_filter, payer=payer_filter, item=item_filter) }}" 
+                {% if perm.can('fund.export') %}
+                <a href="{{ url_for('fund.fund_export', date=date_filter, payer=payer_filter, item=item_filter) }}"
                    class="btn btn-light btn-action">
                     <i class="bi bi-download me-1"></i> 导出数据
                 </a>
-                <a href="{{ url_for('fund.fund_import') }}" 
+                {% endif %}
+                {% if perm.can('fund.import') %}
+                <a href="{{ url_for('fund.fund_import') }}"
                    class="btn btn-light btn-action">
                     <i class="bi bi-upload me-1"></i> 导入数据
                 </a>
-                <a href="{{ url_for('fund.fund_add') }}" 
+                {% endif %}
+                {% if perm.can('fund.add') %}
+                <a href="{{ url_for('fund.fund_add') }}"
                    class="btn btn-light btn-action">
                     <i class="bi bi-plus-circle me-1"></i> 新增数据
                 </a>
+                {% endif %}
             </div>
         </div>
         
@@ -353,10 +359,15 @@
                                     </span>
                                 </td>
                                 <td>{{ r.operator.name if r.operator else '系统' }}</td>
-                                <!-- 备注 - 悬停显示完整内容 -->
+                                <!-- 备注 - 悬停显示完整内容；含「分账批次#N」的自动链接到批次详情 -->
                                 <td class="text-truncate" style="max-width: 150px;" 
                                     title="{{ r.note or '无备注信息' }}">
+                                    {% if r.id in settle_map %}
+                                    <a href="{{ url_for('reward.settle_detail', settlement_id=settle_map[r.id]) }}"
+                                       title="查看分账批次 #{{ settle_map[r.id] }} 详情">{{ r.note or '-' }}</a>
+                                    {% else %}
                                     {{ r.note or '-' }}
+                                    {% endif %}
                                 </td>
                                 <!-- 凭证附件 -->
                                 <td>
@@ -391,10 +402,12 @@
                                             <i class="bi bi-pencil"></i>
                                         </a>
                                         {% endif %}
+                                        {% if perm.can('fund.delete') %}
                                         <button type="button" class="btn btn-outline-danger"
                                                 onclick="confirmDelete({{ r.id }})" title="删除">
                                             <i class="bi bi-trash"></i>
                                         </button>
+                                        {% endif %}
                                     </div>
                                 </td>
                             </tr>

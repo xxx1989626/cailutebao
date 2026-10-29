@@ -4,6 +4,7 @@
 
 from io import BytesIO
 from datetime import datetime
+import re
 
 import pandas as pd
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file
@@ -158,7 +159,6 @@ def catch_add():
         target_type='DogCatch',
         target_id=new_catch.id,
         description=f"登记 {catch_date} 抓狗出勤，抓捕 {dog_count} 只，参与人：{names}",
-        cycle_id=current_user.id,
     )
     db.session.commit()
     flash('出勤记录已登记', 'success')
@@ -208,7 +208,6 @@ def catch_edit(catch_id):
         target_type='DogCatch',
         target_id=c.id,
         description=f"修改 {catch_date} 抓狗出勤，抓捕 {dog_count} 只，参与人：{'、'.join(e.name for e in employees)}",
-        cycle_id=current_user.id,
     )
     db.session.commit()
     flash('出勤记录已更新', 'success')
@@ -238,7 +237,6 @@ def catch_delete(catch_id):
         target_type='DogCatch',
         target_id=c.id,
         description=f"删除 {c.catch_date} 抓狗出勤记录（抓捕 {c.dog_count} 只）",
-        cycle_id=current_user.id,
     )
     db.session.delete(c)
     db.session.commit()
@@ -361,7 +359,6 @@ def delivery_add():
         target_type='DogDelivery',
         target_id=record.id,
         description=f"登记 {delivery_date} 交付 {dog_count} 只，接收方：{record.receiver or '未填写'}，来源出勤：{alloc_desc}，凭证 {len(attachment_paths)} 张",
-        cycle_id=current_user.id,
     )
     db.session.commit()
     flash('交付记录已登记', 'success')
@@ -395,7 +392,6 @@ def delivery_delete(delivery_id):
         target_type='DogDelivery',
         target_id=record.id,
         description=f"删除 {record.delivery_date} 交付记录（{record.dog_count} 只）",
-        cycle_id=current_user.id,
     )
     db.session.delete(record)
     db.session.commit()
@@ -494,7 +490,6 @@ def delivery_edit(delivery_id):
         target_type='DogDelivery',
         target_id=record.id,
         description=f"修改 {delivery_date} 交付 {total_alloc} 只，接收方：{record.receiver or '未填写'}，来源出勤：{alloc_desc}，计酬：{'是' if is_reward_flag else '否'}",
-        cycle_id=current_user.id,
     )
     db.session.commit()
     flash('交付记录已更新', 'success')
@@ -545,7 +540,6 @@ def loss_add():
         target_type='DogLoss',
         target_id=record.id,
         description=f"登记 {loss_date} 损耗 {dog_count} 只（{record.reason}），归属出勤：{c.catch_date}",
-        cycle_id=current_user.id,
     )
     db.session.commit()
     flash('损耗记录已登记，该次出勤计酬只数已同步调整', 'success')
@@ -572,7 +566,6 @@ def loss_delete(loss_id):
         target_type='DogLoss',
         target_id=record.id,
         description=f"删除 {record.loss_date} 损耗记录（{record.dog_count} 只）",
-        cycle_id=current_user.id,
     )
     db.session.delete(record)
     db.session.commit()
@@ -646,14 +639,19 @@ def settle_list():
         else:
             total_received = float(fund_record.amount) if fund_record else 0.0
 
-        # 服务端重新计算每人计酬只数（不信任前端）
+        # 服务端重新计算每人可结算只数（不信任前端）
+        # 可结算只数 = 计酬只数 - 不计酬交付只数（不计酬交付带走的狗不算钱）
+        # 参与过不计酬出勤的人也保留 0 元明细行，保证透明可查
         person_counts = {}
+        excluded_counts = {}  # 各出勤被排除的不计酬只数（供日志描述）
         for c in catches:
+            excluded_counts[c.id] = c.non_reward_delivered_count
             for p in c.persons:
-                person_counts[p.employee_id] = person_counts.get(p.employee_id, 0) + c.payable_count
+                person_counts.setdefault(p.employee_id, 0)
+                person_counts[p.employee_id] += c.settleable_count
 
         if not person_counts:
-            flash('所选出勤没有参与人，无法生成分账', 'warning')
+            flash('所选交付/出勤没有参与人，无法生成分账', 'warning')
             return redirect(url_for('reward.settle_list'))
 
         # 每人金额：默认 计酬只数 × 20，可按人单独修改
@@ -697,6 +695,7 @@ def settle_list():
         db.session.add(settlement)
         db.session.flush()
 
+        excluded_total = sum(v for v in excluded_counts.values())
         log_action(
             action_type='抓狗经费分账',
             target_type='DogSettlement',
@@ -705,8 +704,8 @@ def settle_list():
                 f"生成分账批次：交付 {len(deliveries)} 单、出勤 {len(catches)} 次，"
                 f"到账 {settlement.total_received:.2f} 元，"
                 f"分账合计 {settlement.total_paid:.2f} 元，留存 {settlement.retained:.2f} 元"
+                + (f"（已排除不计酬交付 {excluded_total} 只）" if excluded_total else "")
             ),
-            cycle_id=current_user.id,
         )
         db.session.commit()
         flash('分账批次已生成', 'success')
@@ -717,14 +716,15 @@ def settle_list():
         DogCatch.catch_date.asc(), DogCatch.id.asc()
     ).all()
 
-    # 供页面 JS 计算用的数据
+    # 供页面 JS 计算用的数据（payable 字段传可结算只数：已扣除不计酬交付）
     catch_data = {}
     for c in unsettled:
         catch_data[str(c.id)] = {
             'date': c.catch_date.isoformat() if c.catch_date else '',
             'count': c.dog_count,
             'loss': c.loss_count,
-            'payable': c.payable_count,
+            'payable': c.settleable_count,
+            'excluded': c.non_reward_delivered_count,
             'persons': [
                 {'id': p.employee_id,
                  'name': (p.employee.name if p.employee else '未知') +
@@ -737,26 +737,29 @@ def settle_list():
         FundsRecord.amount > 0
     ).order_by(FundsRecord.date.desc(), FundsRecord.id.desc()).limit(300).all()
 
-    # 可结算交付单：未被任何分账批次引用 + 走奖励费通道（不计酬交付不进分账）
+    # 可结算交付单：未被任何分账批次引用；不计酬交付也可选入批次
+    # （不产生金额，只负责把关联出勤链式带进批次一起关账，避免出勤空挂）
     referenced_ids = set()
     for s in DogSettlement.query.all():
         referenced_ids.update(s.delivery_ids or [])
     deliveries_open = [d for d in DogDelivery.query.order_by(
         DogDelivery.delivery_date.asc(), DogDelivery.id.asc()).all()
-        if d.id not in referenced_ids and d.is_reward is not False]
+        if d.id not in referenced_ids]
 
-    # 交付单 JS 数据：含来源出勤明细（链式带出参与人）
+    # 交付单 JS 数据：含来源出勤明细（链式带出参与人；payable 为可结算只数）
     delivery_data = {}
     for d in deliveries_open:
         delivery_data[str(d.id)] = {
             'date': d.delivery_date.isoformat() if d.delivery_date else '',
             'count': d.dog_count,
             'receiver': d.receiver or '',
+            'is_reward': d.is_reward is not False,
             'catches': [
                 {
                     'id': l.catch_id,
                     'date': l.catch.catch_date.isoformat() if l.catch and l.catch.catch_date else '',
-                    'payable': l.catch.payable_count if l.catch else 0,
+                    'payable': l.catch.settleable_count if l.catch else 0,
+                    'excluded': l.catch.non_reward_delivered_count if l.catch else 0,
                     'settled': bool(l.catch and l.catch.status == '已结算'),
                     'persons': [
                         {'id': p.employee_id,
@@ -808,12 +811,23 @@ def settle_detail(settlement_id):
     d_ids = settlement.delivery_ids or []
     deliveries = DogDelivery.query.filter(DogDelivery.id.in_(d_ids)).order_by(DogDelivery.delivery_date).all() if d_ids else []
 
+    # 已发放合计 + 是否已登记过支出（备注含「分账批次#N」，排除 #1 匹配到 #12 的误判）
+    paid_total = sum(sh.amount for sh in settlement.shares if sh.is_paid)
+    candidates = FundsRecord.query.filter(
+        FundsRecord.note.contains(f'分账批次#{settlement.id}')
+    ).all()
+    expense_record = next(
+        (r for r in candidates if re.search(rf'分账批次#{settlement.id}(?!\d)', r.note or '')), None
+    )
+
     return render_template(
         'fund/reward/settle_detail.html',
         active='settle',
         settlement=settlement,
         catches=catches,
         deliveries=deliveries,
+        paid_total=paid_total,
+        expense_record=expense_record,
         can_add=can_add(),
         can_edit=can_edit(),
         can_delete=can_delete(),
@@ -843,7 +857,7 @@ def settle_toggle_paid(settlement_id, employee_id):
         target_type='DogSettlement',
         target_id=settlement_id,
         description=f"{name} 分账 {share.amount:.2f} 元{'已发放' if share.is_paid else '改为未发放'}",
-        cycle_id=current_user.id,
+        notify=False,  # 高频操作，不发系统通知，仅留审计日志
     )
     db.session.commit()
     return redirect(url_for('reward.settle_detail', settlement_id=settlement_id))
@@ -874,11 +888,52 @@ def settle_pay_all(settlement_id):
         target_type='DogSettlement',
         target_id=settlement.id,
         description=f"批次 {settlement.id} 共 {count} 人标记为已发放",
-        cycle_id=current_user.id,
+        notify=False,  # 高频操作，不发系统通知，仅留审计日志
     )
     db.session.commit()
     flash(f'已标记 {count} 人为已发放', 'success')
     return redirect(url_for('reward.settle_detail', settlement_id=settlement_id))
+
+
+@reward_bp.route('/settle/<int:settlement_id>/expense_prefill')
+@login_required
+def settle_expense_prefill(settlement_id):
+    """登记支出弹窗的预填数据（只读接口，不写任何账）。
+    表单由主账 /fund/get_form_snippet 提供，提交走主账 /fund/add，
+    分账模块只负责把预填值递给用户确认。"""
+    settlement = db.session.get(DogSettlement, settlement_id)
+    if not settlement:
+        return {'error': '分账批次不存在'}, 404
+
+    # 防重复：该批次已有对应支出记录（排除 #1 误匹配 #12）
+    candidates = FundsRecord.query.filter(
+        FundsRecord.note.contains(f'分账批次#{settlement.id}')
+    ).all()
+    existed = next(
+        (r for r in candidates if re.search(rf'分账批次#{settlement.id}(?!\d)', r.note or '')), None
+    )
+    if existed:
+        return {'registered': True, 'fund_record_id': existed.id}
+
+    paid_shares = [sh for sh in settlement.shares if sh.is_paid]
+    paid_total = round(sum(sh.amount for sh in paid_shares), 2)
+
+    if settlement.fund_record:
+        source = f"到账来源：{settlement.fund_record.date.strftime('%Y-%m-%d')} {settlement.fund_record.item or '抓狗经费'}"
+    else:
+        source = '到账来源：未关联资金记录'
+
+    return {
+        'registered': False,
+        'prefill': {
+            'date': datetime.now().strftime('%Y-%m-%d'),
+            'payer': '特保队',
+            'item': '抓狗奖励费分账',
+            'amount': -paid_total,  # 支出为负数
+            'note': f"抓狗奖励费分账支出，分账批次#{settlement.id} · {source} · 共 {len(paid_shares)} 人",
+        },
+        'paid_total': paid_total,
+    }
 
 
 @reward_bp.route('/settle/<int:settlement_id>/transfer', methods=['POST'])
@@ -903,7 +958,6 @@ def settle_transfer(settlement_id):
         target_type='DogSettlement',
         target_id=settlement.id,
         description=f"批次 {settlement.id} 留存 {settlement.retained:.2f} 元{action}",
-        cycle_id=current_user.id,
     )
     db.session.commit()
     flash(f'{action}成功' + ('，该笔留存已从未并入合计中归零' if settlement.is_transferred else ''), 'success')
@@ -933,7 +987,6 @@ def settle_delete(settlement_id):
         target_type='DogSettlement',
         target_id=settlement.id,
         description=f"删除分账批次 {settlement.id}，关联出勤已恢复为未结算",
-        cycle_id=current_user.id,
     )
     db.session.delete(settlement)
     db.session.commit()

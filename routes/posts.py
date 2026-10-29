@@ -81,6 +81,8 @@ def export_config():
 @posts_bp.route('/import', methods=['POST'])
 @login_required
 def import_config():
+    if not perm.can('scheduling.edit'):
+        return jsonify({'success': False, 'message': '无权操作'})
     file = request.files.get('file')
     if not file:
         return jsonify({'success': False, 'message': '未选择文件'})

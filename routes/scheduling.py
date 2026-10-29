@@ -1,6 +1,6 @@
 # D:\cailu\cailutebao\routes\scheduling.py
 from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, send_file
-from flask_login import login_required
+from flask_login import login_required, current_user
 from models import db, EmploymentCycle, ShiftPost, ShiftSchedule, BusinessTrip, LeaveRecord
 from utils import perm
 from datetime import datetime, date, timedelta
@@ -362,6 +362,8 @@ def export_attendance(table_type):
 @scheduling_bp.route('/data/import', methods=['POST'])
 @login_required
 def import_schedule_data():
+    if not perm.can('scheduling.edit'):
+        return jsonify({'success': False, 'message': '无权操作'})
     file = request.files.get('file')
     if not file: return jsonify({'success': False, 'message': '未选择文件'})
     try:
@@ -411,6 +413,8 @@ def import_schedule_data():
 @scheduling_bp.route('/clear_month', methods=['POST'])
 @login_required
 def clear_month():
+    if not perm.can('scheduling.edit'):
+        return jsonify({'success': False, 'message': '无权操作'})
     year_month = request.json.get('month', datetime.now().strftime("%Y-%m"))
     try:
         num_deleted = ShiftSchedule.query.filter(ShiftSchedule.date.like(f"{year_month}%")).delete(synchronize_session=False)
@@ -422,13 +426,22 @@ def clear_month():
 
 @scheduling_bp.route('/api/daily_duty')
 def get_daily_duty():
+    # 隐私保护：未登录访客只返回脱敏手机号（姓名、岗位照常），登录后返回完整号码
+    mask_phone = not current_user.is_authenticated
     today = date.today()
     tomorrow = today + timedelta(days=1)
     def get_duty_by_date(target_date):
         try:
             priority_case = case((ShiftPost.name == '值班领导', 1), (ShiftPost.name == '值班长', 2), (ShiftPost.name == '备勤领班', 3),(ShiftPost.name == '机动-白班', 4),(ShiftPost.name == '机动-夜班', 5),else_=6)
             shifts = db.session.query(ShiftSchedule, EmploymentCycle, ShiftPost).join(EmploymentCycle, ShiftSchedule.employee_id == EmploymentCycle.id).join(ShiftPost, ShiftSchedule.post_id == ShiftPost.id).filter(ShiftSchedule.date == target_date).order_by(priority_case, ShiftPost.id).all()
-            return [{"name": emp.name, "post": post.name, "phone": getattr(emp, 'phone', '-') or '-', "type": s.shift_type} for s, emp, post in shifts]
+            result = []
+            for s, emp, post in shifts:
+                phone = getattr(emp, 'phone', '-') or '-'
+                # 11位手机号脱敏：保留前3后4，中间打星
+                if mask_phone and len(phone) == 11 and phone.isdigit():
+                    phone = phone[:3] + '****' + phone[-4:]
+                result.append({"name": emp.name, "post": post.name, "phone": phone, "type": s.shift_type})
+            return result
         except: return []
     try: return jsonify({"today": get_duty_by_date(today), "tomorrow": get_duty_by_date(tomorrow), "status": "success"})
     except Exception as e: return jsonify({"error": str(e)}), 500
