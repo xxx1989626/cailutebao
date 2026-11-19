@@ -114,7 +114,7 @@ class Asset(db.Model):
     location = db.Column(db.String(100))   # 存放位置
     status = db.Column(db.String(20), default='库存')  #状态
     ownership = db.Column(db.String(20), default='特保队')  # 资产归属
-    unit_price = db.Column(db.Float, default=0.0)  # 单价
+    purchase_total_cents = db.Column(db.Integer, nullable=False, default=0)  # 采购总额（分），单价按总额和数量计算
     bed_capacity = db.Column(db.Integer, default=0) # 是不是床
     current_user_id = db.Column(db.Integer, db.ForeignKey('employment_cycles.id'), nullable=True) # 当前使用人ID
     current_user = db.relationship('EmploymentCycle', backref='assets')    # 建立与 EmploymentCycle 模型的关联关系
@@ -168,9 +168,9 @@ class FundsRecord(db.Model):
     date = db.Column(db.DateTime, nullable=False)  # 日期
     payer = db.Column(db.String(50))  # 资方
     item = db.Column(db.String(100))  # 项目
-    amount = db.Column(db.Float, nullable=False)  # 金额
+    amount_cents = db.Column(db.Integer, nullable=False)  # 金额（分）
     note = db.Column(db.Text)  # 备注
-    balance = db.Column(db.Float, nullable=False)  # 余额（自动计算）
+    balance_cents = db.Column(db.Integer, nullable=False)  # 余额（分，自动计算）
     attachment = db.Column(db.JSON, default=[])  # 附件路径
     operator_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # 操作人ID（外键）
     operator = db.relationship('User', foreign_keys=[operator_id])  # 建立与 User 模型的关联关系
@@ -425,9 +425,9 @@ class DogSettlement(db.Model):
     __tablename__ = 'dog_settlements'  # 数据库表名
     id = db.Column(db.Integer, primary_key=True)  # 主键ID
     fund_record_id = db.Column(db.Integer, db.ForeignKey('funds_records.id'), nullable=True)  # 引用到账收入条目
-    total_received = db.Column(db.Float, default=0.0)  # 本批到账金额
-    total_paid = db.Column(db.Float, default=0.0)  # 本批分账合计
-    retained = db.Column(db.Float, default=0.0)  # 留存 = 到账 - 分账合计
+    total_received_cents = db.Column(db.Integer, nullable=False, default=0)  # 本批到账金额（分）
+    total_paid_cents = db.Column(db.Integer, nullable=False, default=0)  # 本批分账合计（分）
+    retained_cents = db.Column(db.Integer, nullable=False, default=0)  # 留存（分）= 到账 - 分账合计
     is_transferred = db.Column(db.Boolean, default=False)  # 是否已并入总账（并入后不再计入未并入留存）
     transferred_at = db.Column(db.DateTime)  # 并入总账时间
     catch_ids = db.Column(db.JSON, default=[])  # 本批包含的出勤ID列表（含交付带出+直接勾选）
@@ -443,7 +443,7 @@ class DogSettlementShare(db.Model):
     settlement_id = db.Column(db.Integer, db.ForeignKey('dog_settlements.id'), primary_key=True)  # 分账批次ID（联合主键）
     employee_id = db.Column(db.Integer, db.ForeignKey('employment_cycles.id'), primary_key=True)  # 员工ID（联合主键）
     dog_count = db.Column(db.Integer, default=0)  # 计酬只数
-    amount = db.Column(db.Float, default=0.0)  # 分账金额
+    amount_cents = db.Column(db.Integer, nullable=False, default=0)  # 分账金额（分）
     is_paid = db.Column(db.Boolean, default=False)  # 是否已发放
     paid_date = db.Column(db.Date)  # 发放日期
     employee = db.relationship('EmploymentCycle')  # 关联员工

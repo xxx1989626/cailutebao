@@ -56,27 +56,27 @@
                 <div class="col-6 col-md-3 col-xl-2">
                     <div class="stat-card p-3 h-100">
                         <div class="stat-label">经费到账</div>
-                        <div class="stat-value">{{ "%.2f"|format(summary.received) }}</div>
+                        <div class="stat-value">{{ "%.2f"|format(summary.received_cents / 100) }}</div>
                     </div>
                 </div>
                 <div class="col-6 col-md-3 col-xl-2">
                     <div class="stat-card p-3 h-100">
                         <div class="stat-label">分账合计</div>
-                        <div class="stat-value text-primary">{{ "%.2f"|format(summary.paid) }}</div>
+                        <div class="stat-value text-primary">{{ "%.2f"|format(summary.paid_cents / 100) }}</div>
                     </div>
                 </div>
                 <div class="col-6 col-md-3 col-xl-2">
                     <div class="stat-card p-3 h-100">
                         <div class="stat-label">未并入留存</div>
-                        <div class="stat-value text-warning">{{ "%.2f"|format(summary.pending_retained) }}</div>
+                        <div class="stat-value text-warning">{{ "%.2f"|format(summary.pending_retained_cents / 100) }}</div>
                     </div>
                 </div>
             </div>
 
             <div class="alert alert-light border-start border-4 border-success py-2 small mb-3">
                 <i class="bi bi-calculator me-1"></i>
-                留存合计 {{ "%.2f"|format(summary.retained) }} 元，其中已并入总账 {{ "%.2f"|format(summary.retained - summary.pending_retained) }} 元；
-                个人已发放 {{ "%.2f"|format(summary.paid_out) }} 元，未发放 {{ "%.2f"|format(summary.paid - summary.paid_out) }} 元。
+                留存合计 {{ "%.2f"|format(summary.retained_cents / 100) }} 元，其中已并入总账 {{ "%.2f"|format((summary.retained_cents - summary.pending_retained_cents) / 100) }} 元；
+                个人已发放 {{ "%.2f"|format(summary.paid_out_cents / 100) }} 元，未发放 {{ "%.2f"|format((summary.paid_cents - summary.paid_out_cents) / 100) }} 元。
             </div>
 
             <!-- 个人分账统计 -->
@@ -101,9 +101,9 @@
                             </td>
                             <td>{{ p.times }} 次</td>
                             <td>{{ p.dog_count }}</td>
-                            <td class="fw-bold">{{ "%.2f"|format(p.amount) }}</td>
-                            <td class="text-success">{{ "%.2f"|format(p.paid) }}</td>
-                            <td class="text-danger">{{ "%.2f"|format(p.unpaid) }}</td>
+                            <td class="fw-bold">{{ "%.2f"|format(p.amount_cents / 100) }}</td>
+                            <td class="text-success">{{ "%.2f"|format(p.paid_cents / 100) }}</td>
+                            <td class="text-danger">{{ "%.2f"|format(p.unpaid_cents / 100) }}</td>
                         </tr>
                         {% else %}
                         <tr><td colspan="6" class="text-center text-muted py-4">该年度暂无数据</td></tr>
@@ -137,9 +137,9 @@
                                 {{ s.fund_record.date.strftime('%Y-%m-%d') }} · {{ s.fund_record.item or '收入' }}
                                 {% else %}<span class="text-muted">未关联</span>{% endif %}
                             </td>
-                            <td>{{ "%.2f"|format(s.total_received) }}</td>
-                            <td class="text-primary fw-bold">{{ "%.2f"|format(s.total_paid) }}</td>
-                            <td class="fw-bold">{{ "%.2f"|format(s.retained) }}</td>
+                            <td>{{ "%.2f"|format(s.total_received_cents / 100) }}</td>
+                            <td class="text-primary fw-bold">{{ "%.2f"|format(s.total_paid_cents / 100) }}</td>
+                            <td class="fw-bold">{{ "%.2f"|format(s.retained_cents / 100) }}</td>
                             <td>
                                 {% if s.is_transferred %}
                                 <span class="badge bg-success">已并入</span>

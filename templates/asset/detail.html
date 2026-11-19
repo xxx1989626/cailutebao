@@ -378,8 +378,8 @@
                                             <td>{{ asset.location or '-' }}</td>
                                         </tr>
                                         <tr>
-                                            <th>单价</th>
-                                            <td class="fw-medium">￥{{ "%.2f"|format(asset.unit_price) }}</td>
+                                            <th>平均单价</th>
+                                            <td class="fw-medium">￥{{ "%.2f"|format(asset.purchase_total_cents / asset.total_quantity / 100 if asset.total_quantity else 0) }}</td>
                                         </tr>
                                         <tr>
                                             <th>资产归属</th>

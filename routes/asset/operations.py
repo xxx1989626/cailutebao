@@ -3,7 +3,7 @@ from datetime import datetime
 from flask import flash, redirect, url_for, request
 from flask_login import login_required, current_user
 from models import db, Asset, AssetAllocation, AssetHistory, AssetInstance, EmploymentCycle
-from utils import log_action, perm
+from utils import log_action, perm, parse_money_decimal, money_to_cents, cents_to_yuan
 
 # 导入蓝图
 from . import asset_bp
@@ -357,7 +357,7 @@ def asset_supplement(asset_id):
     quantity = int(request.form.get('quantity', 0))
     is_sync = request.form.get('sync_fund') == 'on'
     raw_price = request.form.get('unit_price', '0').strip()
-    unit_price = float(raw_price if raw_price else 0)
+    unit_price = parse_money_decimal(raw_price if raw_price else 0, '资产单价')
 
     if quantity <= 0:
         flash('数量无效', 'danger')
@@ -366,13 +366,15 @@ def asset_supplement(asset_id):
         flash('权限不足，联动登记资金还需要资金新增权限', 'danger')
         return redirect(url_for('asset.asset_detail', asset_id=asset_id))
     
+    total_cost_cents = money_to_cents(unit_price * quantity)
+    asset.purchase_total_cents += total_cost_cents
     asset.total_quantity += quantity
     asset.stock_quantity += quantity
     
     # 同步财务扣款：统一走主账入口，由主账重算全部余额
     sync_desc = ""
     if asset.ownership == '特保队' and is_sync and unit_price > 0:
-        total_cost = unit_price * quantity
+        total_cost = cents_to_yuan(total_cost_cents)
         from ..fund import perform_fund_save
         perform_fund_save({
             'date': datetime.now().strftime('%Y-%m-%d'),

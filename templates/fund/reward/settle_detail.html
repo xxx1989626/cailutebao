@@ -114,7 +114,7 @@
                 {% elif current_user.role == 'admin' or perm.can('fund.add') %}
                 <button type="button" class="btn btn-light btn-sm" id="btn-register-expense"
                         data-settlement="{{ settlement.id }}" data-context="{{ request.path }}"
-                        {% if paid_total <= 0 %}disabled title="还没有已发放的分账，先标记发放"{% endif %}>
+                        {% if paid_total_cents <= 0 %}disabled title="还没有已发放的分账，先标记发放"{% endif %}>
                     <i class="bi bi-journal-plus me-1"></i>登记支出
                 </button>
                 {% else %}
@@ -153,15 +153,15 @@
                 </div>
                 <div class="info-item">
                     <div class="label">到账金额</div>
-                    <div class="value">{{ "%.2f"|format(settlement.total_received) }} 元</div>
+                    <div class="value">{{ "%.2f"|format(settlement.total_received_cents / 100) }} 元</div>
                 </div>
                 <div class="info-item">
                     <div class="label">分账合计</div>
-                    <div class="value text-primary">{{ "%.2f"|format(settlement.total_paid) }} 元</div>
+                    <div class="value text-primary">{{ "%.2f"|format(settlement.total_paid_cents / 100) }} 元</div>
                 </div>
                 <div class="info-item">
                     <div class="label">留存</div>
-                    <div class="value {% if settlement.retained < 0 %}text-danger{% else %}text-success{% endif %}">{{ "%.2f"|format(settlement.retained) }} 元</div>
+                    <div class="value {% if settlement.retained_cents < 0 %}text-danger{% else %}text-success{% endif %}">{{ "%.2f"|format(settlement.retained_cents / 100) }} 元</div>
                     {% if settlement.is_transferred %}
                     <div class="small text-muted">已并入，未并入合计中归零</div>
                     {% endif %}
@@ -213,7 +213,7 @@
                             <tr data-employee="{{ sh.employee_id }}" class="share-row" title="点击可高亮本批中该人参与的出勤">
                                 <td class="share-name"><i class="bi bi-person me-1 text-muted"></i>{{ sh.employee.name if sh.employee else '未知' }}{% if sh.employee and sh.employee.status == '离职' %} <span class="badge bg-secondary">离职</span>{% endif %}</td>
                                 <td {% if not sh.dog_count %}class="text-muted" title="仅参与不计酬出勤（如被治安总队直接带走），无计酬只数"{% endif %}>{{ sh.dog_count }}</td>
-                                <td class="fw-bold {% if sh.amount > 0 %}text-primary{% else %}text-muted{% endif %}">{{ "%.2f"|format(sh.amount) }}</td>
+                                <td class="fw-bold {% if sh.amount_cents > 0 %}text-primary{% else %}text-muted{% endif %}">{{ "%.2f"|format(sh.amount_cents / 100) }}</td>
                                 <td>
                                     {% if sh.is_paid %}
                                     <span class="badge bg-success">已发</span>

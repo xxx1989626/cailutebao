@@ -15,11 +15,14 @@ from models import (
     db, DogCatch, DogCatchPerson, DogDelivery, DogDeliveryCatch, DogLoss,
     DogSettlement, DogSettlementShare, EmploymentCycle, FundsRecord
 )
-from utils import perm, log_action, parse_date, parse_datetime, save_uploaded_file, delete_physical_file
+from utils import (
+    perm, log_action, parse_date, parse_datetime, save_uploaded_file, delete_physical_file,
+    yuan_to_cents, cents_to_yuan,
+)
 
 reward_bp = Blueprint('reward', __name__, url_prefix='/fund/reward')
 
-UNIT_PRICE = 20  # 每人每只奖励标准（元）
+UNIT_PRICE_CENTS = 2000  # 每人每只奖励标准（分）
 
 # 权限定义：查看对全员开放，新增/编辑/删除分别授权
 REWARD_PERMISSIONS = [
@@ -708,12 +711,12 @@ def settle_list():
         raw_received = request.form.get('total_received', '').strip()
         if raw_received:
             try:
-                total_received = float(raw_received)
+                total_received_cents = yuan_to_cents(raw_received, '到账金额')
             except ValueError:
                 flash('到账金额格式不正确', 'warning')
                 return redirect(url_for('reward.settle_list'))
         else:
-            total_received = float(fund_record.amount) if fund_record else 0.0
+            total_received_cents = fund_record.amount_cents if fund_record else 0
 
         # 服务端重新计算每人可结算只数（不信任前端）
         # 可结算只数 = 计酬只数 - 不计酬交付只数（不计酬交付带走的狗不算钱）
@@ -731,31 +734,30 @@ def settle_list():
             return redirect(url_for('reward.settle_list'))
 
         # 每人金额：默认 计酬只数 × 20，可按人单独修改
-        total_paid = 0.0
+        total_paid_cents = 0
         share_rows = []
         for emp_id, count in person_counts.items():
             raw_amount = request.form.get(f'amount_{emp_id}', '').strip()
             try:
-                amount = float(raw_amount) if raw_amount else count * UNIT_PRICE
+                amount_cents = yuan_to_cents(raw_amount, '分账金额') if raw_amount else count * UNIT_PRICE_CENTS
             except ValueError:
-                amount = count * UNIT_PRICE
-            amount = round(max(amount, 0), 2)
-            total_paid += amount
+                amount_cents = count * UNIT_PRICE_CENTS
+            amount_cents = max(amount_cents, 0)
+            total_paid_cents += amount_cents
             share_rows.append(DogSettlementShare(
                 employee_id=emp_id,
                 dog_count=count,
-                amount=amount,
+                amount_cents=amount_cents,
                 is_paid=False,
             ))
 
-        total_paid = round(total_paid, 2)
-        retained = round(total_received - total_paid, 2)
+        retained_cents = total_received_cents - total_paid_cents
 
         settlement = DogSettlement(
             fund_record_id=fund_record.id if fund_record else None,
-            total_received=round(total_received, 2),
-            total_paid=total_paid,
-            retained=retained,
+            total_received_cents=total_received_cents,
+            total_paid_cents=total_paid_cents,
+            retained_cents=retained_cents,
             is_transferred=False,
             catch_ids=all_catch_ids,
             delivery_ids=delivery_ids,
@@ -778,8 +780,9 @@ def settle_list():
             target_id=settlement.id,
             description=(
                 f"生成分账批次：交付 {len(deliveries)} 单、出勤 {len(catches)} 次，"
-                f"到账 {settlement.total_received:.2f} 元，"
-                f"分账合计 {settlement.total_paid:.2f} 元，留存 {settlement.retained:.2f} 元"
+                f"到账 {cents_to_yuan(settlement.total_received_cents):.2f} 元，"
+                f"分账合计 {cents_to_yuan(settlement.total_paid_cents):.2f} 元，"
+                f"留存 {cents_to_yuan(settlement.retained_cents):.2f} 元"
                 + (f"（已排除不计酬交付 {excluded_total} 只）" if excluded_total else "")
             ),
         )
@@ -810,7 +813,7 @@ def settle_list():
         }
 
     fund_records = FundsRecord.query.filter(
-        FundsRecord.amount > 0
+        FundsRecord.amount_cents > 0
     ).order_by(FundsRecord.date.desc(), FundsRecord.id.desc()).limit(300).all()
 
     # 可结算交付单：未被任何分账批次引用；不计酬交付也可选入批次
@@ -850,8 +853,8 @@ def settle_list():
 
     settlements = DogSettlement.query.order_by(DogSettlement.id.desc()).limit(50).all()
 
-    pending_retained = db.session.query(
-        func.coalesce(func.sum(DogSettlement.retained), 0)
+    pending_retained_cents = db.session.query(
+        func.coalesce(func.sum(DogSettlement.retained_cents), 0)
     ).filter(DogSettlement.is_transferred.is_(False)).scalar() or 0
 
     return render_template(
@@ -863,8 +866,8 @@ def settle_list():
         delivery_data=delivery_data,
         fund_records=fund_records,
         settlements=settlements,
-        pending_retained=pending_retained,
-        unit_price=UNIT_PRICE,
+        pending_retained_cents=pending_retained_cents,
+        unit_price_cents=UNIT_PRICE_CENTS,
         can_add=can_add(),
         can_edit=can_edit(),
         can_delete=can_delete(),
@@ -888,7 +891,7 @@ def settle_detail(settlement_id):
     deliveries = DogDelivery.query.filter(DogDelivery.id.in_(d_ids)).order_by(DogDelivery.delivery_date).all() if d_ids else []
 
     # 已发放合计 + 是否已登记过支出（备注含「分账批次#N」，排除 #1 匹配到 #12 的误判）
-    paid_total = sum(sh.amount for sh in settlement.shares if sh.is_paid)
+    paid_total_cents = sum(sh.amount_cents for sh in settlement.shares if sh.is_paid)
     candidates = FundsRecord.query.filter(
         FundsRecord.note.contains(f'分账批次#{settlement.id}')
     ).all()
@@ -902,7 +905,7 @@ def settle_detail(settlement_id):
         settlement=settlement,
         catches=catches,
         deliveries=deliveries,
-        paid_total=paid_total,
+        paid_total_cents=paid_total_cents,
         expense_record=expense_record,
         can_add=can_add(),
         can_edit=can_edit(),
@@ -932,7 +935,7 @@ def settle_toggle_paid(settlement_id, employee_id):
         action_type='抓狗分账发放确认' if share.is_paid else '抓狗分账发放撤销',
         target_type='DogSettlement',
         target_id=settlement_id,
-        description=f"{name} 分账 {share.amount:.2f} 元{'已发放' if share.is_paid else '改为未发放'}",
+        description=f"{name} 分账 {cents_to_yuan(share.amount_cents):.2f} 元{'已发放' if share.is_paid else '改为未发放'}",
         notify=False,  # 高频操作，不发系统通知，仅留审计日志
     )
     db.session.commit()
@@ -992,7 +995,7 @@ def settle_expense_prefill(settlement_id):
         return {'registered': True, 'fund_record_id': existed.id}
 
     paid_shares = [sh for sh in settlement.shares if sh.is_paid]
-    paid_total = round(sum(sh.amount for sh in paid_shares), 2)
+    paid_total_cents = sum(sh.amount_cents for sh in paid_shares)
 
     if settlement.fund_record:
         source = f"到账来源：{settlement.fund_record.date.strftime('%Y-%m-%d')} {settlement.fund_record.item or '抓狗经费'}"
@@ -1005,10 +1008,10 @@ def settle_expense_prefill(settlement_id):
             'date': datetime.now().strftime('%Y-%m-%d'),
             'payer': '特保队',
             'item': '抓狗奖励费分账',
-            'amount': -paid_total,  # 支出为负数
+            'amount': str(-cents_to_yuan(paid_total_cents)),  # 支出为负数，主账表单以元为单位
             'note': f"抓狗奖励费分账支出，分账批次#{settlement.id} · {source} · 共 {len(paid_shares)} 人",
         },
-        'paid_total': paid_total,
+        'paid_total': float(cents_to_yuan(paid_total_cents)),
     }
 
 
@@ -1033,7 +1036,7 @@ def settle_transfer(settlement_id):
         action_type=action,
         target_type='DogSettlement',
         target_id=settlement.id,
-        description=f"批次 {settlement.id} 留存 {settlement.retained:.2f} 元{action}",
+        description=f"批次 {settlement.id} 留存 {cents_to_yuan(settlement.retained_cents):.2f} 元{action}",
     )
     db.session.commit()
     flash(f'{action}成功' + ('，该笔留存已从未并入合计中归零' if settlement.is_transferred else ''), 'success')
@@ -1094,7 +1097,7 @@ def reward_list():
         if emp_id not in stats_map:
             stats_map[emp_id] = {
                 'name': name, 'status': status, 'times': 0, 'dog_count': 0,
-                'amount': 0.0, 'paid': 0.0, 'unpaid': 0.0,
+                'amount_cents': 0, 'paid_cents': 0, 'unpaid_cents': 0,
             }
         elif status and not stats_map[emp_id]['status']:
             stats_map[emp_id]['status'] = status
@@ -1111,23 +1114,23 @@ def reward_list():
             emp = sh.employee
             st = ensure(sh.employee_id, emp.name if emp else '未知', emp.status if emp else '')
             st['dog_count'] += sh.dog_count or 0
-            st['amount'] += sh.amount or 0
+            st['amount_cents'] += sh.amount_cents or 0
             if sh.is_paid:
-                st['paid'] += sh.amount or 0
+                st['paid_cents'] += sh.amount_cents or 0
             else:
-                st['unpaid'] += sh.amount or 0
+                st['unpaid_cents'] += sh.amount_cents or 0
 
-    person_stats = sorted(stats_map.values(), key=lambda x: x['amount'], reverse=True)
+    person_stats = sorted(stats_map.values(), key=lambda x: x['amount_cents'], reverse=True)
 
     summary = {
         'catch': sum(c.dog_count or 0 for c in catches),
         'delivered': sum(d.dog_count or 0 for d in deliveries),
         'loss': sum(l.dog_count or 0 for l in losses),
-        'received': sum(s.total_received or 0 for s in settlements),
-        'paid': sum(s.total_paid or 0 for s in settlements),
-        'retained': sum(s.retained or 0 for s in settlements),
-        'pending_retained': sum((s.retained or 0) for s in settlements if not s.is_transferred),
-        'paid_out': sum(sh.amount or 0 for s in settlements for sh in s.shares if sh.is_paid),
+        'received_cents': sum(s.total_received_cents or 0 for s in settlements),
+        'paid_cents': sum(s.total_paid_cents or 0 for s in settlements),
+        'retained_cents': sum(s.retained_cents or 0 for s in settlements),
+        'pending_retained_cents': sum((s.retained_cents or 0) for s in settlements if not s.is_transferred),
+        'paid_out_cents': sum(sh.amount_cents or 0 for s in settlements for sh in s.shares if sh.is_paid),
     }
 
     years = sorted(set(catch_years()) | {datetime.now().year}, reverse=True)
@@ -1205,9 +1208,9 @@ def reward_export():
             '批次号': s.id,
             '关联资金记录': (f"{s.fund_record.date.strftime('%Y-%m-%d')} {s.fund_record.item}"
                             if s.fund_record else '未关联'),
-            '到账金额': s.total_received,
-            '分账合计': s.total_paid,
-            '留存': s.retained,
+            '到账金额': float(cents_to_yuan(s.total_received_cents)),
+            '分账合计': float(cents_to_yuan(s.total_paid_cents)),
+            '留存': float(cents_to_yuan(s.retained_cents)),
             '是否并入总账': '已并入' if s.is_transferred else '未并入',
             '并入时间': s.transferred_at.strftime('%Y-%m-%d %H:%M') if s.transferred_at else '',
             '创建时间': s.created_at.strftime('%Y-%m-%d %H:%M') if s.created_at else '',
@@ -1218,7 +1221,7 @@ def reward_export():
                 '姓名': sh.employee.name if sh.employee else '未知',
                 '人员状态': (sh.employee.status if sh.employee else '') or '',
                 '计酬只数': sh.dog_count,
-                '分账金额': sh.amount,
+                '分账金额': float(cents_to_yuan(sh.amount_cents)),
                 '发放状态': '已发' if sh.is_paid else '未发',
                 '发放日期': sh.paid_date.strftime('%Y-%m-%d') if sh.paid_date else '',
             })

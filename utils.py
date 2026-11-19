@@ -13,6 +13,7 @@ import threading
 import re
 import json
 from datetime import datetime, timedelta, date,time as dt_time
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Union, Optional
 from flask import current_app, flash, redirect, url_for
 from flask_login import current_user
@@ -54,6 +55,34 @@ def get_birthday_from_id_card(id_card: str) -> Optional[datetime.date]:
 def validate_phone(phone: str) -> bool:
     pattern = re.compile(r'^1[3-9]\d{9}$')
     return bool(pattern.match(phone))
+
+# ==================== 金额工具：数据库存整数分，页面和导入导出使用元 ====================
+def parse_money_decimal(value, field_name='金额') -> Decimal:
+    if value is None or not str(value).strip():
+        raise ValueError(f'{field_name}不能为空')
+    try:
+        decimal_value = Decimal(str(value).strip())
+    except (InvalidOperation, ValueError):
+        raise ValueError(f'{field_name}格式不正确')
+    if not decimal_value.is_finite():
+        raise ValueError(f'{field_name}格式不正确')
+    return decimal_value
+
+
+def money_to_cents(value: Decimal) -> int:
+    return int((value * 100).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
+
+
+def yuan_to_cents(value, field_name='金额', allow_zero=True) -> int:
+    cents = money_to_cents(parse_money_decimal(value, field_name))
+    if not allow_zero and cents == 0:
+        raise ValueError(f'{field_name}必须为非零有效数字')
+    return cents
+
+
+def cents_to_yuan(cents) -> Decimal:
+    return (Decimal(cents or 0) / 100).quantize(Decimal('0.01'))
+
 
 # ==================== 日期工具 ====================
 def parse_date(date_input) -> Optional[date]:

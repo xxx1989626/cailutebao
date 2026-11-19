@@ -5,11 +5,13 @@ import os
 import json
 import re
 import ast
-import math
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, current_app
 from flask_login import login_required, current_user
 from models import db, FundsRecord, Asset, User
-from utils import parse_date, format_date, perm, log_action, today_str, save_uploaded_file
+from utils import (
+    parse_date, format_date, perm, log_action, today_str, save_uploaded_file,
+    parse_money_decimal, money_to_cents, yuan_to_cents, cents_to_yuan,
+)
 from datetime import datetime
 from io import BytesIO
 import pandas as pd
@@ -26,10 +28,10 @@ def recalculate_balances():
     # 按日期升序、ID升序获取所有记录
     records = FundsRecord.query.order_by(FundsRecord.date.asc(), FundsRecord.id.asc()).all()
     
-    running_balance = 0.0
+    running_balance = 0
     for record in records:
-        running_balance += record.amount
-        record.balance = running_balance
+        running_balance += record.amount_cents
+        record.balance_cents = running_balance
     
     db.session.flush()
     return running_balance  # 返回最终余额
@@ -55,10 +57,10 @@ def fund_list():
         'payer_desc': FundsRecord.payer.desc(),
         'item_asc': FundsRecord.item.asc(),
         'item_desc': FundsRecord.item.desc(),
-        'amount_asc': FundsRecord.amount.asc(),
-        'amount_desc': FundsRecord.amount.desc(),
-        'balance_asc': FundsRecord.balance.asc(),
-        'balance_desc': FundsRecord.balance.desc(),
+        'amount_asc': FundsRecord.amount_cents.asc(),
+        'amount_desc': FundsRecord.amount_cents.desc(),
+        'balance_asc': FundsRecord.balance_cents.asc(),
+        'balance_desc': FundsRecord.balance_cents.desc(),
     }
     order = valid_sorts.get(sort, FundsRecord.date.desc())
     
@@ -89,12 +91,12 @@ def fund_list():
 
     # 使用最新记录的余额作为总余额（更准确）
     latest_record = FundsRecord.query.order_by(FundsRecord.date.desc(), FundsRecord.id.desc()).first()
-    total_balance = latest_record.balance if latest_record else 0
+    total_balance_cents = latest_record.balance_cents if latest_record else 0
     
     return render_template('fund/list.html',
                            records=records,
                            pagination=pagination,
-                           total_balance=total_balance,
+                           total_balance_cents=total_balance_cents,
                            date_filter=date_filter,
                            payer_filter=payer_filter,
                            item_filter=item_filter,
@@ -109,17 +111,17 @@ def perform_fund_save(form_data, operator_id, files=None):
     # 1. 金额提取与计算逻辑
     amount_raw = form_data.get('amount')
     if amount_raw is not None and str(amount_raw).strip() != '':
-        amount = float(amount_raw)
+        amount_cents = yuan_to_cents(amount_raw, allow_zero=False)
     elif form_data.get('unit_price') not in (None, '') and form_data.get('quantity') not in (None, ''):
         qty = int(form_data.get('quantity', 1))
-        price = float(form_data.get('unit_price', 0))
+        price = parse_money_decimal(form_data.get('unit_price', 0), '资产单价')
         if qty <= 0 or price <= 0:
             raise ValueError('资产数量和单价必须大于0')
-        amount = -(qty * price)  # 资产买入默认为支出，转为负数
+        amount_cents = -money_to_cents(qty * price)  # 资产买入默认为支出，转为负数
+        if amount_cents == 0:
+            raise ValueError('金额必须为非零有效数字')
     else:
         raise ValueError('金额不能为空')
-    if not math.isfinite(amount) or amount == 0:
-        raise ValueError('金额必须为非零有效数字')
 
     # 2. 字段对齐（兼容资产联动传参）
     item = form_data.get('item')
@@ -166,9 +168,9 @@ def perform_fund_save(form_data, operator_id, files=None):
         date=record_datetime,
         payer=payer,
         item=item,
-        amount=amount,
+        amount_cents=amount_cents,
         note=note,
-        balance=0,  # 临时值，稍后重算
+        balance_cents=0,  # 临时值，稍后重算
         attachment=attachment_paths,
         operator_id=operator_id,
     )
@@ -218,7 +220,7 @@ def fund_add():
                 action_type="财务新增",
                 target_type="FundsRecord",
                 target_id=record.id,
-                description=f"记录 {record.item} 金额 {record.amount}{sync_msg}"
+                description=f"记录 {record.item} 金额 {cents_to_yuan(record.amount_cents)}{sync_msg}"
             )
 
             db.session.commit()
@@ -256,15 +258,13 @@ def fund_edit(record_id):
             selected_date = parse_date(request.form.get('date'))
             if not selected_date:
                 raise ValueError('财务日期格式不正确')
-            amount = float(request.form.get('amount'))
-            if not math.isfinite(amount) or amount == 0:
-                raise ValueError('金额必须为非零有效数字')
+            amount_cents = yuan_to_cents(request.form.get('amount'), allow_zero=False)
 
             # 更新字段
             record.date = datetime.combine(selected_date, datetime.now().time())
             record.payer = request.form.get('payer').strip()
             record.item = request.form.get('item').strip()
-            record.amount = amount
+            record.amount_cents = amount_cents
             record.note = request.form.get('note', '')
 
             # 处理已有附件删除（由 _attachment.html 组件通过 delete_attachments 隐藏字段提交 JSON 数组）
@@ -319,7 +319,7 @@ def fund_delete(record_id):
             action_type="财务删除",
             target_type="FundsRecord",
             target_id=record.id,
-            description=f"删除记录 {record.item} 金额 {record.amount}"
+            description=f"删除记录 {record.item} 金额 {cents_to_yuan(record.amount_cents)}"
         )
         
         db.session.delete(record)
@@ -366,9 +366,10 @@ def fund_import():
                 record_date = pd.to_datetime(row['日期'], errors='raise').to_pydatetime()
                 payer = str(row['资方']).strip()
                 item = str(row['项目']).strip()
-                amount = float(row['金额'])
-                if not math.isfinite(amount) or amount == 0:
-                    raise ValueError(f'第{row_number}行金额必须为非零有效数字')
+                try:
+                    amount_cents = yuan_to_cents(row['金额'], allow_zero=False)
+                except ValueError as exc:
+                    raise ValueError(f'第{row_number}行{exc}') from exc
 
                 # 处理操作人
                 op_name = str(row.get('操作人', '')).strip()
@@ -392,9 +393,9 @@ def fund_import():
                     date=record_date,
                     payer=payer,
                     item=item,
-                    amount=amount,
+                    amount_cents=amount_cents,
                     note=str(row.get('备注', '')).strip() if pd.notna(row.get('备注')) else '',
-                    balance=0,  # 临时值，稍后统一重算
+                    balance_cents=0,  # 临时值，稍后统一重算
                     attachment=attachment_value,
                     operator_id=final_op_id
                 )
@@ -402,10 +403,10 @@ def fund_import():
                 imported_count += 1
             
             # 导入完成后，统一重算所有余额
-            final_balance = recalculate_balances()
+            final_balance_cents = recalculate_balances()
             
             db.session.commit()
-            flash(f'成功导入 {imported_count} 条记录，当前余额：{final_balance:.2f} 元', 'success')
+            flash(f'成功导入 {imported_count} 条记录，当前余额：{cents_to_yuan(final_balance_cents):.2f} 元', 'success')
             return redirect(url_for('fund.fund_list'))
             
         except Exception as e:
@@ -462,8 +463,8 @@ def fund_export():
             '日期': r.date.strftime('%Y-%m-%d %H:%M') if r.date else '',
             '资方': r.payer,
             '项目': r.item,
-            '金额': r.amount,
-            '类型': '收入' if r.amount >= 0 else '支出',
+            '金额': float(cents_to_yuan(r.amount_cents)),
+            '类型': '收入' if r.amount_cents >= 0 else '支出',
             '操作人': r.operator.name if r.operator else '系统',
             '凭证': r.attachment if r.attachment else '无',
             '备注': r.note

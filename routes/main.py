@@ -22,14 +22,14 @@ def index():
     allocated_quantity = db.session.query(db.func.sum(Asset.allocated_quantity)).scalar() or 0
     
     # 资金数据
-    current_balance = db.session.query(db.func.sum(FundsRecord.amount)).scalar() or 0.0
+    current_balance = (db.session.query(db.func.sum(FundsRecord.amount_cents)).scalar() or 0) / 100
     
     # 本月收支
     this_month = datetime.today().strftime('%Y-%m')
-    month_income = db.session.query(db.func.sum(FundsRecord.amount))\
-        .filter(FundsRecord.date.like(f'{this_month}%'), FundsRecord.amount > 0).scalar() or 0.0
-    month_expense = abs(db.session.query(db.func.sum(FundsRecord.amount))\
-        .filter(FundsRecord.date.like(f'{this_month}%'), FundsRecord.amount < 0).scalar() or 0.0)
+    month_income = (db.session.query(db.func.sum(FundsRecord.amount_cents))\
+        .filter(FundsRecord.date.like(f'{this_month}%'), FundsRecord.amount_cents > 0).scalar() or 0) / 100
+    month_expense = abs(db.session.query(db.func.sum(FundsRecord.amount_cents))\
+        .filter(FundsRecord.date.like(f'{this_month}%'), FundsRecord.amount_cents < 0).scalar() or 0) / 100
     
     # 新增：生日提醒（本月生日在职员工）
     current_month = datetime.today().month

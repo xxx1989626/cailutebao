@@ -5,7 +5,7 @@ from flask import current_app
 from models import db, Asset, AssetInstance
 
 # 导入工具函数（保持原有导入路径）
-from utils import save_uploaded_file, parse_date
+from utils import save_uploaded_file, parse_date, parse_money_decimal, money_to_cents, yuan_to_cents
 
 def perform_asset_save(form_data, files=None):
     """
@@ -17,13 +17,14 @@ def perform_asset_save(form_data, files=None):
     name = form_data.get('name') or form_data.get('item')
     quantity = int(form_data.get('quantity') or form_data.get('asset_qty', 1))
     
-    # 金额处理：如果有单价用单价，没有则从总额折算
+    # 只保存实际采购总额；单价由总额和数量计算，避免除法产生精度误差
     if form_data.get('unit_price'):
-        unit_price = float(form_data.get('unit_price'))
+        unit_price = parse_money_decimal(form_data.get('unit_price'), '资产单价')
+        purchase_total_cents = money_to_cents(unit_price * quantity)
     elif form_data.get('amount'):
-        unit_price = abs(float(form_data.get('amount'))) / quantity if quantity > 0 else 0
+        purchase_total_cents = abs(yuan_to_cents(form_data.get('amount')))
     else:
-        unit_price = 0.0
+        purchase_total_cents = 0
 
     ownership = form_data.get('ownership', '特保队')
     prefix = form_data.get('number', '').strip() or f"SN-{datetime.now().strftime('%Y%m%d')}-"
@@ -48,7 +49,7 @@ def perform_asset_save(form_data, files=None):
         number=prefix,
         total_quantity=quantity,
         stock_quantity=quantity,
-        unit_price=unit_price,
+        purchase_total_cents=purchase_total_cents,
         ownership=ownership,
         location=form_data.get('location', '待定'),
         purchase_date=purchase_date,
