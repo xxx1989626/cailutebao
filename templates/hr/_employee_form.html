@@ -220,17 +220,23 @@
                 </div>
             </div>
             <div class="row g-3 mt-2">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label class="form-label">性别 <small class="text-muted">(自动计算)</small></label>
                     <input type="text" id="gender_display" class="form-control bg-light" value="{{ employee.gender or '' }}"
                         title="性别" readonly>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label class="form-label">出生日期 <small class="text-muted">(自动计算)</small></label>
                     <input type="text" id="birthday_display" class="form-control bg-light"
                         value="{{ format_date(employee.birthday) or '' }}" title="出生日期" placeholder="出生日期" readonly>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
+                    <label class="form-label">年龄 <small class="text-muted">(自动计算)</small></label>
+                    <input type="text" id="age_display" class="form-control bg-light"
+                        value="{% if employee.birthday %}{{ employee.birthday | calc_age }} 岁{% endif %}"
+                        title="年龄" placeholder="年龄" readonly>
+                </div>
+                <div class="col-md-3">
                     <label class="form-label">手机号码 <span class="text-danger">*</span></label>
                     <input type="text" name="phone" id="phone" class="form-control" maxlength="11"
                         value="{{ employee.phone or '' }}" title="手机号码" placeholder="请输入手机号码" required>
@@ -566,6 +572,20 @@
 </div>
 
 <script>
+    // JS版周岁计算（与后端 Python calculate_age 算法一致）
+    function calcAge(birthdayStr) {
+        if (!birthdayStr) return '';
+        var parts = birthdayStr.split('-');
+        if (parts.length !== 3) return '';
+        var birth = new Date(parts[0], parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        if (isNaN(birth.getTime())) return '';
+        var today = new Date();
+        var yearDiff = today.getFullYear() - birth.getFullYear();
+        var thisYearBd = new Date(today.getFullYear(), birth.getMonth(), birth.getDate());
+        if (today < thisYearBd) yearDiff -= 1;
+        return yearDiff + ' 岁';
+    }
+
     // 身份证校验 + 自动填充
     document.addEventListener('DOMContentLoaded', function() {
         const idInput = document.getElementById('id_card');
@@ -585,8 +605,10 @@
                                 msg.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>身份证合法</span>';
                                 document.getElementById('gender_display').value = data.gender;
                                 document.getElementById('birthday_display').value = data.birthday;
+                                document.getElementById('age_display').value = calcAge(data.birthday);
                             } else {
                                 msg.innerHTML = '<span class="text-danger"><i class="bi bi-exclamation-circle me-1"></i>' + (data.error || '校验失败') + '</span>';
+                                document.getElementById('age_display').value = '';
                             }
                         })
                         .catch(() => {

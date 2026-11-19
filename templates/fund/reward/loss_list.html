@@ -1,0 +1,158 @@
+<!-- templates/fund/reward/loss_list.html -->
+{% extends "base.html" %}
+{% block title %}损耗记录{% endblock %}
+{% block content %}
+<style>
+    .reward-table th { font-weight: 600; color: #212529; text-align: center; white-space: nowrap; vertical-align: middle; }
+    .reward-table td { vertical-align: middle; text-align: center; border-color: #f1f3f5; }
+    .reward-table tr:hover { background-color: #f8f9fa; transition: background-color .2s ease; }
+</style>
+
+<div class="container mt-4">
+    {% include 'fund/reward/_nav.html' %}
+
+    <div class="alert {% if stats.cage < 0 %}alert-danger{% elif stats.cage == 0 %}alert-success{% else %}alert-info{% endif %} d-flex flex-wrap justify-content-between align-items-center py-2">
+        <span>
+            <i class="bi bi-calculator me-1"></i>
+            笼存池核对：抓捕 {{ stats.catch }} − 交付 {{ stats.delivered }} − 损耗 {{ stats.loss }} =
+            <strong>{{ stats.cage }}</strong> 只
+        </span>
+        {% if stats.cage < 0 %}
+        <small class="fw-bold">数据异常：笼存为负，请检查登记</small>
+        {% endif %}
+    </div>
+
+    <!-- 损耗记录 -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-danger text-white d-flex flex-wrap justify-content-between align-items-center gap-2 py-3">
+            <h5 class="mb-0"><i class="bi bi-exclamation-triangle me-2"></i>损耗记录（必须归属到某次出勤）</h5>
+            <div class="d-flex align-items-center gap-2">
+                <form method="GET" class="d-flex align-items-center gap-2 mb-0">
+                    <select name="year" class="form-select form-select-sm" onchange="this.form.submit()" style="width: 110px;">
+                        {% for y in years %}
+                        <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}年</option>
+                        {% endfor %}
+                    </select>
+                </form>
+                {% if can_add %}
+                <button type="button" class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#addLossModal">
+                    <i class="bi bi-plus-circle me-1"></i>登记损耗
+                </button>
+                {% endif %}
+            </div>
+        </div>
+        <div class="card-body p-3">
+            <div class="table-responsive rounded shadow-sm">
+                <table class="table table-hover align-middle mb-0 reward-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 14%;">损耗日期</th>
+                            <th style="width: 18%;">归属出勤</th>
+                            <th style="width: 10%;">损耗只数</th>
+                            <th style="width: 10%;">原因</th>
+                            <th>备注</th>
+                            {% if can_delete %}<th style="width: 8%;">操作</th>{% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for l in losses %}
+                        <tr>
+                            <td>{{ l.loss_date.strftime('%Y-%m-%d') if l.loss_date else '-' }}</td>
+                            <td>
+                                {% if l.catch %}
+                                {{ l.catch.catch_date.strftime('%Y-%m-%d %H:%M') }}（抓捕 {{ l.catch.dog_count }} 只）
+                                {% else %}-{% endif %}
+                            </td>
+                            <td class="fw-bold text-danger">{{ l.dog_count }}</td>
+                            <td><span class="badge bg-light text-dark border">{{ l.reason }}</span></td>
+                            <td class="text-truncate text-start" style="max-width: 220px;" title="{{ l.remark or '无' }}">{{ l.remark or '-' }}</td>
+                            {% if can_delete %}
+                            <td>
+                                {% if l.catch and l.catch.status == '未结算' %}
+                                <form method="POST" action="{{ url_for('reward.loss_delete', loss_id=l.id) }}"
+                                      onsubmit="return confirm('确定删除该损耗记录？该次出勤的计酬只数将恢复。');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="删除"><i class="bi bi-trash"></i></button>
+                                </form>
+                                {% else %}
+                                <span class="text-muted small">已锁定</span>
+                                {% endif %}
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="{{ 6 if can_delete else 5 }}" class="text-center text-muted py-4">
+                                <i class="bi bi-emoji-smile me-1"></i>{{ selected_year }} 年暂无损耗记录
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <p class="text-muted small mt-3 mb-0">
+                <i class="bi bi-info-circle me-1"></i>
+                狗只没有个体编码，所以损耗必须挂到具体某次出勤上：抓捕 − 该次损耗 = 该次计酬只数。损耗后计酬只数自动下调。
+            </p>
+            {% from "_pagination.html" import render_pagination %}
+            {{ render_pagination(pagination, 'reward.loss_list', year=selected_year) }}
+        </div>
+    </div>
+</div>
+
+{% if can_add %}
+<!-- 登记损耗 -->
+<div class="modal fade" id="addLossModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('reward.loss_add') }}">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-1"></i>登记损耗</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">损耗日期</label>
+                        <input type="date" name="loss_date" class="form-control" value="{{ today_str() }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">归属出勤记录</label>
+                        <select name="catch_id" class="form-select" required>
+                            <option value="">请选择归属的出勤</option>
+                            {% for c in lossable_catches %}
+                            {% set cage_remain = c.dog_count - c.delivered_count - c.loss_count %}
+                            <option value="{{ c.id }}">
+                                {{ c.catch_date.strftime('%Y-%m-%d %H:%M') }}（抓捕 {{ c.dog_count }}，已交付 {{ c.delivered_count }}，已损耗 {{ c.loss_count }}，笼中剩余 {{ cage_remain }}）
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">狗只没有独立编码，损耗必须挂到某次出勤；只能损耗笼中剩余的狗</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">损耗只数</label>
+                        <input type="number" name="dog_count" class="form-control" min="1" step="1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">损耗原因</label>
+                        <select name="reason" class="form-select">
+                            <option value="领养">领养</option>
+                            <option value="归还">归还</option>
+                            <option value="死亡">死亡</option>
+                            <option value="逃跑">逃跑</option>
+                            <option value="其他">其他</option>
+                        </select>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label">备注</label>
+                        <input type="text" name="remark" class="form-control" placeholder="选填，如具体原因说明">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-danger">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

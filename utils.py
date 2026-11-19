@@ -86,6 +86,19 @@ def parse_date(date_input) -> Optional[date]:
             pass
     return None
 
+def calculate_age(birthday) -> int | None:
+    """精确周岁计算：YEAR差 - (今年生日还没过则再减1)"""
+    if not birthday:
+        return None
+    from datetime import date
+    today = date.today()
+    year_diff = today.year - birthday.year
+    # 今年生日是否已过：比较月日大小（只过月日，闰年2.29按2.28处理即可，或用元组比较）
+    if (today.month, today.day) < (birthday.month, birthday.day):
+        year_diff -= 1
+    return year_diff
+
+
 def format_date(date_obj, fmt='%Y-%m-%d') -> str:
     if not date_obj:
         return ''

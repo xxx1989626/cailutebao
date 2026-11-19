@@ -60,9 +60,10 @@
                                         <td class="text-truncate" style="max-width: 140px;" title="{{ d.receiver or '' }}">{{ d.receiver or '-' }}</td>
                                         <td class="text-start">
                                             {% for link in d.delivery_links %}
-                                            <span class="badge {% if link.catch and link.catch.status == '已结算' %}bg-secondary{% else %}bg-light text-dark border{% endif %} me-1 mb-1"
-                                                  title="{% if link.catch and link.catch.status == '已结算' %}该出勤已在其他批次结算，本批不再计入{% endif %}">
-                                                {{ link.catch.catch_date.strftime('%m-%d') if link.catch and link.catch.catch_date else '?' }}：{{ link.dog_count }} 只{% if link.catch and link.catch.status == '已结算' %}（已结算）{% endif %}
+                                            {% set ds = link.catch.display_status if link.catch else '未结算' %}
+                                            <span class="badge {% if ds == '已结算' %}bg-secondary{% elif ds == '已交付' %}bg-info text-dark{% else %}bg-light text-dark border{% endif %} me-1 mb-1"
+                                                  title="{% if ds == '已结算' %}该出勤已在其他批次结算，本批不再计入{% elif ds == '已交付' %}该出勤已交付完毕，仍可参与本批分账{% endif %}">
+                                                {{ link.catch.catch_date.strftime('%m-%d') if link.catch and link.catch.catch_date else '?' }}：{{ link.dog_count }} 只{% if ds != '未结算' %}（{{ ds }}）{% endif %}
                                             </span>
                                             {% endfor %}
                                         </td>

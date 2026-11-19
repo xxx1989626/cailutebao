@@ -2,7 +2,7 @@
 from flask_migrate import Migrate
 from flask import Flask, jsonify, request, send_from_directory
 from flask_login import LoginManager, current_user
-from utils import today_str, now_str, perm, format_date, format_datetime, validate_id_card, get_gender_from_id_card, get_birthday_from_id_card, get_unreturned_assets, register_module_permissions
+from utils import today_str, now_str, perm, format_date, format_datetime, calculate_age, validate_id_card, get_gender_from_id_card, get_birthday_from_id_card, get_unreturned_assets, register_module_permissions
 from config import Config, SECRET_KEY, DATABASE_PATH, UPLOAD_FOLDER, SALARY_MODES, POSITIONS, POSTS
 from models import db, Asset, User, Permission, ChatMessage  # 如需彻底清理可删除 ChatMessage
 from routes import register_blueprints
@@ -163,6 +163,12 @@ def calc_work_duration_filter(start_date, end_date=None):
     
     delta = end - start
     return days_to_years_months_filter(delta)
+
+@app.template_filter('calc_age')
+def calc_age_filter(birthday):
+    """模板过滤器：从出生日期精确计算周岁，None 返回 ''"""
+    age = calculate_age(birthday)
+    return str(age) if age is not None else ''
 
 @app.template_filter('fromjson')
 def fromjson_filter(value):

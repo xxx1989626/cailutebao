@@ -9,9 +9,10 @@ from models import EmploymentCycle, User, db
 from utils import (
     validate_id_card, validate_phone, get_gender_from_id_card, get_birthday_from_id_card,
     save_uploaded_file, get_ethnic_options, get_politics_options, get_education_options,
-    parse_date, format_date, today_str, perm, log_action
+    parse_date, format_date, today_str, perm, log_action, calculate_age
 )
 from config import SALARY_MODES, POSITIONS, POSTS
+from .document import DOC_TYPES
 
 # ==================== 花名册列表 ====================
 @hr_bp.route('/list')
@@ -46,7 +47,8 @@ def hr_list():
         'tenure_asc': EmploymentCycle.hire_date.asc(),
         'tenure_desc': EmploymentCycle.hire_date.desc()
     }
-    order = valid_sorts.get(sort, EmploymentCycle.hire_date.desc())
+    is_age_sort = sort in ('age_asc', 'age_desc')
+    order = valid_sorts.get(sort, EmploymentCycle.hire_date.desc()) if not is_age_sort else None
     
     # 子查询：获取每个身份证最新的入职记录
     subquery = db.session.query(
@@ -96,12 +98,17 @@ def hr_list():
     if not show_fields:
         show_fields = [
             'name', 'id_card', 'phone', 'position', 'post', 'salary_mode', 
-            'hire_date', 'tenure', 'gender', 'birthday', 'ethnic', 'politics', 
+            'hire_date', 'tenure', 'gender', 'birthday', 'age', 'ethnic', 'politics', 
             'education', 'household_address', 'residence_address', 'military', 
             'license', 'security_license', 'emergency', 'uniform'
         ]
     
-    employees = query.order_by(order).all()
+    if is_age_sort:
+        employees = query.all()
+        employees = sorted(employees, key=lambda e: calculate_age(e.birthday) or 0,
+                           reverse=(sort == 'age_desc'))
+    else:
+        employees = query.order_by(order).all()
     return render_template('hr/list.html',
                            employees=employees,
                            search=search,
@@ -341,6 +348,15 @@ def hr_detail(id_card):
     current_cycle = next((c for c in cycles if c.status == '在职'), None)
     associated_user = User.query.filter_by(username=current_cycle.id_card).first() if current_cycle else None
 
+    # 按证件类型建立映射（同类型多条取最新），供详情页信息行内联展示
+    from .document import get_doc_status
+    for cycle in cycles:
+        doc_map = {}
+        for doc in sorted(cycle.documents, key=lambda x: x.created_at, reverse=True):
+            doc_map.setdefault(doc.doc_type, doc)
+            doc.status_info = get_doc_status(doc.expire_date)
+        cycle.doc_map = doc_map
+
     # 获取可发放的资产列表
     available_assets = []
     if current_cycle:
@@ -361,7 +377,8 @@ def hr_detail(id_card):
                            salary_modes=SALARY_MODES,
                            ethnic_options=get_ethnic_options(),
                            politics_options=get_politics_options(),
-                           education_options=get_education_options())
+                           education_options=get_education_options(),
+                           doc_types=DOC_TYPES)
 
 # ==================== 员工自行编辑自己的信息（通用入口） ====================
 @hr_bp.route('/edit-me', methods=['GET', 'POST'])

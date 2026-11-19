@@ -106,12 +106,13 @@
                             <td class="{% if c.loss_count > 0 %}text-danger fw-bold{% else %}text-muted{% endif %}">{{ c.loss_count }}</td>
                             <td class="fw-bold text-success">{{ c.payable_count }}</td>
                             <td>
-                                <span class="badge rounded-pill {% if c.status == '已结算' %}bg-secondary{% else %}bg-warning text-dark{% endif %}">{{ c.status }}</span>
+                                {% set ds = c.display_status %}
+                                <span class="badge rounded-pill {% if ds == '已结算' %}bg-secondary{% elif ds == '已交付' %}bg-info text-dark{% else %}bg-warning text-dark{% endif %}">{{ ds }}</span>
                             </td>
                             <td class="text-truncate text-start" style="max-width: 180px;" title="{{ c.remark or '无' }}">{{ c.remark or '-' }}</td>
                             {% if can_edit or can_delete %}
                             <td>
-                                {% if c.status == '未结算' %}
+                                {% if c.display_status == '未结算' %}
                                 <div class="btn-group btn-group-sm">
                                     {% if can_edit %}
                                     <button type="button" class="btn btn-outline-warning" title="编辑"

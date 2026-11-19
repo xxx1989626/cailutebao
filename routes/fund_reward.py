@@ -15,7 +15,7 @@ from models import (
     db, DogCatch, DogCatchPerson, DogDelivery, DogDeliveryCatch, DogLoss,
     DogSettlement, DogSettlementShare, EmploymentCycle, FundsRecord
 )
-from utils import perm, log_action, parse_datetime, save_uploaded_file, delete_physical_file
+from utils import perm, log_action, parse_date, parse_datetime, save_uploaded_file, delete_physical_file
 
 reward_bp = Blueprint('reward', __name__, url_prefix='/fund/reward')
 
@@ -179,6 +179,9 @@ def catch_edit(catch_id):
     if c.status == '已结算':
         flash('该出勤已结算，不能修改', 'warning')
         return redirect(url_for('reward.catch_list'))
+    if c.display_status == '已交付':
+        flash('该出勤已交付完毕（已交付即锁定），不能修改；如需纠错请先删除对应交付单', 'warning')
+        return redirect(url_for('reward.catch_list'))
 
     catch_date = parse_datetime(request.form.get('catch_date'))
     dog_count = request.form.get('dog_count', type=int) or 0
@@ -228,6 +231,9 @@ def catch_delete(catch_id):
     if c.status == '已结算':
         flash('该出勤已结算，不能删除', 'warning')
         return redirect(url_for('reward.catch_list'))
+    if c.display_status == '已交付':
+        flash('该出勤已交付完毕（已交付即锁定），不能删除；如需纠错请先删除对应交付单', 'warning')
+        return redirect(url_for('reward.catch_list'))
     if c.delivered_count > 0:
         flash('该出勤已有交付记录关联（已交付 %d 只），请先删除对应交付单' % c.delivered_count, 'warning')
         return redirect(url_for('reward.catch_list'))
@@ -244,25 +250,32 @@ def catch_delete(catch_id):
     return redirect(url_for('reward.catch_list'))
 
 
-# ==================== 交付与损耗 ====================
+# ==================== 交付记录 / 损耗记录 ====================
 @reward_bp.route('/delivery', methods=['GET'])
 @login_required
 def delivery_list():
     year = request.args.get('year', datetime.now().year, type=int)
-    deliveries = DogDelivery.query.filter(
+    page = request.args.get('page', 1, type=int)
+    pagination = DogDelivery.query.filter(
         extract('year', DogDelivery.delivery_date) == year
-    ).order_by(DogDelivery.delivery_date.desc(), DogDelivery.id.desc()).all()
-    losses = DogLoss.query.filter(
-        extract('year', DogLoss.loss_date) == year
-    ).order_by(DogLoss.loss_date.desc(), DogLoss.id.desc()).all()
-
-    # 损耗可归属的出勤：未结算出勤（损耗只发生在笼中的狗）
-    lossable_catches = DogCatch.query.filter(
-        DogCatch.status == '未结算'
-    ).order_by(DogCatch.catch_date.desc()).all()
+    ).order_by(DogDelivery.delivery_date.desc(), DogDelivery.id.desc()).paginate(
+        page=page, per_page=20, error_out=False
+    )
+    deliveries = pagination.items
 
     # 可关联交付的出勤：未结算且有未交付结余
-    allocatable_catches = [c for c in lossable_catches if c.undelivered_count > 0]
+    allocatable_catches = [
+        c for c in DogCatch.query.filter(
+            DogCatch.status == '未结算'
+        ).order_by(DogCatch.catch_date.desc()).all()
+        if c.undelivered_count > 0
+    ]
+
+    # 编辑交付时的来源出勤候选：所有未结算出勤
+    # （需包含已被本交付占满的出勤，否则原分配无法预填）
+    editable_catches = DogCatch.query.filter(
+        DogCatch.status == '未结算'
+    ).order_by(DogCatch.catch_date.desc()).all()
 
     # 交付结算状态：delivery_id -> 分账批次（被引用即视为经费已到账结算）
     delivery_settle_map = {}
@@ -277,10 +290,49 @@ def delivery_list():
         'fund/reward/delivery_list.html',
         active='delivery',
         deliveries=deliveries,
-        losses=losses,
-        lossable_catches=lossable_catches,
+        pagination=pagination,
         allocatable_catches=allocatable_catches,
+        editable_catches=editable_catches,
         delivery_settle_map=delivery_settle_map,
+        years=years,
+        selected_year=year,
+        stats=pool_stats(),
+        can_add=can_add(),
+        can_edit=can_edit(),
+        can_delete=can_delete(),
+    )
+
+
+@reward_bp.route('/loss', methods=['GET'])
+@login_required
+def loss_list():
+    year = request.args.get('year', datetime.now().year, type=int)
+    page = request.args.get('page', 1, type=int)
+    pagination = DogLoss.query.filter(
+        extract('year', DogLoss.loss_date) == year
+    ).order_by(DogLoss.loss_date.desc(), DogLoss.id.desc()).paginate(
+        page=page, per_page=20, error_out=False
+    )
+    losses = pagination.items
+
+    # 损耗可归属的出勤：未结算且笼中还有剩余（抓捕-已交付-已损耗>0）
+    # 已交付完的出勤笼中无狗，不能再登记损耗，不列入可选
+    lossable_catches = [
+        c for c in DogCatch.query.filter(
+            DogCatch.status == '未结算'
+        ).order_by(DogCatch.catch_date.desc()).all()
+        if c.dog_count - c.delivered_count - c.loss_count > 0
+    ]
+
+    rows = db.session.query(DogDelivery.delivery_date).all() + db.session.query(DogLoss.loss_date).all()
+    years = sorted({r[0].year for r in rows if r[0]}, reverse=True) or [year]
+
+    return render_template(
+        'fund/reward/loss_list.html',
+        active='loss',
+        losses=losses,
+        pagination=pagination,
+        lossable_catches=lossable_catches,
         years=years,
         selected_year=year,
         stats=pool_stats(),
@@ -299,8 +351,17 @@ def delivery_add():
 
     delivery_date = parse_datetime(request.form.get('delivery_date'))
     dog_count = request.form.get('dog_count', type=int) or 0
+    receiver = request.form.get('receiver', '').strip()
     if not delivery_date or dog_count <= 0:
         flash('交付日期与交付只数必须填写，且只数大于 0', 'warning')
+        return redirect(url_for('reward.delivery_list'))
+    if not receiver:
+        flash('请填写接收单位/接收人（必填）', 'warning')
+        return redirect(url_for('reward.delivery_list'))
+
+    upload_files = [f for f in request.files.getlist('attachment') if f and f.filename]
+    if not upload_files:
+        flash('请上传送狗凭证（必填，至少 1 张图片或 PDF）', 'warning')
         return redirect(url_for('reward.delivery_list'))
 
     # 解析出勤分配：alloc_{catch_id} = 该出勤贡献的只数
@@ -310,11 +371,9 @@ def delivery_add():
             cnt = request.form.get(key, type=int) or 0
             if cnt > 0:
                 allocs[int(key[6:])] = cnt
-    if not allocs:
-        flash('请勾选本次交付的狗来自哪些出勤，并逐条填写分配只数', 'warning')
-        return redirect(url_for('reward.delivery_list'))
+    # 允许不关联任何出勤（出勤漏记场景），交付只数以送狗单据为准
 
-    # 校验：出勤存在且未结算（分配只数不做限制，交付只数以送狗单据为准）
+    # 校验：出勤存在、未结算、已交付即锁定；分配只数不得超过未交付结余（防重复认领）
     catch_map = {c.id: c for c in DogCatch.query.filter(DogCatch.id.in_(allocs.keys())).all()}
     for cid, cnt in allocs.items():
         c = catch_map.get(cid)
@@ -324,6 +383,12 @@ def delivery_add():
         if c.status == '已结算':
             flash(f'{c.catch_date} 的出勤已结算，不能再关联交付', 'warning')
             return redirect(url_for('reward.delivery_list'))
+        if c.display_status == '已交付':
+            flash(f'{c.catch_date} 的出勤已交付完毕（已交付即锁定），不能再关联交付', 'warning')
+            return redirect(url_for('reward.delivery_list'))
+        if cnt > c.undelivered_count:
+            flash(f'{c.catch_date} 的出勤未交付结余仅 {c.undelivered_count} 只，本次分配 {cnt} 只超出，不能重复认领', 'warning')
+            return redirect(url_for('reward.delivery_list'))
     total_alloc = sum(allocs.values())
     if total_alloc != dog_count:
         flash(f'各出勤分配合计 {total_alloc} 只，与交付只数（单据）{dog_count} 不一致（已按单据 {dog_count} 只登记，分配仅供参考，后续可自行排查）', 'warning')
@@ -331,16 +396,18 @@ def delivery_add():
     is_reward_flag = request.form.get('is_reward') is not None  # checkbox 未勾选时字段不存在 → False
 
     attachment_paths = []
-    for file in request.files.getlist('attachment'):
-        if file and file.filename:
-            path = save_uploaded_file(file, module='reward', sub_folder='delivery')
-            if path:
-                attachment_paths.append(path)
+    for file in upload_files:
+        path = save_uploaded_file(file, module='reward', sub_folder='delivery')
+        if path:
+            attachment_paths.append(path)
+    if not attachment_paths:
+        flash('送狗凭证上传失败，请重试（必填至少 1 张）', 'warning')
+        return redirect(url_for('reward.delivery_list'))
 
     record = DogDelivery(
         delivery_date=delivery_date,
         dog_count=dog_count,  # 以送狗单据为准
-        receiver=request.form.get('receiver', '').strip(),
+        receiver=receiver,
         remark=request.form.get('remark', '').strip(),
         attachment=attachment_paths,
         is_reward=is_reward_flag,
@@ -435,11 +502,12 @@ def delivery_edit(delivery_id):
             cnt = request.form.get(key, type=int) or 0
             if cnt > 0:
                 allocs[int(key[6:])] = cnt
-    if not allocs:
-        flash('请勾选本次交付的狗来自哪些出勤，并逐条填写分配只数', 'warning')
-        return redirect(url_for('reward.delivery_list'))
+    # 允许不关联任何出勤（出勤漏记场景），交付只数以送狗单据为准
 
-    # 校验：出勤存在且未结算（分配只数不做限制，交付只数以送狗单据为准）
+    # 本单对各出勤的原有分配（计入可分配上限，保证原有分配可保留）
+    orig_allocs = {l.catch_id: (l.dog_count or 0) for l in record.delivery_links}
+
+    # 校验：出勤存在且未结算；可分配上限 = 未交付结余 + 本单原有分配（防重复认领）
     catch_map = {c.id: c for c in DogCatch.query.filter(DogCatch.id.in_(allocs.keys())).all()}
     for cid, cnt in allocs.items():
         c = catch_map.get(cid)
@@ -448,6 +516,11 @@ def delivery_edit(delivery_id):
             return redirect(url_for('reward.delivery_list'))
         if c.status == '已结算':
             flash(f'{c.catch_date} 的出勤已结算，不能再关联交付', 'warning')
+            return redirect(url_for('reward.delivery_list'))
+        orig = orig_allocs.get(cid, 0)
+        limit = c.undelivered_count + orig
+        if cnt > limit:
+            flash(f'{c.catch_date} 的出勤可分配上限 {limit} 只（未交付 {c.undelivered_count} + 本单原有 {orig}），本次分配 {cnt} 只超出，不能重复认领', 'warning')
             return redirect(url_for('reward.delivery_list'))
 
     is_reward_flag = request.form.get('is_reward') is not None
@@ -501,7 +574,7 @@ def delivery_edit(delivery_id):
 def loss_add():
     if not can_add():
         flash('权限不足，无法登记损耗', 'danger')
-        return redirect(url_for('reward.delivery_list'))
+        return redirect(url_for('reward.loss_list'))
 
     loss_date = parse_date(request.form.get('loss_date'))
     dog_count = request.form.get('dog_count', type=int) or 0
@@ -509,20 +582,23 @@ def loss_add():
 
     if not loss_date or dog_count <= 0 or not catch_id:
         flash('损耗日期、只数、归属出勤均不能为空', 'warning')
-        return redirect(url_for('reward.delivery_list'))
+        return redirect(url_for('reward.loss_list'))
 
     c = db.session.get(DogCatch, catch_id)
     if not c:
         flash('归属的出勤记录不存在', 'danger')
-        return redirect(url_for('reward.delivery_list'))
+        return redirect(url_for('reward.loss_list'))
     if c.status == '已结算':
         flash('该出勤已结算，不能再登记损耗', 'warning')
-        return redirect(url_for('reward.delivery_list'))
+        return redirect(url_for('reward.loss_list'))
+    if c.display_status == '已交付':
+        flash('该出勤已交付完毕（已交付即锁定），不能再登记损耗；如需纠错请先删除对应交付单', 'warning')
+        return redirect(url_for('reward.loss_list'))
     # 笼中剩余 = 抓捕 - 已交付 - 已损耗；损耗不能超过笼中剩余
     cage_remain = c.dog_count - c.delivered_count - c.loss_count
     if dog_count > cage_remain:
         flash(f'{c.catch_date} 出勤笼中剩余 {max(cage_remain, 0)} 只（抓捕 {c.dog_count} − 已交付 {c.delivered_count} − 已损耗 {c.loss_count}），本次损耗 {dog_count} 只超出', 'warning')
-        return redirect(url_for('reward.delivery_list'))
+        return redirect(url_for('reward.loss_list'))
 
     record = DogLoss(
         loss_date=loss_date,
@@ -543,7 +619,7 @@ def loss_add():
     )
     db.session.commit()
     flash('损耗记录已登记，该次出勤计酬只数已同步调整', 'success')
-    return redirect(url_for('reward.delivery_list', year=loss_date.year))
+    return redirect(url_for('reward.loss_list', year=loss_date.year))
 
 
 @reward_bp.route('/loss/delete/<int:loss_id>', methods=['POST'])
@@ -551,15 +627,15 @@ def loss_add():
 def loss_delete(loss_id):
     if not can_delete():
         flash('权限不足，无法删除损耗记录', 'danger')
-        return redirect(url_for('reward.delivery_list'))
+        return redirect(url_for('reward.loss_list'))
 
     record = db.session.get(DogLoss, loss_id)
     if not record:
         flash('损耗记录不存在', 'danger')
-        return redirect(url_for('reward.delivery_list'))
+        return redirect(url_for('reward.loss_list'))
     if record.catch and record.catch.status == '已结算':
         flash('该损耗归属的出勤已结算，不能删除', 'warning')
-        return redirect(url_for('reward.delivery_list'))
+        return redirect(url_for('reward.loss_list'))
 
     log_action(
         action_type='狗只损耗删除',
@@ -570,7 +646,7 @@ def loss_delete(loss_id):
     db.session.delete(record)
     db.session.commit()
     flash('损耗记录已删除', 'warning')
-    return redirect(url_for('reward.delivery_list'))
+    return redirect(url_for('reward.loss_list'))
 
 
 # ==================== 经费分账 ====================
@@ -1102,7 +1178,7 @@ def reward_export():
             '本次损耗': c.loss_count,
             '已交付': c.delivered_count,
             '计酬只数': c.payable_count,
-            '状态': c.status,
+            '状态': c.display_status,
             '备注': c.remark or '',
         })
 

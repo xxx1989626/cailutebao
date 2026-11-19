@@ -239,14 +239,19 @@ def fund_edit(record_id):
             # 处理新附件上传
             if 'attachment' in request.files:
                 uploaded_files = request.files.getlist('attachment')
+                new_attachment_paths = []
                 for file in uploaded_files:
                     if file and file.filename != '':
                         path = save_uploaded_file(file, module='funds')
                         if path:
-                            if record.attachment:
-                                record.attachment.append(path)
-                            else:
-                                record.attachment = [path]
+                            new_attachment_paths.append(path)
+                if new_attachment_paths:
+                    # 关键：不要用 record.attachment.append()，JSON 列的原地修改
+                    # 不会被 SQLAlchemy 检测到，导致 commit 时附件丢失。
+                    # 必须整体重新赋值才能触发变更追踪。
+                    merged = list(record.attachment or [])
+                    merged.extend(new_attachment_paths)
+                    record.attachment = merged
 
             # 重新计算所有余额
             recalculate_balances()

@@ -16,8 +16,12 @@
     <label class="form-label">证件类型 <span class="text-danger">*</span></label>
     {% if mode == 'view' %}
     <input type="text" class="form-control" value="{{ document.doc_type }}" readonly disabled>
+    {% elif fixed_doc_type %}
+    {# 行内补传：类型由所在信息行决定，固定不可选 #}
+    <input type="hidden" name="doc_type" value="{{ fixed_doc_type }}">
+    <input type="text" class="form-control" value="{{ fixed_doc_type }}" readonly disabled>
     {% else %}
-    <select name="doc_type" class="form-select" title="证件类型" required {% if mode == 'view' %}disabled{% endif %}>
+    <select name="doc_type" id="doc_type_select" class="form-select" title="证件类型" required {% if mode == 'view' %}disabled{% endif %}>
         {% for t in doc_types %}
         <option value="{{ t }}" {% if document and document.doc_type == t %}selected{% endif %}>{{ t }}</option>
         {% endfor %}

@@ -4,6 +4,64 @@
 {% block title %}{{ cycles[0].name }} ({{ id_card }}) - 任职档案{% endblock %}
 
 {% block content %}
+{# ===== 内联证件 macro：信息行内直接查看/补传/审批对应证件 ===== #}
+{% macro doc_inline(cycle, doc_type) %}
+{% set doc = cycle.doc_map.get(doc_type) if cycle.doc_map else none %}
+{% if doc and doc.pending_status == 'pending' %}
+    {% if perm.can('hr.edit') %}
+    <a href="{{ url_for('hr.document_view_change', doc_id=doc.id) }}"
+       class="doc-inline-btn doc-pending" title="待审批，点击审批">
+        <i class="bi bi-hourglass-split"></i> 待审批
+    </a>
+    {% else %}
+    <span class="doc-inline-btn doc-pending" title="已提交，等待管理员审批">
+        <i class="bi bi-hourglass-split"></i> 待审批
+    </span>
+    {% endif %}
+{% elif doc and (doc.front_image or doc.back_image) %}
+    <button type="button" class="doc-inline-btn doc-view" title="查看{{ doc_type }}证件"
+            data-bs-toggle="modal" data-bs-target="#docViewModal"
+            data-owner="{{ cycle.name }}" data-type="{{ doc_type }}"
+            data-number="{{ doc.doc_number or '' }}"
+            data-issue="{{ format_date(doc.issue_date) or '' }}"
+            data-expire="{{ doc.status_info[1] if doc.status_info else (format_date(doc.expire_date) or '长期有效') }}"
+            data-front="/{{ doc.front_image }}" data-back="/{{ doc.back_image or '' }}"
+            data-edit-url="{{ url_for('hr.document_edit', doc_id=doc.id) }}"
+            data-delete-url="{{ url_for('hr.document_delete', doc_id=doc.id) }}">
+        <i class="bi bi-images"></i> 查看
+    </button>
+{% else %}
+    {% if (current_user.username == cycle.id_card) or perm.can('hr.edit') %}
+    <button type="button" class="doc-inline-btn doc-upload" title="{% if doc %}证件信息已登记，补传照片{% else %}补传{{ doc_type }}{% endif %}"
+            data-bs-toggle="modal" data-bs-target="#docUploadModal"
+            data-owner="{{ cycle.name }}" data-doc-type="{{ doc_type }}" data-cycle-id="{{ cycle.id }}">
+        <i class="bi bi-cloud-arrow-up"></i> {% if doc %}补照片{% else %}未上传{% endif %}
+    </button>
+    {% else %}
+    <span class="text-muted small">未上传</span>
+    {% endif %}
+{% endif %}
+{% endmacro %}
+
+<style>
+    /* 内联证件按钮 */
+    .doc-inline-btn {
+        display: inline-flex; align-items: center; gap: .25rem;
+        font-size: .78rem; padding: .15rem .5rem; border-radius: 999px;
+        border: 1px solid #dee2e6; background: #f8f9fa; color: #495057;
+        cursor: pointer; text-decoration: none; white-space: nowrap;
+    }
+    .doc-inline-btn:hover { background: #e9ecef; color: #0d6efd; border-color: #0d6efd; }
+    a.doc-inline-btn:hover, button.doc-inline-btn:hover { color: #0d6efd; }
+    .doc-inline-btn.doc-view { color: #0d6efd; border-color: #b6d4fe; background: #eef5ff; }
+    .doc-inline-btn.doc-upload { color: #6c757d; border-style: dashed; }
+    .doc-inline-btn.doc-pending { color: #8b5cf6; border-color: #ddd6fe; background: #f5f3ff; cursor: default; }
+    a.doc-inline-btn.doc-pending { cursor: pointer; }
+    .doc-inline-btn.doc-pending:hover { color: #8b5cf6; border-color: #8b5cf6; background: #f5f3ff; }
+    /* 其他证件折叠区 */
+    .other-doc-item { border-left: 3px solid #b6d4fe; }
+</style>
+
 <!-- 自定义样式 -->
 <style>
     /* 页面整体样式 */
@@ -365,7 +423,10 @@
                                     <table class="table table-sm table-borderless info-table">
                                         <tr>
                                             <th>身份证</th>
-                                            <td class="fw-medium">{{ cycle.id_card }}</td>
+                                            <td class="fw-medium d-flex justify-content-between align-items-center gap-2">
+                                                <span>{{ cycle.id_card }}</span>
+                                                {{ doc_inline(cycle, '身份证') }}
+                                            </td>
                                         </tr>
                                         <tr>
                                             <th>性别</th>
@@ -374,6 +435,10 @@
                                         <tr>
                                             <th>出生日期</th>
                                             <td>{{ format_date(cycle.birthday) or '未填写' }}</td>
+                                        </tr>
+                                        <tr>
+                                            <th>年龄</th>
+                                            <td>{% if cycle.birthday %}{{ cycle.birthday | calc_age }} 岁{% else %}未填写{% endif %}</td>
                                         </tr>
                                         <tr>
                                             <th>手机</th>
@@ -389,7 +454,10 @@
                                         </tr>
                                         <tr>
                                             <th>学历</th>
-                                            <td>{{ cycle.education or '未填写' }}</td>
+                                            <td class="d-flex justify-content-between align-items-center gap-2">
+                                                <span>{{ cycle.education or '未填写' }}</span>
+                                                {{ doc_inline(cycle, '学历证') }}
+                                            </td>
                                         </tr>
                                         <tr>
                                             <th>薪资模式</th>
@@ -413,26 +481,35 @@
                                         </tr>
                                         <tr>
                                             <th>兵役情况</th>
-                                            <td>{% if cycle.military_service %}入伍时间:{{
-                                                format_date(cycle.enlistment_date)
-                                                }}，部队番号:{{ cycle.unit_number }}，兵种:{{ cycle.branch }}，退伍时间:{{
-                                                format_date(cycle.discharge_date) }}{% else %}无{% endif %}</td>
+                                            <td class="d-flex justify-content-between align-items-center gap-2">
+                                                <span>{% if cycle.military_service %}入伍时间:{{
+                                                    format_date(cycle.enlistment_date)
+                                                    }}，部队番号:{{ cycle.unit_number }}，兵种:{{ cycle.branch }}，退伍时间:{{
+                                                    format_date(cycle.discharge_date) }}{% else %}无{% endif %}</span>
+                                                {{ doc_inline(cycle, '兵役证') }}
+                                            </td>
                                         </tr>
                                         <tr>
                                             <th>驾驶证</th>
-                                            <td>{% if cycle.has_license %}初领时间:{{ format_date(cycle.license_date)
-                                                }}，准驾车型:{{
-                                                cycle.license_type }}，有效期至:{{ format_date(cycle.license_expiry) }}{%
-                                                else
-                                                %}无{% endif %}</td>
+                                            <td class="d-flex justify-content-between align-items-center gap-2">
+                                                <span>{% if cycle.has_license %}初领时间:{{ format_date(cycle.license_date)
+                                                    }}，准驾车型:{{
+                                                    cycle.license_type }}，有效期至:{{ format_date(cycle.license_expiry) }}{%
+                                                    else
+                                                    %}无{% endif %}</span>
+                                                {{ doc_inline(cycle, '驾驶证') }}
+                                            </td>
                                         </tr>
                                         <tr>
                                             <th>保安员证</th>
-                                            <td>
-                                                保安证编号:{{ cycle.security_license_number or '无' }}
-                                                {% if cycle.security_license_date %}
-                                                ,发证时间: {{ format_date(cycle.security_license_date) }}
-                                                {% endif %}
+                                            <td class="d-flex justify-content-between align-items-center gap-2">
+                                                <span>
+                                                    保安证编号:{{ cycle.security_license_number or '无' }}
+                                                    {% if cycle.security_license_date %}
+                                                    ,发证时间: {{ format_date(cycle.security_license_date) }}
+                                                    {% endif %}
+                                                </span>
+                                                {{ doc_inline(cycle, '保安员证') }}
                                             </td>
                                         </tr>
                                         <tr>
@@ -554,74 +631,91 @@
                                         </div>
                                     </div>
                                     
-                                    <!-- 证件信息区域 -->
-                                    <div class="card mt-5 document-section shadow-sm border-0">
-                                        <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
-                                            <h6 class="mb-0 fw-bold text-dark d-flex align-items-center">
-                                                <i class="bi bi-file-earmark-text text-primary me-2"></i>证件信息
-                                            </h6>
-                                            {% if cycle.status == '在职' %}
-                                            <a href="{{ url_for('hr.document_add', cycle_id=cycle.id) }}" 
-                                               class="btn btn-sm btn-success btn-action">
-                                                <i class="bi bi-plus-circle me-1"></i>添加证件
-                                            </a>
-                                            {% endif %}
-                                        </div>
-                                        <div class="card-body p-0">
-                                            {% if cycle.documents %}
-                                            <div class="list-group list-group-flush">
-                                                {% for doc in cycle.documents %}
-                                                <div class="list-group-item py-3 {% if doc.pending_status == 'pending' %}bg-light{% endif %}">
-                                                    <div class="row align-items-center">
-                                                        <div class="col-md-2">
-                                                            <span class="badge bg-primary-subtle text-primary">{{ doc.doc_type }}</span>
+                                    <!-- 其他证件（消防证/上岗证/健康证/其他，主证件已内联到上方信息行） -->
+                                    {% set other_docs = (cycle.documents or []) | reject('in', ('身份证','学历证','兵役证','驾驶证','保安员证')) | list %}
+                                    <div class="accordion mt-4" id="otherDocsAccordion{{ cycle.id }}">
+                                        <div class="accordion-item border-0 shadow-sm">
+                                            <h2 class="accordion-header" id="otherDocsHeading{{ cycle.id }}">
+                                                <button class="accordion-button collapsed bg-white fw-bold" type="button"
+                                                        data-bs-toggle="collapse" data-bs-target="#otherDocsCollapse{{ cycle.id }}"
+                                                        aria-expanded="false" aria-controls="otherDocsCollapse{{ cycle.id }}">
+                                                    <i class="bi bi-folder2-open text-primary me-2"></i>其他证件
+                                                    <span class="badge bg-secondary ms-2">{{ other_docs | length }}</span>
+                                                    {% if cycle.status == '在职' and ((current_user.username == cycle.id_card) or perm.can('hr.edit')) %}
+                                                    <span class="ms-auto small text-muted fw-normal" onclick="event.stopPropagation();">仅登记消防证、上岗证、健康证等，主证件在上方信息行补传</span>
+                                                    {% endif %}
+                                                </button>
+                                            </h2>
+                                            <div id="otherDocsCollapse{{ cycle.id }}" class="accordion-collapse collapse"
+                                                 aria-labelledby="otherDocsHeading{{ cycle.id }}" data-bs-parent="#otherDocsAccordion{{ cycle.id }}">
+                                                <div class="accordion-body p-0">
+                                                    <div class="list-group list-group-flush">
+                                                        {% for doc in other_docs %}
+                                                        <div class="list-group-item py-3 other-doc-item {% if doc.pending_status == 'pending' %}bg-light{% endif %}">
+                                                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                                                <span class="badge bg-primary-subtle text-primary">{{ doc.doc_type }}</span>
+                                                                <span class="small">{{ doc.doc_number or '-' }}</span>
+                                                                <span class="text-muted small">
+                                                                    {{ doc.status_info[1] if doc.status_info else (doc.expire_date.strftime('%Y-%m-%d') if doc.expire_date else '长期有效') }}
+                                                                </span>
+                                                                {% if doc.pending_status == 'pending' %}
+                                                                <span class="badge bg-warning text-dark"><i class="bi bi-clock me-1"></i>待审批</span>
+                                                                {% elif doc.pending_status == 'rejected' %}
+                                                                <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>已拒绝</span>
+                                                                {% endif %}
+                                                                <span class="ms-auto d-flex gap-1">
+                                                                    {% if doc.pending_status == 'pending' and perm.can('hr.edit') %}
+                                                                    <a href="{{ url_for('hr.document_view_change', doc_id=doc.id) }}" class="btn btn-sm btn-outline-success" title="审批">
+                                                                        <i class="bi bi-clipboard-check"></i>
+                                                                    </a>
+                                                                    {% else %}
+                                                                    {% if doc.front_image or doc.back_image %}
+                                                                    <button type="button" class="btn btn-sm btn-outline-primary" title="查看证件"
+                                                                            data-bs-toggle="modal" data-bs-target="#docViewModal"
+                                                                            data-owner="{{ cycle.name }}" data-type="{{ doc.doc_type }}"
+                                                                            data-number="{{ doc.doc_number or '' }}"
+                                                                            data-issue="{{ format_date(doc.issue_date) or '' }}"
+                                                                            data-expire="{{ doc.status_info[1] if doc.status_info else (format_date(doc.expire_date) or '长期有效') }}"
+                                                                            data-front="/{{ doc.front_image }}" data-back="/{{ doc.back_image or '' }}"
+                                                                            data-edit-url="{{ url_for('hr.document_edit', doc_id=doc.id) }}"
+                                                                            data-delete-url="{{ url_for('hr.document_delete', doc_id=doc.id) }}">
+                                                                        <i class="bi bi-images"></i>
+                                                                    </button>
+                                                                    {% endif %}
+                                                                    {% if (current_user.username == cycle.id_card) or perm.can('hr.edit') %}
+                                                                    <a href="{{ url_for('hr.document_edit', doc_id=doc.id) }}" class="btn btn-sm btn-outline-primary" title="编辑">
+                                                                        <i class="bi bi-pencil"></i>
+                                                                    </a>
+                                                                    {% endif %}
+                                                                    {% if perm.can('hr.delete') %}
+                                                                    <a href="{{ url_for('hr.document_delete', doc_id=doc.id) }}" class="btn btn-sm btn-outline-danger" title="删除"
+                                                                       onclick="return confirm('确定删除该{{ doc.doc_type }}？')">
+                                                                        <i class="bi bi-trash"></i>
+                                                                    </a>
+                                                                    {% endif %}
+                                                                    {% endif %}
+                                                                </span>
+                                                            </div>
                                                         </div>
-                                                        <div class="col-md-2">
-                                                            <small class="text-muted">证件号</small>
-                                                            <div>{{ doc.doc_number or '-' }}</div>
-                                                        </div>
-                                                        <div class="col-md-2">
-                                                            <small class="text-muted">有效期</small>
-                                                            <div>{{ doc.expire_date.strftime('%Y-%m-%d') if doc.expire_date else '长期有效' }}</div>
-                                                        </div>
-                                                        <div class="col-md-3">
-                                                            {% if doc.pending_status == 'pending' %}
-                                                            <span class="badge bg-warning text-dark"><i class="bi bi-clock me-1"></i>待审批</span>
-                                                            {% elif doc.pending_status == 'rejected' %}
-                                                            <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>已拒绝</span>
-                                                            {% endif %}
-                                                        </div>
-                                                        <div class="col-md-3 text-end">
-                                                            {% if doc.pending_status == 'pending' and perm.can('hr.edit') %}
-                                                            <a href="{{ url_for('hr.document_view_change', doc_id=doc.id) }}" class="btn btn-sm btn-outline-success me-1" title="审批">
-                                                                <i class="bi bi-clipboard-check"></i>
+                                                        {% endfor %}
+                                                        {% if cycle.status == '在职' and ((current_user.username == cycle.id_card) or perm.can('hr.edit')) %}
+                                                        <div class="list-group-item text-center">
+                                                            <a href="{{ url_for('hr.document_add', cycle_id=cycle.id) }}" class="btn btn-sm btn-success">
+                                                                <i class="bi bi-plus-circle me-1"></i>添加其他证件
                                                             </a>
-                                                            {% elif doc.pending_status != 'pending' %}
-                                                            {% if doc.front_image or doc.back_image %}
-                                                            <a href="{{ url_for('hr.document_edit', doc_id=doc.id) }}" class="btn btn-sm btn-outline-primary me-1">
-                                                                <i class="bi bi-eye"></i>
-                                                            </a>
-                                                            {% endif %}
-                                                            {% if perm.can('hr.edit') %}
-                                                            <a href="{{ url_for('hr.document_edit', doc_id=doc.id) }}" class="btn btn-sm btn-outline-primary">
-                                                                <i class="bi bi-pencil"></i>
-                                                            </a>
-                                                            {% endif %}
-                                                            {% endif %}
                                                         </div>
+                                                        {% endif %}
+                                                        {% if not other_docs %}
+                                                        <div class="list-group-item text-center text-muted py-4">
+                                                            暂无消防证、上岗证、健康证等其他证件
+                                                        </div>
+                                                        {% endif %}
                                                     </div>
                                                 </div>
-                                                {% endfor %}
                                             </div>
-                                            {% else %}
-                                            <div class="empty-state">
-                                                <i class="bi bi-folder-open"></i>
-                                                <p class="mb-0">暂未登记任何证件</p>
-                                            </div>
-                                            {% endif %}
                                         </div>
                                     </div>
-                                    
+
                                     <hr class="mt-5 mb-0 border-dark border-2 opacity-100">
 
                                     <!-- 档案记录区域 -->
@@ -927,6 +1021,147 @@
         </div>
     </div>
 </div>
+
+<!-- 证件查看模态框（全局共用，由行内"查看"按钮填充数据） -->
+<div class="modal fade" id="docViewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-images me-1"></i><span id="docViewTitle">证件</span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6 text-center">
+                        <label class="form-label small text-muted">正面照片</label>
+                        <div><img id="docViewFront" src="" class="img-thumbnail" style="max-height: 300px; max-width: 100%;" alt="正面照片"></div>
+                    </div>
+                    <div class="col-md-6 text-center">
+                        <label class="form-label small text-muted">反面照片</label>
+                        <div><img id="docViewBack" src="" class="img-thumbnail" style="max-height: 300px; max-width: 100%;" alt="反面照片"></div>
+                    </div>
+                </div>
+                <table class="table table-sm table-borderless mb-0">
+                    <tr><th style="width: 6em;">证件号码</th><td id="docViewNumber">-</td></tr>
+                    <tr><th>发证日期</th><td id="docViewIssue">-</td></tr>
+                    <tr><th>有效期</th><td id="docViewExpire">-</td></tr>
+                </table>
+            </div>
+            <div class="modal-footer" id="docViewFooter">
+                <a href="#" id="docViewApproveBtn" class="btn btn-success d-none">
+                    <i class="bi bi-clipboard-check me-1"></i>去审批
+                </a>
+                <a href="#" id="docViewEditBtn" class="btn btn-primary d-none">
+                    <i class="bi bi-pencil me-1"></i>编辑
+                </a>
+                <a href="#" id="docViewDeleteBtn" class="btn btn-outline-danger d-none">
+                    <i class="bi bi-trash me-1"></i>删除
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 证件补传模态框（主证件行内"未上传/补照片"入口） -->
+<div class="modal fade" id="docUploadModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <form id="docUploadForm" method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="doc_type" id="docUploadTypeHidden" value="">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-cloud-arrow-up me-1"></i>为 <span id="docUploadOwner"></span> 补传 <span id="docUploadTypeText"></span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info py-2 small">
+                        <i class="bi bi-info-circle me-1"></i>证件类型已按信息行自动确定，无需选择。{{ '提交后需管理员审批' if not (perm and perm.can('hr.edit')) else '' }}
+                    </div>
+                    {% with mode = 'add', document = none, fixed_doc_type = '' %}
+                    {% include 'hr/document/_document_form.html' %}
+                    {% endwith %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-circle me-1"></i>提交
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 内联证件交互脚本 -->
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // ===== 查看模态框：从触发按钮的 data-* 填充 =====
+        var viewModal = document.getElementById('docViewModal');
+        viewModal.addEventListener('show.bs.modal', function (event) {
+            var btn = event.relatedTarget;
+            if (!btn) return;
+            var type = btn.dataset.type || '证件';
+            document.getElementById('docViewTitle').textContent = btn.dataset.owner + ' 的' + type;
+            var front = btn.dataset.front || '', back = btn.dataset.back || '';
+            var frontImg = document.getElementById('docViewFront');
+            var backImg = document.getElementById('docViewBack');
+            frontImg.src = front; frontImg.style.display = front ? '' : 'none';
+            backImg.src = back; backImg.style.display = back ? '' : 'none';
+            document.getElementById('docViewNumber').textContent = btn.dataset.number || '-';
+            document.getElementById('docViewIssue').textContent = btn.dataset.issue || '-';
+            document.getElementById('docViewExpire').textContent = btn.dataset.expire || '-';
+            // 操作按钮
+            var editBtn = document.getElementById('docViewEditBtn');
+            var deleteBtn = document.getElementById('docViewDeleteBtn');
+            var approveBtn = document.getElementById('docViewApproveBtn');
+            if (btn.dataset.editUrl) {
+                editBtn.href = btn.dataset.editUrl;
+                editBtn.classList.remove('d-none');
+            } else { editBtn.classList.add('d-none'); }
+            {% if perm.can('hr.delete') %}
+            if (btn.dataset.deleteUrl) {
+                deleteBtn.href = btn.dataset.deleteUrl;
+                deleteBtn.classList.remove('d-none');
+            } else { deleteBtn.classList.add('d-none'); }
+            {% else %}
+            deleteBtn.classList.add('d-none');
+            {% endif %}
+            approveBtn.classList.add('d-none');
+        });
+        // 模态框关闭后重置图片 src，避免残留
+        viewModal.addEventListener('hidden.bs.modal', function () {
+            document.getElementById('docViewFront').src = '';
+            document.getElementById('docViewBack').src = '';
+        });
+        // 删除确认
+        var deleteBtn = document.getElementById('docViewDeleteBtn');
+        deleteBtn.addEventListener('click', function (e) {
+            if (!confirm('确定删除该证件？删除后不可恢复。')) e.preventDefault();
+        });
+
+        // ===== 补传模态框：类型按信息行固定，禁止修改 =====
+        var uploadModal = document.getElementById('docUploadModal');
+        uploadModal.addEventListener('show.bs.modal', function (event) {
+            var btn = event.relatedTarget;
+            if (!btn) return;
+            var docType = btn.dataset.docType || '';
+            var cycleId = btn.dataset.cycleId || '';
+            document.getElementById('docUploadOwner').textContent = btn.dataset.owner || '';
+            document.getElementById('docUploadTypeText').textContent = docType;
+            document.getElementById('docUploadTypeHidden').value = docType;
+            document.getElementById('docUploadForm').action = '/hr/document/add/' + cycleId;
+            // 隐藏表单里的类型下拉（已由 hidden 提交）
+            var sel = document.getElementById('doc_type_select');
+            if (sel) { sel.closest('.mb-4').style.display = 'none'; sel.disabled = true; }
+        });
+        uploadModal.addEventListener('hidden.bs.modal', function () {
+            var sel = document.getElementById('doc_type_select');
+            if (sel) { sel.closest('.mb-4').style.display = ''; sel.disabled = false; }
+        });
+    });
+</script>
 
 <!-- 交互增强脚本 -->
 <script>

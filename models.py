@@ -370,6 +370,16 @@ class DogCatch(db.Model):
         """未交付结余 = 计酬只数 - 已交付（不小于0）"""
         return max(self.payable_count - self.delivered_count, 0)
 
+    @property
+    def display_status(self):
+        """派生显示状态（仅用于展示，不写库）：
+        已结算原样返回；交付完毕返回 已交付；其余返回 未结算。"""
+        if self.status == '已结算':
+            return '已结算'
+        if self.delivered_count > 0 and self.delivered_count >= self.payable_count:
+            return '已交付'
+        return '未结算'
+
 class DogCatchPerson(db.Model):
     """抓狗出勤参与人（一名员工可参与多次出勤）"""
     __tablename__ = 'dog_catch_persons'  # 数据库表名

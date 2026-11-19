@@ -9,7 +9,7 @@ from . import hr_bp
 from models import EmployeeDocument, EmploymentCycle, db
 from utils import save_uploaded_file, perm, log_action, format_date, parse_date
 
-DOC_TYPES = ['身份证', '保安员证', '消防证', '驾驶证', '上岗证', '健康证', '其他']
+DOC_TYPES = ['身份证', '学历证', '兵役证', '保安员证', '消防证', '驾驶证', '上岗证', '健康证', '其他']
 
 # 证件字段中文映射
 FIELD_MAP = {

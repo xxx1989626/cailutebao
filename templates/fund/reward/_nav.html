@@ -4,7 +4,10 @@
         <i class="bi bi-calendar-check me-1"></i>出勤登记
     </a>
     <a href="{{ url_for('reward.delivery_list') }}" class="btn btn-sm {% if active == 'delivery' %}btn-success{% else %}btn-outline-secondary{% endif %}">
-        <i class="bi bi-truck me-1"></i>交付与损耗
+        <i class="bi bi-truck me-1"></i>交付记录
+    </a>
+    <a href="{{ url_for('reward.loss_list') }}" class="btn btn-sm {% if active == 'loss' %}btn-success{% else %}btn-outline-secondary{% endif %}">
+        <i class="bi bi-exclamation-triangle me-1"></i>损耗记录
     </a>
     <a href="{{ url_for('reward.settle_list') }}" class="btn btn-sm {% if active == 'settle' %}btn-success{% else %}btn-outline-secondary{% endif %}">
         <i class="bi bi-cash-coin me-1"></i>经费分账

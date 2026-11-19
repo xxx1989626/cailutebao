@@ -111,6 +111,13 @@
         background-color: #f8f9fa;
     }
     
+    /* 姓名单列不换行，避免三字姓名被折成两行 */
+    .table th.col-name,
+    .table td.col-name {
+        white-space: nowrap;
+        min-width: 110px;
+    }
+
     /* 排序链接样式 */
     .sort-link {
         color: #212529;
@@ -330,6 +337,13 @@
                                     <label class="form-check-label" for="show_tenure">在职时长</label>
                                 </div>
                             </div>
+                            <div class="col-md-2 col-sm-4 col-6 mb-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="show" value="age" id="show_age" 
+                                           {% if 'age' in show_fields %}checked{% endif %}>
+                                    <label class="form-check-label" for="show_age">年龄</label>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="col-auto">
@@ -347,7 +361,7 @@
                         <tr>
                             <th width="80">序号</th>
                             {% if 'name' in show_fields %}
-                            <th>
+                            <th class="col-name" width="110">
                                 <a href="{{ url_for('hr.hr_list', status=status_filter, search=search, sort='name_asc' if sort == 'name_desc' else 'name_desc', show=show_fields) }}"
                                    class="sort-link">
                                     姓名 {% if sort.startswith('name_') %}<i class="bi bi-arrow-down-up ms-1"></i>{% endif %}
@@ -409,6 +423,14 @@
                                 <span class="text-dark">在职时长</span>
                             </th>
                             {% endif %}
+                            {% if 'age' in show_fields %}
+                            <th>
+                                <a href="{{ url_for('hr.hr_list', status=status_filter, search=search, sort='age_asc' if sort == 'age_desc' else 'age_desc', show=show_fields) }}"
+                                   class="sort-link">
+                                    年龄 {% if sort.startswith('age_') %}<i class="bi bi-arrow-down-up ms-1"></i>{% endif %}
+                                </a>
+                            </th>
+                            {% endif %}
                             <th width="200">操作</th>
                         </tr>
                     </thead>
@@ -417,7 +439,7 @@
                             {% for emp in employees %}
                             <tr>
                                 <td>{{ loop.index }}</td>
-                                {% if 'name' in show_fields %}<td><strong>{{ emp.name }}</strong></td>{% endif %}
+                                {% if 'name' in show_fields %}<td class="col-name"><strong>{{ emp.name }}</strong></td>{% endif %}
                                 {% if 'id_card' in show_fields %}<td>{{ emp.id_card }}</td>{% endif %}
                                 {% if 'phone' in show_fields %}
                                     <td>
@@ -441,6 +463,7 @@
                                     </span>
                                 </td>
                                 {% endif %}
+                                {% if 'age' in show_fields %}<td>{% if emp.birthday %}{{ emp.birthday | calc_age }} 岁{% else %}-{% endif %}</td>{% endif %}
                                 <td class="action-buttons">
                                     {% if status_filter == '待审核' %}
     {% if emp.status == '待审核' %}
