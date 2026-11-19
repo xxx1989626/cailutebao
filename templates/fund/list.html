@@ -429,7 +429,7 @@
             </div>
             <!-- 分页控件 -->
             {% from "_pagination.html" import render_pagination %}
-            {{ render_pagination(pagination, 'fund.fund_list') }}
+            {{ render_pagination(pagination, 'fund.fund_list', date=date_filter, payer=payer_filter, item=item_filter, sort=sort) }}
         </div>
     </div>
 </div>

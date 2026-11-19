@@ -83,6 +83,9 @@ def get_form_snippet():
 @perm.require('asset.add')
 def asset_add():
     if request.method == 'POST':
+        if request.form.get('sync_fund') == 'on' and not perm.can('fund.add'):
+            flash('权限不足，联动登记资金还需要资金新增权限', 'danger')
+            return render_template('asset/add.html', default_date=today_str()), 403
         try:
             # 1. 保存资产（调用核心函数）
             asset = perform_asset_save(request.form, request.files)

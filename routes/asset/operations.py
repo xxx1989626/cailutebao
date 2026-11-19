@@ -2,7 +2,7 @@
 from datetime import datetime
 from flask import flash, redirect, url_for, request
 from flask_login import login_required, current_user
-from models import db, Asset, AssetAllocation, AssetHistory, AssetInstance, EmploymentCycle, FundsRecord
+from models import db, Asset, AssetAllocation, AssetHistory, AssetInstance, EmploymentCycle
 from utils import log_action, perm
 
 # 导入蓝图
@@ -362,27 +362,25 @@ def asset_supplement(asset_id):
     if quantity <= 0:
         flash('数量无效', 'danger')
         return redirect(url_for('asset.asset_detail', asset_id=asset_id))
+    if asset.ownership == '特保队' and is_sync and unit_price > 0 and not perm.can('fund.add'):
+        flash('权限不足，联动登记资金还需要资金新增权限', 'danger')
+        return redirect(url_for('asset.asset_detail', asset_id=asset_id))
     
     asset.total_quantity += quantity
     asset.stock_quantity += quantity
     
-    # 同步财务扣款
+    # 同步财务扣款：统一走主账入口，由主账重算全部余额
     sync_desc = ""
     if asset.ownership == '特保队' and is_sync and unit_price > 0:
         total_cost = unit_price * quantity
-        last_record = FundsRecord.query.order_by(FundsRecord.date.desc(), FundsRecord.id.desc()).first()
-        last_balance = last_record.balance if last_record else 0
-        
-        new_fund = FundsRecord(
-            date=datetime.now(),
-            payer="特保队费",
-            item=f"补充资产支出: {asset.name}",
-            amount=-total_cost,
-            balance=last_balance - total_cost,
-            note=f"资产编号: {asset.number} (补充入库联动)",
-            operator_id=current_user.id
-        )
-        db.session.add(new_fund)
+        from ..fund import perform_fund_save
+        perform_fund_save({
+            'date': datetime.now().strftime('%Y-%m-%d'),
+            'payer': '特保队费',
+            'item': f"补充资产支出: {asset.name}",
+            'amount': -total_cost,
+            'note': f"资产编号: {asset.number} (补充入库联动)",
+        }, current_user.id)
         sync_desc = f"并同步扣款 {total_cost} 元"
 
     history = AssetHistory(

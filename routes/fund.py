@@ -4,6 +4,8 @@
 import os
 import json
 import re
+import ast
+import math
 from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, current_app
 from flask_login import login_required, current_user
 from models import db, FundsRecord, Asset, User
@@ -62,7 +64,13 @@ def fund_list():
     
     query = FundsRecord.query
     if date_filter:
-        query = query.filter(FundsRecord.date == parse_date(date_filter))
+        selected_date = parse_date(date_filter)
+        if selected_date:
+            day_start = datetime.combine(selected_date, datetime.min.time())
+            day_end = datetime.combine(selected_date, datetime.max.time())
+            query = query.filter(FundsRecord.date >= day_start, FundsRecord.date <= day_end)
+        else:
+            query = query.filter(db.false())
     if payer_filter:
         query = query.filter(FundsRecord.payer.ilike(f'%{payer_filter}%'))
     if item_filter:
@@ -99,24 +107,36 @@ def perform_fund_save(form_data, operator_id, files=None):
     财务核心保存逻辑：从 form_data 读数据，执行财务入库。
     """
     # 1. 金额提取与计算逻辑
-    if form_data.get('amount'):
-        amount = float(form_data.get('amount'))
-    elif form_data.get('unit_price') and form_data.get('quantity'):
+    amount_raw = form_data.get('amount')
+    if amount_raw is not None and str(amount_raw).strip() != '':
+        amount = float(amount_raw)
+    elif form_data.get('unit_price') not in (None, '') and form_data.get('quantity') not in (None, ''):
         qty = int(form_data.get('quantity', 1))
         price = float(form_data.get('unit_price', 0))
+        if qty <= 0 or price <= 0:
+            raise ValueError('资产数量和单价必须大于0')
         amount = -(qty * price)  # 资产买入默认为支出，转为负数
     else:
-        amount = 0.0
+        raise ValueError('金额不能为空')
+    if not math.isfinite(amount) or amount == 0:
+        raise ValueError('金额必须为非零有效数字')
 
     # 2. 字段对齐（兼容资产联动传参）
-    item = form_data.get('item') or f"采购资产入库: {form_data.get('name', '未命名资产')}"
-    payer = form_data.get('payer') or form_data.get('ownership', '特保队')
+    item = form_data.get('item')
+    if not item and form_data.get('name'):
+        item = f"采购资产入库: {form_data.get('name')}"
+    item = (item or '').strip()
+    payer = (form_data.get('payer') or form_data.get('ownership') or '特保队').strip()
+    if not item or not payer:
+        raise ValueError('资方和费用项目不能为空')
     note = form_data.get('note') or form_data.get('asset_note', '')
     
     # 3. 日期处理
     date_input = form_data.get('date') or form_data.get('purchase_date')
     if date_input:
         selected_date = parse_date(date_input)
+        if not selected_date:
+            raise ValueError('财务日期格式不正确')
         record_datetime = datetime.combine(selected_date, datetime.now().time())
     else:
         record_datetime = datetime.now()
@@ -172,14 +192,24 @@ def get_fund_form_snippet():
 @perm.require('fund.add')
 def fund_add():
     if request.method == 'POST':
+        if request.form.get('sync_asset') == 'on' and not perm.can('asset.add'):
+            flash('权限不足，联动登记资产还需要资产新增权限', 'danger')
+            return render_template('fund/add.html', default_date=today_str()), 403
         try:
+            required_fields = {'date': '财务日期', 'payer': '资方/付款人', 'item': '费用项目', 'amount': '金额'}
+            missing = [label for field, label in required_fields.items() if not (request.form.get(field) or '').strip()]
+            if missing:
+                raise ValueError(f"请填写完整：{'、'.join(missing)}")
+            if not parse_date(request.form.get('date')):
+                raise ValueError('财务日期格式不正确')
+
             # 1. 保存财务记录
             record = perform_fund_save(request.form, current_user.id, request.files)
             
             # 2. 检查联动开关 (sync_asset)
             sync_msg = ""
             if request.form.get('sync_asset') == 'on':
-                from .asset import perform_asset_save
+                from .asset.core import perform_asset_save
                 perform_asset_save(request.form, request.files)
                 sync_msg = "，并已同步登记资产入库"
 
@@ -219,11 +249,22 @@ def fund_edit(record_id):
 
     if request.method == 'POST':
         try:
+            required_fields = {'date': '财务日期', 'payer': '资方/付款人', 'item': '费用项目', 'amount': '金额'}
+            missing = [label for field, label in required_fields.items() if not (request.form.get(field) or '').strip()]
+            if missing:
+                raise ValueError(f"请填写完整：{'、'.join(missing)}")
+            selected_date = parse_date(request.form.get('date'))
+            if not selected_date:
+                raise ValueError('财务日期格式不正确')
+            amount = float(request.form.get('amount'))
+            if not math.isfinite(amount) or amount == 0:
+                raise ValueError('金额必须为非零有效数字')
+
             # 更新字段
-            record.date = datetime.combine(parse_date(request.form.get('date')), datetime.now().time())
-            record.payer = request.form.get('payer')
-            record.item = request.form.get('item')
-            record.amount = float(request.form.get('amount'))
+            record.date = datetime.combine(selected_date, datetime.now().time())
+            record.payer = request.form.get('payer').strip()
+            record.item = request.form.get('item').strip()
+            record.amount = amount
             record.note = request.form.get('note', '')
 
             # 处理已有附件删除（由 _attachment.html 组件通过 delete_attachments 隐藏字段提交 JSON 数组）
@@ -318,23 +359,40 @@ def fund_import():
                 return redirect(request.url)
             
             imported_count = 0
-            for idx, row in df.iterrows():
+            for row_number, (_, row) in enumerate(df.iterrows(), start=2):
+                missing_values = [c for c in required_cols if pd.isna(row.get(c)) or not str(row.get(c)).strip()]
+                if missing_values:
+                    raise ValueError(f"第{row_number}行必填内容不完整：{'、'.join(missing_values)}")
+                record_date = pd.to_datetime(row['日期'], errors='raise').to_pydatetime()
+                payer = str(row['资方']).strip()
+                item = str(row['项目']).strip()
+                amount = float(row['金额'])
+                if not math.isfinite(amount) or amount == 0:
+                    raise ValueError(f'第{row_number}行金额必须为非零有效数字')
+
                 # 处理操作人
                 op_name = str(row.get('操作人', '')).strip()
                 user = User.query.filter_by(name=op_name).first()
                 final_op_id = user.id if user else current_user.id
                 
-                # 处理凭证
+                # 凭证统一保存为路径列表，并兼容历史导出的列表字符串
                 excel_attachment = str(row.get('凭证', '')).strip()
-                attachment_value = None
+                attachment_value = []
                 if excel_attachment and excel_attachment.lower() not in ['nan', '无', '']:
-                    attachment_value = excel_attachment
+                    try:
+                        parsed_attachment = ast.literal_eval(excel_attachment)
+                    except (ValueError, SyntaxError):
+                        parsed_attachment = excel_attachment
+                    if isinstance(parsed_attachment, (list, tuple)):
+                        attachment_value = [str(p).strip() for p in parsed_attachment if p is not None and str(p).strip()]
+                    else:
+                        attachment_value = [excel_attachment]
                 
                 record = FundsRecord(
-                    date=pd.to_datetime(row['日期']).to_pydatetime(),
-                    payer=str(row['资方']).strip(),
-                    item=str(row['项目']).strip(),
-                    amount=float(row['金额']),
+                    date=record_date,
+                    payer=payer,
+                    item=item,
+                    amount=amount,
                     note=str(row.get('备注', '')).strip() if pd.notna(row.get('备注')) else '',
                     balance=0,  # 临时值，稍后统一重算
                     attachment=attachment_value,
@@ -356,12 +414,47 @@ def fund_import():
             
     return render_template('fund/import.html')
 
+
+@fund_bp.route('/import/template')
+@login_required
+@perm.require('fund.import')
+def fund_import_template():
+    """下载与导入字段一致的标准 Excel 模板。"""
+    columns = ['日期', '资方', '项目', '金额', '操作人', '凭证', '备注']
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        pd.DataFrame(columns=columns).to_excel(writer, index=False, sheet_name='资金导入模板')
+    output.seek(0)
+    return send_file(
+        output,
+        as_attachment=True,
+        download_name='资金导入模板.xlsx',
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+
+
 # ==================== 导出清单 ====================
 @fund_bp.route('/export')
 @login_required
 @perm.require('fund.export')
 def fund_export():
-    records = FundsRecord.query.order_by(FundsRecord.date.desc()).all()
+    date_filter = request.args.get('date')
+    payer_filter = request.args.get('payer')
+    item_filter = request.args.get('item')
+    query = FundsRecord.query
+    if date_filter:
+        selected_date = parse_date(date_filter)
+        if selected_date:
+            day_start = datetime.combine(selected_date, datetime.min.time())
+            day_end = datetime.combine(selected_date, datetime.max.time())
+            query = query.filter(FundsRecord.date >= day_start, FundsRecord.date <= day_end)
+        else:
+            query = query.filter(db.false())
+    if payer_filter:
+        query = query.filter(FundsRecord.payer.ilike(f'%{payer_filter}%'))
+    if item_filter:
+        query = query.filter(FundsRecord.item.ilike(f'%{item_filter}%'))
+    records = query.order_by(FundsRecord.date.desc(), FundsRecord.id.desc()).all()
     
     data = []
     for r in records:
@@ -376,9 +469,8 @@ def fund_export():
             '备注': r.note
         })
     
-    df = pd.DataFrame(data)
     column_order = ['日期', '资方', '项目', '金额', '类型', '操作人', '备注', '凭证']
-    df = df[column_order]
+    df = pd.DataFrame(data, columns=column_order)
 
     output = BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
