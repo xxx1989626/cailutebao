@@ -1273,12 +1273,15 @@
         `;
         document.head.appendChild(style);
         
-        // 平滑滚动
+        // 平滑滚动：只处理真实页内锚点，避免拦截动态设置为业务地址的按钮
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
+                const href = this.getAttribute('href');
+                if (!href || href === '#' || !href.startsWith('#')) return;
+
+                const target = document.querySelector(href);
                 if (target) {
+                    e.preventDefault();
                     target.scrollIntoView({
                         behavior: 'smooth'
                     });

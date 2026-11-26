@@ -119,12 +119,13 @@
     {% include '_common_tabs.html' %}
     <div class="card card-custom border-0 shadow-sm rounded-3 overflow-hidden">
         <div class="card-header bg-gradient bg-success text-white d-flex flex-wrap justify-content-between align-items-center gap-3 py-3 px-4">
-            <h5 class="mb-0">{{ selected_year }}年{{ selected_month }}月排班管理</h5>
+            <h5 class="mb-0">{{ selected_year }}年{{ selected_month }}月{{ '排班管理' if can_manage else '我的排班' }}</h5>
             <div class="d-flex align-items-center gap-3">
                 <input type="month" id="monthPicker" class="form-control form-control-sm"
                     value="{{ selected_year }}-{{ '%02d' % selected_month }}">
             </div>
             <div class="d-flex gap-2">
+                {% if can_manage %}
                 <button class="btn btn-sm btn-outline-light" onclick="document.getElementById('excelImportInput').click()">
                     <i class="bi bi-file-earmark-arrow-up"></i> 导入 Excel
                 </button>
@@ -132,6 +133,7 @@
                     <i class="bi bi-trash3"></i> 清空本月
                 </button>
                 <input type="file" id="excelImportInput" hidden onchange="importExcelSchedule(this)">
+                {% endif %}
                 <div class="btn-group">
                     <a href="{{ url_for('scheduling.export_attendance', table_type='A') }}" class="btn btn-sm btn-outline-light">导出A表</a>
                     <a href="{{ url_for('scheduling.export_attendance', table_type='B') }}" class="btn btn-sm btn-outline-light">导出B表</a>
@@ -140,9 +142,13 @@
         </div>
 
         <div class="p-2 bg-light border-bottom">
-            <span class="text-muted small"><i class="bi bi-info-circle"></i> 
+            <span class="text-muted small"><i class="bi bi-info-circle"></i>
+                {% if can_manage %}
                 单击/拖动选择，<strong>双击</strong>设置班次，<strong>Del</strong>删除。
-                <span style="color:#ffc107;">●</span>出差 
+                {% else %}
+                仅显示您的个人排班信息。
+                {% endif %}
+                <span style="color:#ffc107;">●</span>出差
                 <span style="color:#dc3545;">●</span>请假
                 <span style="color:#6610f2;">●</span>夜班
             </span>
@@ -213,6 +219,7 @@
     let selectedCell = null;
     let selectedLayer = null;
     let clipboardData = null;
+    const CAN_MANAGE = {{ 'true' if can_manage else 'false' }};
 
     // 1. 自定义单元格渲染器 (核心：分层显示)
     function ShiftCellRenderer() {}
@@ -266,8 +273,10 @@
         this.dateStr = dateStr;
         this.shiftData = shiftData;
         
-        // 绑定事件
-        this.eGui.addEventListener('dblclick', this.onDblClick.bind(this));
+        // 普通队员为只读视图，不绑定排班编辑事件
+        if (CAN_MANAGE) {
+            this.eGui.addEventListener('dblclick', this.onDblClick.bind(this));
+        }
     };
     ShiftCellRenderer.prototype.getGui = function() { return this.eGui; };
     ShiftCellRenderer.prototype.destroy = function() {};
@@ -314,6 +323,7 @@
             },
             // 键盘事件处理
 onCellKeyDown: function(params) {
+    if (!CAN_MANAGE) return;
     const e = params.event;
     if (e.key === 'Delete' || e.key === 'Backspace') {
         e.preventDefault();

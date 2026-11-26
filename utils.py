@@ -205,7 +205,7 @@ def get_unreturned_assets(cycle_id):
 class PermissionManager:
     ROLE_DEFAULT_PERMISSIONS = {
         'admin': 'all',    
-        'member': ['base_view'] 
+        'member': ['base_view', 'scheduling.view']
     }
     def can(self, permission_key):
         from models import Permission, UserPermission

@@ -13,9 +13,30 @@ scheduling_bp = Blueprint('scheduling', __name__, url_prefix='/scheduling')
 
 # 权限定义
 SCHEDULING_PERMISSIONS = [
-    ('view', '查看排班', '查看全员排班表'),
+    ('view', '查看排班', '查看排班（普通队员仅本人）'),
     ('edit', '管理排班', '拖拽排班、保存排班数据、岗位管理')
 ]
+
+
+def _can_view_all_schedules():
+    return perm.can('scheduling.edit')
+
+
+def _get_visible_active_employees():
+    query = EmploymentCycle.query.filter_by(status='在职')
+    if not _can_view_all_schedules():
+        query = query.filter_by(id_card=current_user.username)
+    return query.all()
+
+
+def _get_own_employee_ids():
+    return [
+        row.id for row in EmploymentCycle.query.filter_by(
+            id_card=current_user.username
+        ).all()
+    ]
+
+
 # --- 路由 1：重构后的排班主页 ---
 @scheduling_bp.route('/list')
 @login_required
@@ -24,7 +45,9 @@ def schedule_list():
         flash("权限不足", "danger")
         return redirect(url_for('main.index'))
     
-    employees = EmploymentCycle.query.filter_by(status='在职').all()
+    can_view_all = _can_view_all_schedules()
+    employees = _get_visible_active_employees()
+    visible_employee_ids = {emp.id for emp in employees}
     posts = ShiftPost.query.all()
     today = date.today()
     
@@ -57,7 +80,8 @@ def schedule_list():
         while current_date <= end_date:
             date_str = current_date.strftime('%Y-%m-%d')
             for p in trip.participants:
-                on_trip_dates.add(f"{p.id}-{date_str}")
+                if can_view_all or p.id in visible_employee_ids:
+                    on_trip_dates.add(f"{p.id}-{date_str}")
             current_date += timedelta(days=1)
 
     # Fetch all leaves that overlap with the selected month
@@ -77,7 +101,8 @@ def schedule_list():
         current_date = start_date
         while current_date <= end_date:
             date_str = current_date.strftime('%Y-%m-%d')
-            on_leave_dates.add(f"{leave.user_id}-{date_str}")
+            if can_view_all or leave.user_id in visible_employee_ids:
+                on_leave_dates.add(f"{leave.user_id}-{date_str}")
             current_date += timedelta(days=1)
 
     return render_template('scheduling/list.html', 
@@ -86,12 +111,17 @@ def schedule_list():
                            on_trip_dates=list(on_trip_dates),
                            on_leave_dates=list(on_leave_dates),
                            selected_year=selected_year,
-                           selected_month=selected_month)
+                           selected_month=selected_month,
+                           can_manage=can_view_all)
 
 # --- 核心：Excel 矩阵数据接口 (已实现四级自定义排序) ---
 @scheduling_bp.route('/api/get_matrix_data')
 @login_required
 def get_matrix_data():
+    if not perm.can('scheduling.view'):
+        return jsonify({'success': False, 'message': '无权查看排班'}), 403
+
+    can_view_all = _can_view_all_schedules()
     month_str = request.args.get('month', datetime.now().strftime("%Y-%m"))
     
     # 1. 定义前三级优先级权重 (数值越小越靠前)
@@ -102,8 +132,9 @@ def get_matrix_data():
     # 第三优先级：班组 (对应数据库中的 post 字段)
     GROUP_MAP = {"机动": 1, "监控": 2, "窗口": 3, "外口": 4}
 
-    # 2. 基础数据查询
-    employees_query = EmploymentCycle.query.filter_by(status='在职').all()
+    # 2. 基础数据查询：普通队员仅返回本人在职档案
+    employees_query = _get_visible_active_employees()
+    visible_employee_ids = {emp.id for emp in employees_query}
 
     # 3. 执行四级排序逻辑
     def sort_key(emp):
@@ -129,7 +160,12 @@ def get_matrix_data():
     posts = {p.id: {'name': p.name, 'color': p.color, 'default_hours': p.default_hours} for p in ShiftPost.query.all()}
     
     # 5. 获取当月排班
-    schedules = ShiftSchedule.query.filter(ShiftSchedule.date.like(f"{month_str}%")).all()
+    schedules_query = ShiftSchedule.query.filter(ShiftSchedule.date.like(f"{month_str}%"))
+    if not can_view_all:
+        schedules_query = schedules_query.filter(
+            ShiftSchedule.employee_id.in_(list(visible_employee_ids))
+        )
+    schedules = schedules_query.all()
     sched_map = {(s.employee_id, s.date.day): s for s in schedules}
     
     # 6. 计算月份的开始和结束日期
@@ -158,7 +194,8 @@ def get_matrix_data():
         while current_date <= end_date:
             date_str = current_date.strftime('%Y-%m-%d')
             for p in trip.participants:
-                on_trip_dates.add(f"{p.id}-{date_str}")
+                if can_view_all or p.id in visible_employee_ids:
+                    on_trip_dates.add(f"{p.id}-{date_str}")
             current_date += timedelta(days=1)
     
     # 9. 获取当月的请假记录
@@ -178,7 +215,8 @@ def get_matrix_data():
         current_date = start_date
         while current_date <= end_date:
             date_str = current_date.strftime('%Y-%m-%d')
-            on_leave_dates.add(f"{leave.user_id}-{date_str}")
+            if can_view_all or leave.user_id in visible_employee_ids:
+                on_leave_dates.add(f"{leave.user_id}-{date_str}")
             current_date += timedelta(days=1)
     
     matrix = []
@@ -301,7 +339,15 @@ def delete_overtime_by_date():
 @scheduling_bp.route('/api/get_shifts')
 @login_required
 def get_shifts():
-    schedules = ShiftSchedule.query.all()
+    if not perm.can('scheduling.view'):
+        return jsonify({'success': False, 'message': '无权查看排班'}), 403
+
+    schedules_query = ShiftSchedule.query
+    if not _can_view_all_schedules():
+        schedules_query = schedules_query.filter(
+            ShiftSchedule.employee_id.in_(_get_own_employee_ids())
+        )
+    schedules = schedules_query.all()
     events = []
     for s in schedules:
         emp = EmploymentCycle.query.get(s.employee_id)
@@ -333,11 +379,18 @@ def delete_shift(id):
 @scheduling_bp.route('/export/<string:table_type>')
 @login_required
 def export_attendance(table_type):
+    if not perm.can('scheduling.view'):
+        flash("权限不足", "danger")
+        return redirect(url_for('main.index'))
+
     target_month = request.args.get('month', datetime.now().strftime("%Y-%m"))
     if table_type == 'A':
-        emps = EmploymentCycle.query.filter_by(salary_mode='月工时制').all()
+        employees_query = EmploymentCycle.query.filter_by(salary_mode='月工时制')
     else:
-        emps = EmploymentCycle.query.filter(EmploymentCycle.salary_mode != '月工时制').all()
+        employees_query = EmploymentCycle.query.filter(EmploymentCycle.salary_mode != '月工时制')
+    if not _can_view_all_schedules():
+        employees_query = employees_query.filter_by(id_card=current_user.username)
+    emps = employees_query.all()
     data_list = []
     for emp in emps:
         shifts = ShiftSchedule.query.filter(ShiftSchedule.employee_id == emp.id, ShiftSchedule.date.like(f"{target_month}%")).all()
